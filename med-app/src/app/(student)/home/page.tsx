@@ -65,72 +65,11 @@ export default async function StudentHomePage() {
         </div>
       </div>
 
-      {pinnedRows && pinnedRows.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-[#0F172A] mb-4">📌 Pinned Subjects</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {pinnedRows.map((row) => {
-              const subj = row.subjects as Record<string, unknown> | null
-              if (!subj) return null
-              const uni = subj.universities as Record<string, unknown> | null
-              return (
-                <Link
-                  key={row.id}
-                  href={`/${subj.university_id}/${subj.id}`}
-                  className="bg-white rounded-xl border border-[#E2E8F0] p-4 shadow-sm hover:border-[#2563EB] hover:shadow-md transition-all group"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-xl">📚</div>
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                      subj.subject_type === 'standard' ? 'bg-blue-100 text-blue-700' :
-                      subj.subject_type === 'system' ? 'bg-purple-100 text-purple-700' :
-                      'bg-green-100 text-green-700'
-                    }`}>{String(subj.subject_type)}</span>
-                  </div>
-                  <h3 className="font-semibold text-[#0F172A] group-hover:text-[#2563EB] transition-colors">{String(subj.name)}</h3>
-                  {uni && <p className="text-xs text-[#64748B] mt-1">{String(uni.name)}</p>}
-                </Link>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
-      {subscriptions && subscriptions.length > 0 && (
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#0F172A]">🎓 Active Subscriptions</h2>
-            <Link href="/subscriptions" className="text-sm text-[#2563EB] hover:underline">View all</Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {subscriptions.map((sub) => {
-              const subj = sub.subjects as Record<string, unknown> | null
-              const expiry = new Date(sub.end_date)
-              const daysLeft = Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-              return (
-                <div key={sub.id} className="bg-white rounded-xl border border-[#E2E8F0] p-4 shadow-sm">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-[#0F172A] text-sm">{String(subj?.name ?? '')}</h3>
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Active</span>
-                  </div>
-                  <p className={`text-xs font-medium ${daysLeft <= 7 ? 'text-amber-600' : 'text-[#64748B]'}`}>
-                    {daysLeft > 0 ? `${daysLeft} days remaining` : 'Expired'}
-                  </p>
-                  <div className="mt-2 h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#16A34A] rounded-full" style={{ width: `${Math.min(100, Math.max(0, (daysLeft / 60) * 100))}%` }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
       <section>
         <h2 className="text-lg font-semibold text-[#0F172A] mb-4">Quick Access</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { icon: '🏫', label: 'My Subjects', href: universityId ? `/${universityId}` : '/' },
+            { icon: '🏫', label: 'My Subjects', href: universityId ? `/${universityId}` : '/home' },
             { icon: '🔖', label: 'Bookmarks', href: '/bookmarks' },
             { icon: '🔔', label: 'Notifications', href: '/notifications' },
             { icon: '👤', label: 'Profile', href: '/profile' },

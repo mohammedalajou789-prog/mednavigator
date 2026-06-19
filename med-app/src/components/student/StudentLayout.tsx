@@ -8,9 +8,7 @@ import { useUIStore } from '@/stores/uiStore'
 import { useUserStore } from '@/stores/userStore'
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/', icon: 'ti-home' },
-  { label: 'My Subjects', href: '/subjects', icon: 'ti-book' },
-  { label: 'My Progress', href: '/progress', icon: 'ti-chart-line' },
+  { label: 'Dashboard', href: '/home', icon: 'ti-home' },
   { label: 'Bookmarks', href: '/bookmarks', icon: 'ti-bookmark' },
   { label: 'Notifications', href: '/notifications', icon: 'ti-bell' },
   { label: 'Profile', href: '/profile', icon: 'ti-user' },
@@ -36,6 +34,28 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     return () => window.removeEventListener('resize', handleResize)
   }, [setIsMobile, setSidebarOpen])
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        <header className="h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-6 justify-between sticky top-0 z-20">
+          <Link href="/" className="text-lg font-bold">
+            <span className="text-blue-600">Med</span>
+            <span className="text-gray-900 dark:text-white">Navigator</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/login" className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 transition-colors">
+              Login
+            </Link>
+            <Link href="/register" className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+              Register
+            </Link>
+          </div>
+        </header>
+        <main>{children}</main>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex">
       {isMobile && sidebarOpen && (
@@ -60,23 +80,21 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
           </Link>
         </div>
 
-        {user && (
-          <div className="px-4 py-3 border-b border-slate-700 flex-shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xs font-semibold">
-                  {user.full_name?.slice(0, 2).toUpperCase() ?? 'MN'}
-                </span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-white truncate">
-                  {user.full_name ?? 'Student'}
-                </p>
-                <p className="text-xs text-slate-400 truncate">Student</p>
-              </div>
+        <div className="px-4 py-3 border-b border-slate-700 flex-shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-semibold">
+                {user.full_name?.slice(0, 2).toUpperCase() ?? 'MN'}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white truncate">
+                {user.full_name ?? 'Student'}
+              </p>
+              <p className="text-xs text-slate-400 truncate capitalize">{user.role ?? 'student'}</p>
             </div>
           </div>
-        )}
+        </div>
 
         <nav className="flex-1 py-3 overflow-y-auto">
           <div className="space-y-0.5 px-2">
@@ -103,11 +121,13 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
         </nav>
 
         <div className="border-t border-slate-700 py-3 px-2 flex-shrink-0">
-          <Link href="/profile" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
-            <i className="ti ti-settings text-base" aria-hidden="true" />
-            <span>Settings</span>
-          </Link>
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-slate-700 transition-colors">
+          <button
+            onClick={async () => {
+              await fetch('/api/auth/logout', { method: 'POST' })
+              window.location.href = '/'
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-slate-700 transition-colors"
+          >
             <i className="ti ti-logout text-base" aria-hidden="true" />
             <span>Logout</span>
           </button>
@@ -155,11 +175,10 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
         {isMobile && (
           <nav className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex justify-around py-2 px-4">
             {[
-              { label: 'Home', href: '/', icon: 'ti-home' },
-              { label: 'Subjects', href: '/subjects', icon: 'ti-book' },
+              { label: 'Home', href: '/home', icon: 'ti-home' },
               { label: 'Bookmarks', href: '/bookmarks', icon: 'ti-bookmark' },
               { label: 'Alerts', href: '/notifications', icon: 'ti-bell' },
-              { label: 'More', href: '/profile', icon: 'ti-dots' },
+              { label: 'Profile', href: '/profile', icon: 'ti-user' },
             ].map((item) => {
               const active = pathname === item.href
               return (

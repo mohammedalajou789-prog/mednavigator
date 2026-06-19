@@ -45,10 +45,9 @@ export default function LoginPage() {
         return
       }
       const role = userProfile?.role ?? 'student'
-      if (role === 'owner') router.push('/owner')
-      else if (role === 'admin') router.push('/admin')
-      else router.push('/')
-      router.refresh()
+      if (role === 'owner') window.location.href = '/owner'
+      else if (role === 'admin') window.location.href = '/admin'
+      else window.location.href = '/'
     } finally {
       setIsSubmitting(false)
     }
@@ -93,6 +92,11 @@ export default function LoginPage() {
             Do not have an account?{' '}
             <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">Create account</Link>
           </p>
+          <div className="mt-3 text-center">
+            <Link href="/" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+              Continue as guest →
+            </Link>
+          </div>
         </div>
       </div>
     </div>

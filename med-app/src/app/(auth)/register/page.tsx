@@ -189,6 +189,11 @@ export default function RegisterPage() {
             Already have an account?{' '}
             <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">Sign in</Link>
           </p>
+          <div className="mt-3 text-center">
+            <Link href="/" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+              Continue as guest →
+            </Link>
+          </div>
         </div>
       </div>
     </div>

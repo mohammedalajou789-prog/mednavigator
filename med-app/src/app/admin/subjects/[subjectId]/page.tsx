@@ -37,7 +37,6 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
   const university = subject.universities as { name: string } | null
   const isSystemSubject = subject.subject_type === 'system'
 
-  // Load chapters or sub-subjects
   const { data: chapters } = isSystemSubject
     ? { data: [] }
     : await getChaptersBySubject(subjectId)
@@ -46,7 +45,6 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
     ? await getSubSubjectsBySubject(subjectId)
     : { data: [] }
 
-  // Load lectures for each chapter
   const chaptersWithLectures = await Promise.all(
     (chapters ?? []).map(async (chapter) => {
       const { data: lectures } = await getLecturesByChapter(chapter.id)
@@ -54,7 +52,6 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
     })
   )
 
-  // Load lectures for each sub-subject
   const subSubjectsWithLectures = await Promise.all(
     (subSubjects ?? []).map(async (sub) => {
       const { data: lectures } = await getLecturesBySubSubject(sub.id)
@@ -70,8 +67,6 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
     ? subSubjectsWithLectures.reduce((acc, s) => acc + s.lectures.filter(l => l.status === 'published').length, 0)
     : chaptersWithLectures.reduce((acc, c) => acc + c.lectures.filter(l => l.status === 'published').length, 0)
 
-  const draftLectures = totalLectures - publishedLectures
-
   const addGroupUrl = isSystemSubject
     ? `/admin/subjects/${subjectId}/sub-subjects/new`
     : `/admin/subjects/${subjectId}/chapters/new`
@@ -82,22 +77,23 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
+
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link href="/admin" className="hover:text-gray-900 transition-colors">Dashboard</Link>
+        <Link href="/admin" className="hover:text-gray-900 dark:hover:text-white transition-colors">Dashboard</Link>
         <span>/</span>
-        <Link href="/admin/subjects" className="hover:text-gray-900 transition-colors">My Subjects</Link>
+        <Link href="/admin/subjects" className="hover:text-gray-900 dark:hover:text-white transition-colors">My Subjects</Link>
         <span>/</span>
-        <span className="text-gray-900 font-medium">{subject.name}</span>
+        <span className="text-gray-900 dark:text-white font-medium">{subject.name}</span>
       </nav>
 
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
           <p className="text-sm text-gray-500 mb-1">{university?.name}</p>
-          <h1 className="text-2xl font-semibold text-gray-900">{subject.name}</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{subject.name}</h1>
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
               {subject.subject_type}
             </span>
             <span className={`text-xs px-2 py-0.5 rounded-full ${
@@ -119,17 +115,17 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
           <p className="text-sm text-gray-500">{isSystemSubject ? 'Sub-Subjects' : 'Chapters'}</p>
-          <p className="text-2xl font-semibold text-gray-900 mt-1">
+          <p className="text-2xl font-semibold text-gray-900 dark:text-white mt-1">
             {isSystemSubject ? subSubjectsWithLectures.length : chaptersWithLectures.length}
           </p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
           <p className="text-sm text-gray-500">Total Lectures</p>
-          <p className="text-2xl font-semibold text-gray-900 mt-1">{totalLectures}</p>
+          <p className="text-2xl font-semibold text-gray-900 dark:text-white mt-1">{totalLectures}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
           <p className="text-sm text-gray-500">Published</p>
           <p className="text-2xl font-semibold text-green-600 mt-1">{publishedLectures}</p>
         </div>
@@ -137,7 +133,7 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
 
       {/* Groups */}
       {groups.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-12 text-center">
           <p className="text-gray-500 mb-4">
             No {isSystemSubject ? 'sub-subjects' : 'chapters'} yet.
           </p>
@@ -151,10 +147,9 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
       ) : (
         <div className="space-y-4">
           {groups.map((group) => (
-            <div key={group.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              {/* Group header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h2 className="font-medium text-gray-900">{group.title}</h2>
+            <div key={group.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                <h2 className="font-medium text-gray-900 dark:text-white">{group.title}</h2>
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-gray-500">{group.lectures.length} lectures</span>
                   <Link
@@ -166,16 +161,15 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
                 </div>
               </div>
 
-              {/* Lectures */}
               {group.lectures.length === 0 ? (
                 <div className="px-5 py-6 text-center text-sm text-gray-400">
                   No lectures yet.
                 </div>
               ) : (
-                <div className="divide-y divide-gray-50">
+                <div className="divide-y divide-gray-50 dark:divide-gray-800">
                   {group.lectures.map((lecture) => (
                     <div key={lecture.id} className="flex items-center justify-between px-5 py-3">
-                      <span className="text-sm text-gray-800">{lecture.title}</span>
+                      <span className="text-sm text-gray-800 dark:text-gray-200">{lecture.title}</span>
                       <div className="flex items-center gap-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           lecture.status === 'published'
@@ -188,7 +182,7 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
                         </span>
                         <Link
                           href={`/admin/subjects/${subjectId}/content/${lecture.id}`}
-                          className="text-xs font-medium text-gray-600 hover:text-gray-900 border border-gray-200 px-2 py-1 rounded-lg hover:bg-gray-50 transition-colors"
+                          className="text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 px-2 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                         >
                           Manage
                         </Link>

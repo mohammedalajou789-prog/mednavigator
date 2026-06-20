@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import OwnerTopBar from '@/components/owner/OwnerTopBar'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerClient()
@@ -19,9 +20,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
+
       {/* Sidebar */}
       <aside className="w-56 bg-[#1E293B] text-white flex flex-col fixed inset-y-0 left-0 z-50">
+
         {/* Logo */}
         <div className="px-5 py-5 border-b border-white/10">
           <span className="text-lg font-bold text-white">MedNavigator</span>
@@ -63,9 +66,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 ml-56">
-        {children}
-      </main>
+      <div className="flex-1 ml-56 flex flex-col">
+        <OwnerTopBar />
+        <main className="flex-1">
+          {children}
+        </main>
+      </div>
+
     </div>
   )
 }

@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { createBrowserClient } from '@/lib/supabase/client'
+import { useState, useTransition, useEffect } from 'react'
+import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
 interface SearchProps {
   userId: string
   recentSearches: { id: string; search_query: string; created_at: string }[]
+  initialQuery?: string
 }
 
 interface SearchResult {
@@ -17,11 +18,11 @@ interface SearchResult {
   href: string
 }
 
-export default function SearchClient({ userId, recentSearches }: SearchProps) {
-  const [query, setQuery] = useState('')
+export default function SearchClient({ userId, recentSearches, initialQuery = '' }: SearchProps) {
+  const [query, setQuery] = useState(initialQuery)
+  const [searched, setSearched] = useState(!!initialQuery)
   const [results, setResults] = useState<SearchResult[]>([])
   const [isPending, startTransition] = useTransition()
-  const [searched, setSearched] = useState(false)
   const supabase = createBrowserClient()
 
   async function handleSearch(q: string) {
@@ -83,6 +84,10 @@ export default function SearchClient({ userId, recentSearches }: SearchProps) {
     })
   }
 
+  useEffect(() => {
+    if (initialQuery) handleSearch(initialQuery)
+  }, [])
+
   return (
     <div>
       <div className="relative mb-6">
@@ -99,7 +104,7 @@ export default function SearchClient({ userId, recentSearches }: SearchProps) {
             handleSearch(e.target.value)
           }}
           placeholder="Search lectures, subjects..."
-          className="w-full pl-12 pr-4 py-3.5 bg-white border border-[#E2E8F0] rounded-xl text-[#0F172A] placeholder:text-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent shadow-sm text-base"
+          className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-xl text-[#0F172A] dark:text-white placeholder:text-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent shadow-sm text-base"
         />
         {isPending && (
           <div className="absolute inset-y-0 right-4 flex items-center">
@@ -111,9 +116,9 @@ export default function SearchClient({ userId, recentSearches }: SearchProps) {
       {searched && (
         <div className="mb-6">
           {results.length === 0 && !isPending ? (
-            <div className="text-center py-12 bg-white rounded-xl border border-[#E2E8F0]">
+            <div className="text-center py-12 bg-white dark:bg-gray-900 rounded-xl border border-[#E2E8F0] dark:border-gray-700">
               <p className="text-4xl mb-3">🔍</p>
-              <p className="font-medium text-[#0F172A]">No results found</p>
+              <p className="font-medium text-[#0F172A] dark:text-white">No results found</p>
               <p className="text-sm text-[#64748B] mt-1">Try different keywords</p>
             </div>
           ) : (
@@ -123,13 +128,13 @@ export default function SearchClient({ userId, recentSearches }: SearchProps) {
                 <Link
                   key={`${result.type}-${result.id}`}
                   href={result.href}
-                  className="flex items-center gap-3 bg-white rounded-xl border border-[#E2E8F0] p-4 shadow-sm hover:border-[#2563EB] transition-all group"
+                  className="flex items-center gap-3 bg-white dark:bg-gray-900 rounded-xl border border-[#E2E8F0] dark:border-gray-700 p-4 shadow-sm hover:border-[#2563EB] transition-all group"
                 >
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0 bg-blue-50">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0 bg-blue-50 dark:bg-blue-900/20">
                     {result.type === 'subject' ? '📚' : '📖'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-[#0F172A] group-hover:text-[#2563EB] transition-colors truncate">{result.title}</p>
+                    <p className="font-medium text-[#0F172A] dark:text-white group-hover:text-[#2563EB] transition-colors truncate">{result.title}</p>
                     <p className="text-xs text-[#64748B] truncate">{result.subtitle}</p>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
@@ -155,12 +160,12 @@ export default function SearchClient({ userId, recentSearches }: SearchProps) {
                   setQuery(s.search_query)
                   handleSearch(s.search_query)
                 }}
-                className="flex items-center gap-3 w-full bg-white rounded-xl border border-[#E2E8F0] p-3.5 shadow-sm hover:border-[#2563EB] transition-all group text-left"
+                className="flex items-center gap-3 w-full bg-white dark:bg-gray-900 rounded-xl border border-[#E2E8F0] dark:border-gray-700 p-3.5 shadow-sm hover:border-[#2563EB] transition-all group text-left"
               >
                 <svg className="w-4 h-4 text-[#64748B] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-sm text-[#0F172A] group-hover:text-[#2563EB] transition-colors">{s.search_query}</span>
+                <span className="text-sm text-[#0F172A] dark:text-white group-hover:text-[#2563EB] transition-colors">{s.search_query}</span>
               </button>
             ))}
           </div>
@@ -168,9 +173,9 @@ export default function SearchClient({ userId, recentSearches }: SearchProps) {
       )}
 
       {!searched && recentSearches.length === 0 && (
-        <div className="text-center py-16 bg-white rounded-xl border border-[#E2E8F0]">
+        <div className="text-center py-16 bg-white dark:bg-gray-900 rounded-xl border border-[#E2E8F0] dark:border-gray-700">
           <p className="text-5xl mb-4">🔍</p>
-          <p className="font-medium text-[#0F172A]">Search for anything</p>
+          <p className="font-medium text-[#0F172A] dark:text-white">Search for anything</p>
           <p className="text-sm text-[#64748B] mt-2">Lectures, subjects, chapters and more</p>
         </div>
       )}

@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import SheetReader from '@/components/student/SheetReader'
 import FlashcardsViewer from '@/components/student/FlashcardsViewer'
 import QuizViewer from '@/components/student/QuizViewer'
 import PreviousYearsViewer from '@/components/student/PreviousYearsViewer'
 import LockedContentCard from '@/components/student/LockedContentCard'
+import { createClient } from '@/lib/supabase/client'
 
 interface Lecture {
   id: string
@@ -26,6 +27,7 @@ interface LectureHubProps {
   subject: Subject
   universityId: string
   userName?: string
+  userId?: string
   sheet?: unknown
   sheetLocked?: boolean
   summary?: unknown
@@ -52,6 +54,7 @@ export default function LectureHub({
   subject,
   universityId,
   userName,
+  userId,
   sheet,
   sheetLocked = false,
   summary,
@@ -64,62 +67,92 @@ export default function LectureHub({
   pyqLocked = false,
 }: LectureHubProps) {
   const tabs: Tab[] = [
-    {
-      id: 'sheet',
-      label: 'Sheet',
-      hasContent: !!sheet || sheetLocked,
-      locked: sheetLocked,
-    },
-    {
-      id: 'summary',
-      label: 'Summary',
-      hasContent: !!summary || summaryLocked,
-      locked: summaryLocked,
-    },
-    {
-      id: 'flashcards',
-      label: 'Flashcards',
-      hasContent:
-        (Array.isArray(flashcards) && flashcards.length > 0) || flashcardsLocked,
-      locked: flashcardsLocked,
-    },
-    {
-      id: 'quiz',
-      label: 'Quiz',
-      hasContent:
-        (Array.isArray(quizQuestions) && quizQuestions.length > 0) || quizLocked,
-      locked: quizLocked,
-    },
-    {
-      id: 'previous_years',
-      label: 'Previous Years',
-      hasContent:
-        (Array.isArray(previousYearQuestions) && previousYearQuestions.length > 0) ||
-        pyqLocked,
-      locked: pyqLocked,
-    },
+    { id: 'sheet', label: 'Sheet', hasContent: !!sheet || sheetLocked, locked: sheetLocked },
+    { id: 'summary', label: 'Summary', hasContent: !!summary || summaryLocked, locked: summaryLocked },
+    { id: 'flashcards', label: 'Flashcards', hasContent: (Array.isArray(flashcards) && flashcards.length > 0) || flashcardsLocked, locked: flashcardsLocked },
+    { id: 'quiz', label: 'Quiz', hasContent: (Array.isArray(quizQuestions) && quizQuestions.length > 0) || quizLocked, locked: quizLocked },
+    { id: 'previous_years', label: 'Previous Years', hasContent: (Array.isArray(previousYearQuestions) && previousYearQuestions.length > 0) || pyqLocked, locked: pyqLocked },
   ]
 
   const visibleTabs = tabs.filter((t) => t.hasContent)
+  const [activeTab, setActiveTab] = useState<TabId>(visibleTabs[0]?.id ?? 'sheet')
 
-  const [activeTab, setActiveTab] = useState<TabId>(
-    visibleTabs[0]?.id ?? 'sheet'
-  )
+  // Record progress when tab changes
+  useEffect(() => {
+    if (!userId || !lecture.id) return
+
+    async function recordProgress() {
+      const supabase = createClient()
+      const { data: existing } = await supabase
+        .from('user_progress')
+        .select('id, completed')
+        .eq('user_id', userId!)
+        .eq('lecture_id', lecture.id)
+        .eq('content_type', activeTab)
+        .single()
+
+      if (existing) {
+        await supabase
+          .from('user_progress')
+          .update({
+            last_accessed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id)
+      } else {
+        await supabase
+          .from('user_progress')
+          .insert({
+            user_id: userId,
+            lecture_id: lecture.id,
+            content_type: activeTab,
+            progress_percentage: 0,
+            completed: false,
+            last_accessed_at: new Date().toISOString(),
+          })
+      }
+    }
+
+    recordProgress()
+  }, [activeTab, userId, lecture.id])
+
+  async function markAsCompleted() {
+    if (!userId) return
+    const supabase = createClient()
+    await supabase
+      .from('user_progress')
+      .upsert({
+        user_id: userId,
+        lecture_id: lecture.id,
+        content_type: activeTab,
+        progress_percentage: 100,
+        completed: true,
+        last_accessed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id,lecture_id,content_type'
+      })
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
+
       {/* Lecture header */}
-      <div className="mb-6">
-        <p className="text-sm text-slate-400 dark:text-slate-500 mb-1">
-          {subject.name}
-        </p>
-        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">
-          {lecture.title}
-        </h1>
-        {lecture.description && (
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-            {lecture.description}
-          </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm text-slate-400 dark:text-slate-500 mb-1">{subject.name}</p>
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">{lecture.title}</h1>
+          {lecture.description && (
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{lecture.description}</p>
+          )}
+        </div>
+        {userId && (
+          <button
+            onClick={markAsCompleted}
+            className="flex-shrink-0 px-4 py-2 text-sm font-medium bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
+          >
+            ✓ Mark as Done
+          </button>
         )}
       </div>
 
@@ -139,96 +172,40 @@ export default function LectureHub({
               >
                 {tab.label}
                 {tab.locked && (
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
-                    />
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                   </svg>
                 )}
               </button>
             ))}
           </div>
 
-          {/* Tab content */}
           <div>
             {activeTab === 'sheet' && (
-              sheetLocked ? (
-                <LockedContentCard
-                  subjectName={subject.name}
-                  contentType="sheet"
-                />
-              ) : sheet ? (
-                <SheetReader
-                  content={(sheet as { content: string }).content}
-                  title={(sheet as { title: string }).title}
-                  userName={userName}
-                />
-              ) : null
+              sheetLocked ? <LockedContentCard subjectName={subject.name} contentType="sheet" /> :
+              sheet ? <SheetReader content={(sheet as { content: string }).content} title={(sheet as { title: string }).title} userName={userName} /> : null
             )}
-
             {activeTab === 'summary' && (
-              summaryLocked ? (
-                <LockedContentCard
-                  subjectName={subject.name}
-                  contentType="summary"
-                />
-              ) : summary ? (
-                <SheetReader
-                  content={(summary as { content: string }).content}
-                  title={(summary as { title: string }).title}
-                  isSummary={true}
-                  userName={userName}
-                />
-              ) : null
+              summaryLocked ? <LockedContentCard subjectName={subject.name} contentType="summary" /> :
+              summary ? <SheetReader content={(summary as { content: string }).content} title={(summary as { title: string }).title} isSummary={true} userName={userName} /> : null
             )}
-
             {activeTab === 'flashcards' && (
-              flashcardsLocked ? (
-                <LockedContentCard
-                  subjectName={subject.name}
-                  contentType="flashcards"
-                />
-              ) : flashcards ? (
-                <FlashcardsViewer flashcards={flashcards as never} userName={userName} />
-              ) : null
+              flashcardsLocked ? <LockedContentCard subjectName={subject.name} contentType="flashcards" /> :
+              flashcards ? <FlashcardsViewer flashcards={flashcards as never} userName={userName} /> : null
             )}
-
             {activeTab === 'quiz' && (
-              quizLocked ? (
-                <LockedContentCard
-                  subjectName={subject.name}
-                  contentType="quiz"
-                />
-              ) : quizQuestions ? (
-                <QuizViewer questions={quizQuestions as never} userName={userName} />
-              ) : null
+              quizLocked ? <LockedContentCard subjectName={subject.name} contentType="quiz" /> :
+              quizQuestions ? <QuizViewer questions={quizQuestions as never} userName={userName} /> : null
             )}
-
             {activeTab === 'previous_years' && (
-              pyqLocked ? (
-                <LockedContentCard
-                  subjectName={subject.name}
-                  contentType="previous_years"
-                />
-              ) : previousYearQuestions ? (
-                <PreviousYearsViewer questions={previousYearQuestions as never} userName={userName} />
-              ) : null
+              pyqLocked ? <LockedContentCard subjectName={subject.name} contentType="previous_years" /> :
+              previousYearQuestions ? <PreviousYearsViewer questions={previousYearQuestions as never} userName={userName} /> : null
             )}
           </div>
         </>
       ) : (
         <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
-          <p className="text-slate-400 dark:text-slate-500 text-sm">
-            No content available for this lecture yet.
-          </p>
+          <p className="text-slate-400 dark:text-slate-500 text-sm">No content available for this lecture yet.</p>
         </div>
       )}
     </div>

@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils/cn'
 import { useUIStore } from '@/stores/uiStore'
-import { useUserStore } from '@/stores/userStore'
 import { useUser } from '@/hooks/useUser'
 
 const NAV_ITEMS = [
@@ -21,8 +20,10 @@ interface StudentLayoutProps {
 
 export default function StudentLayout({ children }: StudentLayoutProps) {
   const pathname = usePathname()
-  const { sidebarOpen, setSidebarOpen, isMobile, setIsMobile } = useUIStore()
+  const router = useRouter()
+  const { sidebarOpen, setSidebarOpen, isMobile, setIsMobile, theme, setTheme } = useUIStore()
   const { user, isLoading } = useUser()
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     function handleResize() {
@@ -34,6 +35,12 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [setIsMobile, setSidebarOpen])
+
+  function handleSearchSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const q = searchQuery.trim()
+    if (q) router.push(`/search?q=${encodeURIComponent(q)}`)
+  }
 
   if (isLoading) {
     return (
@@ -153,23 +160,39 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             <i className="ti ti-menu-2 text-lg" aria-hidden="true" />
           </button>
 
-          <div className="flex-1 max-w-sm">
+          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-sm">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
               <i className="ti ti-search text-sm text-gray-400" aria-hidden="true" />
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search lectures, subjects..."
                 className="flex-1 bg-transparent text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 outline-none"
               />
             </div>
-          </div>
+          </form>
 
           <div className="flex items-center gap-1 ml-auto">
             <Link href="/notifications" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               <i className="ti ti-bell text-lg" aria-hidden="true" />
             </Link>
-            <button className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-              <i className="ti ti-moon text-lg" aria-hidden="true" />
+            <button
+              onClick={() => {
+                if (theme === 'light') setTheme('dark')
+                else if (theme === 'dark') setTheme('system')
+                else setTheme('light')
+              }}
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title={`Theme: ${theme}`}
+            >
+              <i
+                className={cn(
+                  'ti text-lg',
+                  theme === 'dark' ? 'ti-moon' : theme === 'light' ? 'ti-sun' : 'ti-device-laptop'
+                )}
+                aria-hidden="true"
+              />
             </button>
             <Link href="/profile" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               <i className="ti ti-user-circle text-lg" aria-hidden="true" />

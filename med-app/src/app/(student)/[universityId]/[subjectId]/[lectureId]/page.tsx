@@ -77,6 +77,7 @@ export default async function LecturePage({ params }: PageProps) {
       subject={subject}
       universityId={universityId}
       userName={userName ?? undefined}
+      userId={userId ?? undefined}
       sheet={sheetResult.data}
       sheetLocked={sheetResult.locked}
       summary={summaryResult.data}

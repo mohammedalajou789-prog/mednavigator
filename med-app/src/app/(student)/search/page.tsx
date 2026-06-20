@@ -1,8 +1,12 @@
-import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import SearchClient from '@/components/student/SearchClient'
 
-export default async function SearchPage() {
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>
+}) {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -20,15 +24,19 @@ export default async function SearchPage() {
     .order('created_at', { ascending: false })
     .limit(10)
 
+  const params = await searchParams
+  const initialQuery = params.q ?? ''
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-[#0F172A]">Search</h1>
+        <h1 className="text-2xl font-semibold text-[#0F172A] dark:text-white">Search</h1>
         <p className="text-[#64748B] mt-1">Find lectures, subjects, flashcards and more</p>
       </div>
       <SearchClient
         userId={profile?.id ?? ''}
         recentSearches={recentSearches ?? []}
+        initialQuery={initialQuery}
       />
     </div>
   )

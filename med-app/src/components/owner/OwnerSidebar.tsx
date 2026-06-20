@@ -15,6 +15,8 @@ const NAV_ITEMS = [
   { label: 'Notifications', href: '/owner/notifications' },
   { label: 'Analytics', href: '/owner/analytics' },
   { label: 'Settings', href: '/owner/settings' },
+  { label: 'Protection Center', href: '/owner/protection' },
+  { label: 'Legal Center', href: '/owner/legal' },
 ]
 
 interface OwnerSidebarProps {

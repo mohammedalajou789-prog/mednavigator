@@ -40,7 +40,7 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Admin routes — admin only
+  // Admin routes — admin and owner allowed
   if (pathname.startsWith('/admin')) {
     if (!authUser) {
       const url = new URL('/login', request.url)
@@ -48,7 +48,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
     const role = await getUserRole(request, authUser.id)
-    if (role !== 'admin') {
+    if (role !== 'admin' && role !== 'owner') {
       return NextResponse.redirect(new URL(getRoleRedirect(role), request.url))
     }
     return supabaseResponse

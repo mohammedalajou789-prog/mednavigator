@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils/cn'
 const NAV_ITEMS = [
   { label: 'Overview', href: '/owner' },
   { label: 'Universities', href: '/owner/universities' },
+  { label: 'University Requests', href: '/owner/university-requests' },
   { label: 'Subjects', href: '/owner/subjects' },
   { label: 'Admins', href: '/owner/admins' },
   { label: 'Users', href: '/owner/users' },

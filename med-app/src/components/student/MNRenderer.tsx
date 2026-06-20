@@ -22,7 +22,7 @@ export default function MNRenderer({ content, userName, showWatermark = false }:
           ))}
         </div>
       )}
-      <div className="prose prose-gray dark:prose-invert max-w-none">
+      <div className="space-y-1">
         {blocks.map((block, index) => renderBlock(block, index))}
       </div>
     </div>
@@ -77,45 +77,96 @@ function extractTable(lines: string[], start: number): { rows: string[][]; end: 
 
 function renderBlock(block: Block, key: number) {
   switch (block.type) {
-    case 'h1': return <h1 key={key} className="text-2xl font-bold text-gray-900 dark:text-white mt-8 mb-4 first:mt-0">{block.content}</h1>
-    case 'h2': return <h2 key={key} className="text-lg font-semibold text-gray-800 dark:text-gray-100 mt-6 mb-3">{block.content}</h2>
-    case 'h3': return <h3 key={key} className="text-base font-semibold text-gray-700 dark:text-gray-200 mt-4 mb-2">{block.content}</h3>
-    case 'highlight': return <div key={key} className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg px-4 py-3 my-3 text-sm text-yellow-900 dark:text-yellow-200">{block.content}</div>
-    case 'important': return (
-      <div key={key} className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-r-lg px-4 py-3 my-3">
-        <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-1">⚠ Important</p>
-        <p className="text-sm text-red-900 dark:text-red-200">{block.content}</p>
-      </div>
-    )
-    case 'clinical_pearl': return (
-      <div key={key} className="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 rounded-r-lg px-4 py-3 my-3">
-        <p className="text-xs font-semibold text-green-600 dark:text-green-400 mb-1">💎 Clinical Pearl</p>
-        <p className="text-sm text-green-900 dark:text-green-200">{block.content}</p>
-      </div>
-    )
-    case 'must_memorize': return (
-      <div key={key} className="bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-500 rounded-r-lg px-4 py-3 my-3">
-        <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-1">⭐ Must Memorize</p>
-        <p className="text-sm text-purple-900 dark:text-purple-200">{block.content}</p>
-      </div>
-    )
-    case 'previous_year': return (
-      <div key={key} className="bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-500 rounded-r-lg px-4 py-3 my-3">
-        <p className="text-xs font-semibold text-orange-600 dark:text-orange-400 mb-1">📅 Previous Year Concept</p>
-        <p className="text-sm text-orange-900 dark:text-orange-200">{block.content}</p>
-      </div>
-    )
+    case 'h1':
+      return (
+        <h1 key={key} className="text-[1.65rem] font-bold tracking-tight text-gray-950 dark:text-white mt-10 mb-5 first:mt-0 pb-3 border-b-2 border-blue-100 dark:border-blue-900">
+          {block.content}
+        </h1>
+      )
+    case 'h2':
+      return (
+        <h2 key={key} className="text-[1.15rem] font-bold text-blue-700 dark:text-blue-400 mt-8 mb-3 uppercase tracking-wide text-xs">
+          {block.content}
+        </h2>
+      )
+    case 'h3':
+      return (
+        <h3 key={key} className="text-[1rem] font-semibold text-gray-800 dark:text-gray-200 mt-5 mb-2">
+          {block.content}
+        </h3>
+      )
+    case 'highlight':
+      return (
+        <div key={key} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl px-5 py-4 my-4 text-[0.92rem] leading-relaxed text-amber-950 dark:text-amber-200 font-medium">
+          {block.content}
+        </div>
+      )
+    case 'important':
+      return (
+        <div key={key} className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-5 py-4 my-4">
+          <p className="text-[0.7rem] font-bold text-red-500 dark:text-red-400 uppercase tracking-widest mb-2">⚠ Important</p>
+          <p className="text-[0.92rem] leading-relaxed text-red-950 dark:text-red-200">{block.content}</p>
+        </div>
+      )
+    case 'clinical_pearl':
+      return (
+        <div key={key} className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-5 py-4 my-4">
+          <p className="text-[0.7rem] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2">💎 Clinical Pearl</p>
+          <p className="text-[0.92rem] leading-relaxed text-emerald-950 dark:text-emerald-200">{block.content}</p>
+        </div>
+      )
+    case 'must_memorize':
+      return (
+        <div key={key} className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-xl px-5 py-4 my-4">
+          <p className="text-[0.7rem] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-widest mb-2">⭐ Must Memorize</p>
+          <p className="text-[0.92rem] leading-relaxed text-violet-950 dark:text-violet-200">{block.content}</p>
+        </div>
+      )
+    case 'previous_year':
+      return (
+        <div key={key} className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl px-5 py-4 my-4">
+          <p className="text-[0.7rem] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-widest mb-2">📅 Previous Year</p>
+          <p className="text-[0.92rem] leading-relaxed text-orange-950 dark:text-orange-200">{block.content}</p>
+        </div>
+      )
     case 'table':
       if (!block.rows || block.rows.length === 0) return null
       return (
-        <div key={key} className="my-4 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-          <table className="w-full text-sm">
-            <thead><tr className="bg-gray-50 dark:bg-gray-800">{block.rows[0].map((cell, i) => <th key={i} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 dark:text-gray-300">{cell}</th>)}</tr></thead>
-            <tbody>{block.rows.slice(1).map((row, ri) => <tr key={ri} className={cn('border-t border-gray-100 dark:border-gray-800', ri % 2 === 1 && 'bg-gray-50/50 dark:bg-gray-800/30')}>{row.map((cell, ci) => <td key={ci} className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{cell}</td>)}</tr>)}</tbody>
+        <div key={key} className="my-5 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+          <table className="w-full text-[0.88rem]">
+            <thead>
+              <tr className="bg-blue-600 dark:bg-blue-800">
+                {block.rows[0].map((cell, i) => (
+                  <th key={i} className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                    {cell}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.slice(1).map((row, ri) => (
+                <tr key={ri} className={cn(
+                  'border-t border-gray-100 dark:border-gray-800 transition-colors',
+                  ri % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800/50'
+                )}>
+                  {row.map((cell, ci) => (
+                    <td key={ci} className="px-4 py-3 text-gray-800 dark:text-gray-200 font-medium">
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
       )
-    case 'empty': return <div key={key} className="h-2" />
-    default: return <p key={key} className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed my-1.5">{block.content}</p>
+    case 'empty':
+      return <div key={key} className="h-3" />
+    default:
+      return (
+        <p key={key} className="text-[0.95rem] text-gray-700 dark:text-gray-300 leading-[1.85] my-2">
+          {block.content}
+        </p>
+      )
   }
 }

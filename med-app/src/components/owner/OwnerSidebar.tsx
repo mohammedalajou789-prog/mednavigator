@@ -4,19 +4,39 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils/cn'
 
-const NAV_ITEMS = [
-  { label: 'Overview', href: '/owner' },
-  { label: 'Universities', href: '/owner/universities' },
-  { label: 'University Requests', href: '/owner/university-requests' },
-  { label: 'Subjects', href: '/owner/subjects' },
-  { label: 'Admins', href: '/owner/admins' },
-  { label: 'Users', href: '/owner/users' },
-  { label: 'Subscriptions', href: '/owner/subscriptions' },
-  { label: 'Notifications', href: '/owner/notifications' },
-  { label: 'Analytics', href: '/owner/analytics' },
-  { label: 'Settings', href: '/owner/settings' },
-  { label: 'Protection Center', href: '/owner/protection' },
-  { label: 'Legal Center', href: '/owner/legal' },
+const NAV_GROUPS = [
+  {
+    label: 'Platform',
+    items: [
+      { label: 'Overview', href: '/owner' },
+      { label: 'Analytics', href: '/owner/analytics' },
+      { label: 'Notifications', href: '/owner/notifications' },
+    ],
+  },
+  {
+    label: 'Academic',
+    items: [
+      { label: 'Universities', href: '/owner/universities' },
+      { label: 'University Requests', href: '/owner/university-requests' },
+      { label: 'Subjects', href: '/owner/subjects' },
+    ],
+  },
+  {
+    label: 'Users',
+    items: [
+      { label: 'Admins', href: '/owner/admins' },
+      { label: 'Users', href: '/owner/users' },
+      { label: 'Subscriptions', href: '/owner/subscriptions' },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { label: 'Settings', href: '/owner/settings' },
+      { label: 'Protection Center', href: '/owner/protection' },
+      { label: 'Legal Center', href: '/owner/legal' },
+    ],
+  },
 ]
 
 interface OwnerSidebarProps {
@@ -41,25 +61,34 @@ export default function OwnerSidebar({ fullName }: OwnerSidebarProps) {
         <p className="text-xs text-slate-400">Platform Administrator</p>
       </div>
 
-      <nav className="flex-1 py-4 overflow-y-auto">
-        <div className="px-3 space-y-0.5">
-          {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'flex items-center px-3 py-2 rounded-lg text-sm transition-colors',
-                  active
-                    ? 'bg-blue-600/20 text-blue-400'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-700'
-                )}
-              >
-                {item.label}
-              </Link>
-            )
-          })}
+      <nav className="flex-1 py-2 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="px-3 space-y-4">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label}>
+              <p className="px-3 mb-1 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">
+                {group.label}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const active = pathname === item.href
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        'flex items-center px-3 py-1.5 rounded-lg text-sm transition-colors',
+                        active
+                          ? 'bg-blue-600/20 text-blue-400'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </nav>
 

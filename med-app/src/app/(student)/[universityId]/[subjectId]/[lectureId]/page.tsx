@@ -1,68 +1,89 @@
-import { createClient as createServerClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { createServerClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import LectureHub from '@/components/student/LectureHub'
+import { getSheetByLectureId } from '@/lib/services/sheets'
+import { getSummaryByLectureId } from '@/lib/services/summaries'
+import { getFlashcardsByLectureId } from '@/lib/services/flashcards'
+import { getQuizQuestionsByLectureId } from '@/lib/services/quiz-questions'
+import { getPreviousYearQuestionsByLectureId } from '@/lib/services/previous-year-questions'
 
 interface PageProps {
-  params: Promise<{ universityId: string; subjectId: string; lectureId: string }>
+  params: Promise<{
+    universityId: string
+    subjectId: string
+    lectureId: string
+  }>
 }
 
 export default async function LecturePage({ params }: PageProps) {
   const { universityId, subjectId, lectureId } = await params
+
   const supabase = await createServerClient()
 
-  const [
-    { data: university },
-    { data: subject },
-    { data: lecture },
-    { data: sheet },
-    { data: summary },
-    { data: flashcards },
-    { data: quizQuestions },
-    { data: pyqs },
-  ] = await Promise.all([
-    supabase.from('universities').select('id, name').eq('id', universityId).single(),
-    supabase.from('subjects').select('id, name, subject_type').eq('id', subjectId).single(),
-    supabase.from('lectures').select('*').eq('id', lectureId).eq('status', 'published').single(),
-    supabase.from('sheets').select('*').eq('lecture_id', lectureId).eq('status', 'published').maybeSingle(),
-    supabase.from('summaries').select('*').eq('lecture_id', lectureId).eq('status', 'published').maybeSingle(),
-    supabase.from('flashcards').select('*').eq('lecture_id', lectureId).is('archived_at', null).order('display_order'),
-    supabase.from('quiz_questions').select('*').eq('lecture_id', lectureId).is('archived_at', null),
-    supabase.from('previous_year_questions').select('*').eq('lecture_id', lectureId).is('archived_at', null),
-  ])
+  // Get current user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!lecture || !subject || !university) notFound()
-
-  let groupName = ''
-  if (lecture.chapter_id) {
-    const { data: ch } = await supabase.from('chapters').select('title').eq('id', lecture.chapter_id).single()
-    groupName = ch?.title ?? ''
-  } else if (lecture.sub_subject_id) {
-    const { data: ss } = await supabase.from('sub_subjects').select('title').eq('id', lecture.sub_subject_id).single()
-    groupName = ss?.title ?? ''
+  // Get user profile to find internal user ID
+  let userId: string | null = null
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .single()
+    userId = profile?.id ?? null
   }
 
-  return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center gap-2 text-sm text-[#64748B] mb-6 flex-wrap">
-        <Link href="/" className="hover:text-[#2563EB]">Home</Link>
-        <span>/</span>
-        <Link href={`/${universityId}`} className="hover:text-[#2563EB]">{university.name}</Link>
-        <span>/</span>
-        <Link href={`/${universityId}/${subjectId}`} className="hover:text-[#2563EB]">{subject.name}</Link>
-        {groupName && <><span>/</span><span>{groupName}</span></>}
-        <span>/</span>
-        <span className="text-[#0F172A] font-medium">{lecture.title}</span>
-      </div>
+  // Get lecture info
+  const { data: lecture } = await supabase
+    .from('lectures')
+    .select('id, title, description, status')
+    .eq('id', lectureId)
+    .eq('status', 'published')
+    .single()
 
-      <LectureHub
-        lecture={lecture}
-        sheet={sheet}
-        summary={summary}
-        flashcards={flashcards ?? []}
-        quizQuestions={quizQuestions ?? []}
-        previousYears={pyqs ?? []}
-      />
-    </div>
+  if (!lecture) {
+    redirect(`/${universityId}/${subjectId}`)
+  }
+
+  // Get subject info
+  const { data: subject } = await supabase
+    .from('subjects')
+    .select('id, name, access_mode, is_free')
+    .eq('id', subjectId)
+    .single()
+
+  if (!subject) {
+    redirect(`/${universityId}`)
+  }
+
+  // Fetch all content — each call checks subscription internally
+  const [sheetResult, summaryResult, flashcardsResult, quizResult, pyqResult] =
+    await Promise.all([
+      getSheetByLectureId(lectureId, subjectId, userId),
+      getSummaryByLectureId(lectureId, subjectId, userId),
+      getFlashcardsByLectureId(lectureId, subjectId, userId),
+      getQuizQuestionsByLectureId(lectureId, subjectId, userId),
+      getPreviousYearQuestionsByLectureId(lectureId, subjectId, userId),
+    ])
+
+  return (
+    <LectureHub
+      lecture={lecture}
+      subject={subject}
+      universityId={universityId}
+      sheet={sheetResult.data}
+      sheetLocked={sheetResult.locked}
+      summary={summaryResult.data}
+      summaryLocked={summaryResult.locked}
+      flashcards={flashcardsResult.data}
+      flashcardsLocked={flashcardsResult.locked}
+      quizQuestions={quizResult.data}
+      quizLocked={quizResult.locked}
+      previousYearQuestions={pyqResult.data}
+      pyqLocked={pyqResult.locked}
+    />
   )
 }

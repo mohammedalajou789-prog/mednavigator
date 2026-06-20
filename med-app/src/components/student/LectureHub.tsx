@@ -25,6 +25,7 @@ interface LectureHubProps {
   lecture: Lecture
   subject: Subject
   universityId: string
+  userName?: string
   sheet?: unknown
   sheetLocked?: boolean
   summary?: unknown
@@ -50,6 +51,7 @@ export default function LectureHub({
   lecture,
   subject,
   universityId,
+  userName,
   sheet,
   sheetLocked = false,
   summary,
@@ -167,6 +169,7 @@ export default function LectureHub({
                 <SheetReader
                   content={(sheet as { content: string }).content}
                   title={(sheet as { title: string }).title}
+                  userName={userName}
                 />
               ) : null
             )}
@@ -182,6 +185,7 @@ export default function LectureHub({
                   content={(summary as { content: string }).content}
                   title={(summary as { title: string }).title}
                   isSummary={true}
+                  userName={userName}
                 />
               ) : null
             )}
@@ -193,7 +197,7 @@ export default function LectureHub({
                   contentType="flashcards"
                 />
               ) : flashcards ? (
-                <FlashcardsViewer flashcards={flashcards as never} />
+                <FlashcardsViewer flashcards={flashcards as never} userName={userName} />
               ) : null
             )}
 
@@ -204,7 +208,7 @@ export default function LectureHub({
                   contentType="quiz"
                 />
               ) : quizQuestions ? (
-                <QuizViewer questions={quizQuestions as never} />
+                <QuizViewer questions={quizQuestions as never} userName={userName} />
               ) : null
             )}
 
@@ -215,7 +219,7 @@ export default function LectureHub({
                   contentType="previous_years"
                 />
               ) : previousYearQuestions ? (
-                <PreviousYearsViewer questions={previousYearQuestions as never} />
+                <PreviousYearsViewer questions={previousYearQuestions as never} userName={userName} />
               ) : null
             )}
           </div>

@@ -3,14 +3,17 @@
 import { useState } from 'react'
 import type { PreviousYearQuestion } from '@/types/database'
 import { cn } from '@/lib/utils/cn'
+import WatermarkOverlay from '@/components/common/WatermarkOverlay'
+import ContentProtectionWrapper from '@/components/common/ContentProtectionWrapper'
 
 interface PreviousYearsViewerProps {
   questions: PreviousYearQuestion[]
+  userName?: string
 }
 
 const EXAM_TYPE_LABELS: Record<string, string> = { final: 'Final', midterm: 'Midterm', quiz: 'Quiz', practical: 'Practical' }
 
-export default function PreviousYearsViewer({ questions }: PreviousYearsViewerProps) {
+export default function PreviousYearsViewer({ questions, userName }: PreviousYearsViewerProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [filterYear, setFilterYear] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
@@ -30,7 +33,8 @@ export default function PreviousYearsViewer({ questions }: PreviousYearsViewerPr
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-6">
+    <ContentProtectionWrapper className="max-w-3xl mx-auto px-6 py-6 relative">
+      {userName && <WatermarkOverlay userName={userName} />}
       <div className="flex items-center gap-4 mb-6 text-sm text-gray-500">
         <span>{questions.length} total questions</span>
         {years.length > 0 && <span>· {years[years.length - 1]} – {years[0]}</span>}
@@ -100,6 +104,6 @@ export default function PreviousYearsViewer({ questions }: PreviousYearsViewerPr
           })}
         </div>
       )}
-    </div>
+    </ContentProtectionWrapper>
   )
 }

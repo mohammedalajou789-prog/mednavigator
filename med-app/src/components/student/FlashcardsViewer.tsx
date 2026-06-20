@@ -3,12 +3,15 @@
 import { useState } from 'react'
 import type { Flashcard } from '@/types/database'
 import { cn } from '@/lib/utils/cn'
+import WatermarkOverlay from '@/components/common/WatermarkOverlay'
+import ContentProtectionWrapper from '@/components/common/ContentProtectionWrapper'
 
 interface FlashcardsViewerProps {
   flashcards: Flashcard[]
+  userName?: string
 }
 
-export default function FlashcardsViewer({ flashcards }: FlashcardsViewerProps) {
+export default function FlashcardsViewer({ flashcards, userName }: FlashcardsViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [cards, setCards] = useState(flashcards)
@@ -45,7 +48,8 @@ export default function FlashcardsViewer({ flashcards }: FlashcardsViewerProps) 
   if (!current) return null
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-8">
+    <ContentProtectionWrapper className="max-w-2xl mx-auto px-6 py-8 relative">
+      {userName && <WatermarkOverlay userName={userName} />}
       <div className="flex items-center justify-between mb-6">
         <div>
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Card {currentIndex + 1} of {total}</p>
@@ -84,6 +88,6 @@ export default function FlashcardsViewer({ flashcards }: FlashcardsViewerProps) 
         <button onClick={() => setFlipped(!flipped)} className="px-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Flip</button>
         <button onClick={handleNext} disabled={currentIndex === total - 1} className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Next</button>
       </div>
-    </div>
+    </ContentProtectionWrapper>
   )
 }

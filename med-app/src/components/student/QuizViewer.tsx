@@ -3,14 +3,16 @@
 import { useState } from 'react'
 import type { QuizQuestion } from '@/types/database'
 import { cn } from '@/lib/utils/cn'
-
+import WatermarkOverlay from '@/components/common/WatermarkOverlay'
+import ContentProtectionWrapper from '@/components/common/ContentProtectionWrapper'
 interface QuizViewerProps {
   questions: QuizQuestion[]
+  userName?: string
 }
 
 const OPTIONS = ['A', 'B', 'C', 'D', 'E'] as const
 
-export default function QuizViewer({ questions }: QuizViewerProps) {
+export default function QuizViewer({ questions, userName }: QuizViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [showExplanation, setShowExplanation] = useState<Record<string, boolean>>({})
@@ -48,21 +50,23 @@ export default function QuizViewer({ questions }: QuizViewerProps) {
 
   if (finished) {
     return (
-      <div className="max-w-xl mx-auto px-6 py-16 text-center">
+      <ContentProtectionWrapper className="max-w-xl mx-auto px-6 py-16 text-center relative">
+        {userName && <WatermarkOverlay userName={userName} />}
         <div className="text-5xl font-bold text-blue-600 mb-2">{score}%</div>
         <p className="text-gray-500 mb-1">{correctCount} correct out of {total} questions</p>
         <button onClick={() => { setFinished(false); setCurrentIndex(0); setAnswers({}); setShowExplanation({}) }}
           className="mt-6 px-6 py-2.5 bg-blue-600 text-white text-sm rounded-xl hover:bg-blue-700 transition-colors">
           Retry quiz
         </button>
-      </div>
+      </ContentProtectionWrapper>
     )
   }
 
   const availableOptions = OPTIONS.filter((o) => getOptionLabel(current, o) !== null)
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-6">
+    <ContentProtectionWrapper className="max-w-3xl mx-auto px-6 py-6 relative">
+      {userName && <WatermarkOverlay userName={userName} />}
       <div className="flex items-center gap-6 mb-6 text-sm">
         <span className="text-gray-500">{total} questions</span>
         <span className="text-blue-600">{answeredCount} answered</span>
@@ -124,6 +128,6 @@ export default function QuizViewer({ questions }: QuizViewerProps) {
           Next question
         </button>
       </div>
-    </div>
+    </ContentProtectionWrapper>
   )
 }

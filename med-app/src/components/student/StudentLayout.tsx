@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils/cn'
 import { useUIStore } from '@/stores/uiStore'
 import { useUserStore } from '@/stores/userStore'
+import { useUser } from '@/hooks/useUser'
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/home', icon: 'ti-home' },
@@ -21,7 +22,7 @@ interface StudentLayoutProps {
 export default function StudentLayout({ children }: StudentLayoutProps) {
   const pathname = usePathname()
   const { sidebarOpen, setSidebarOpen, isMobile, setIsMobile } = useUIStore()
-  const { user } = useUserStore()
+  const { user, isLoading } = useUser()
 
   useEffect(() => {
     function handleResize() {
@@ -33,6 +34,14 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [setIsMobile, setSidebarOpen])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   if (!user) {
     return (

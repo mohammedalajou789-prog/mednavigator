@@ -27,13 +27,15 @@ export default async function LecturePage({ params }: PageProps) {
 
   // Get user profile to find internal user ID
   let userId: string | null = null
+  let userName: string | null = null
   if (user) {
     const { data: profile } = await supabase
       .from('users')
-      .select('id')
+      .select('id, full_name')
       .eq('auth_user_id', user.id)
       .single()
     userId = profile?.id ?? null
+    userName = profile?.full_name ?? null
   }
 
   // Get lecture info
@@ -74,6 +76,7 @@ export default async function LecturePage({ params }: PageProps) {
       lecture={lecture}
       subject={subject}
       universityId={universityId}
+      userName={userName ?? undefined}
       sheet={sheetResult.data}
       sheetLocked={sheetResult.locked}
       summary={summaryResult.data}

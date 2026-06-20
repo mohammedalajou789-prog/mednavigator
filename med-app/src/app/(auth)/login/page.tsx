@@ -47,7 +47,7 @@ export default function LoginPage() {
       const role = userProfile?.role ?? 'student'
       if (role === 'owner') window.location.href = '/owner'
       else if (role === 'admin') window.location.href = '/admin'
-      else window.location.href = '/'
+      else window.location.href = '/home'
     } finally {
       setIsSubmitting(false)
     }

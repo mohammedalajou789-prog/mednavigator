@@ -2,14 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react'
 import MNRenderer from './MNRenderer'
+import ContentProtectionWrapper from '@/components/common/ContentProtectionWrapper'
 
 interface SheetReaderProps {
   content: string
   title: string
   isSummary?: boolean
+  userName?: string
 }
 
-export default function SheetReader({ content, title, isSummary = false }: SheetReaderProps) {
+export default function SheetReader({ content, title, isSummary = false, userName }: SheetReaderProps) {
   const [progress, setProgress] = useState(0)
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -39,7 +41,7 @@ export default function SheetReader({ content, title, isSummary = false }: Sheet
           </div>
         </div>
         <div className="max-w-3xl mx-auto px-6 py-8">
-          <MNRenderer content={content} showWatermark={false} />
+          <MNRenderer content={content} showWatermark={true} userName={userName} />
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import OwnerSidebar from '@/components/owner/OwnerSidebar'
 
@@ -7,7 +7,7 @@ export default async function OwnerLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')

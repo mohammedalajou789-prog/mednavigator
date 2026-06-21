@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from 'next/server'
+﻿import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 import { createServerClient } from '@supabase/ssr'
 import type { Database } from '@/types/database'
@@ -16,7 +16,7 @@ const STUDENT_ONLY_ROUTES = [
 // These routes are only for unauthenticated users
 const AUTH_ONLY_ROUTES = ['/login', '/register']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const { supabaseResponse, user: authUser } = await updateSession(request)
 
@@ -26,7 +26,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(getRoleRedirect(role), request.url))
   }
 
-  // Owner routes — owner only
+  // Owner routes â€” owner only
   if (pathname.startsWith('/owner')) {
     if (!authUser) {
       const url = new URL('/login', request.url)
@@ -40,7 +40,7 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Admin routes — admin and owner allowed
+  // Admin routes â€” admin and owner allowed
   if (pathname.startsWith('/admin')) {
     if (!authUser) {
       const url = new URL('/login', request.url)
@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Student-only routes — require login
+  // Student-only routes â€” require login
   if (STUDENT_ONLY_ROUTES.some(r => pathname.startsWith(r))) {
     if (!authUser) {
       const url = new URL('/login', request.url)

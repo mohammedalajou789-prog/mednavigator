@@ -34,7 +34,7 @@ export default async function ContentBuilderPage({ params }: Props) {
 
   const { data: subject } = await supabase
     .from('subjects')
-    .select('id, name, universities(name)')
+    .select('id, name, subject_type, universities(name)')
     .eq('id', subjectId)
     .single()
 
@@ -65,6 +65,7 @@ export default async function ContentBuilderPage({ params }: Props) {
     { data: quizQuestions },
     { data: pyqs },
     { data: videos },
+    { data: clinicalModules },
   ] = await Promise.all([
     supabase.from('sheets').select('id, title, content, status, version').eq('lecture_id', lectureId).maybeSingle(),
     supabase.from('summaries').select('id, title, content, status, version').eq('lecture_id', lectureId).maybeSingle(),
@@ -72,7 +73,10 @@ export default async function ContentBuilderPage({ params }: Props) {
     supabase.from('quiz_questions').select('id, question, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, tags').eq('lecture_id', lectureId),
     supabase.from('previous_year_questions').select('id, question, options, correct_answer, explanation, exam_year, exam_type').eq('lecture_id', lectureId),
     supabase.from('videos').select('id, title, description, video_url, is_preview, display_order').eq('lecture_id', lectureId).order('display_order'),
+    supabase.from('clinical_modules').select('id, module_type, clinical_topics(id, title, description, display_order, clinical_sheets(id, title, content))').eq('subject_id', subjectId).is('archived_at', null),
   ])
+
+  const isClinic = subject?.subject_type === 'clinical'
 
   const university = subject.universities as { name: string } | null
 
@@ -120,6 +124,8 @@ export default async function ContentBuilderPage({ params }: Props) {
             exam_year: q.exam_year ?? '',
           }))}
           existingVideos={videos ?? []}
+          isClinic={isClinic}
+          existingModules={clinicalModules ?? []}
         />
       </div>
     </div>

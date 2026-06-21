@@ -5,6 +5,7 @@ import MNRenderer from '@/components/student/MNRenderer'
 import BulkImportTab from '@/components/admin/BulkImportTab'
 import VideoManager from '@/components/admin/VideoManager'
 import ImageUploader from '@/components/admin/ImageUploader'
+import OSCEManager from '@/components/admin/OSCEManager'
 import { useRouter } from 'next/navigation'
 
 interface ExistingContent {
@@ -54,6 +55,26 @@ interface Video {
   display_order: number
 }
 
+interface ClinicalSheet {
+  id: string
+  title: string
+  content: string | null
+}
+
+interface ClinicalTopic {
+  id: string
+  title: string
+  description: string | null
+  display_order: number
+  clinical_sheets: ClinicalSheet[]
+}
+
+interface ClinicalModule {
+  id: string
+  module_type: string
+  clinical_topics: ClinicalTopic[]
+}
+
 interface Props {
   lectureId: string
   subjectId: string
@@ -64,9 +85,11 @@ interface Props {
   existingQuizQuestions?: QuizQuestion[]
   existingPYQs?: PYQ[]
   existingVideos?: Video[]
+  isClinic?: boolean
+  existingModules?: ClinicalModule[]
 }
 
-type TabType = 'videos' | 'sheet' | 'summary' | 'flashcards' | 'quiz' | 'previous_years'
+type TabType = 'videos' | 'sheet' | 'summary' | 'flashcards' | 'quiz' | 'previous_years' | 'osce'
 type EditorMode = 'manual' | 'import'
 
 export default function ContentBuilder({
@@ -79,6 +102,8 @@ export default function ContentBuilder({
   existingQuizQuestions = [],
   existingPYQs = [],
   existingVideos = [],
+  isClinic = false,
+  existingModules = [],
 }: Props) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<TabType>('sheet')
@@ -229,6 +254,7 @@ export default function ContentBuilder({
     { id: 'flashcards', label: 'Flashcards' },
     { id: 'quiz', label: 'Quiz' },
     { id: 'previous_years', label: 'Previous Years' },
+    ...(isClinic ? [{ id: 'osce' as TabType, label: 'OSCE' }] : []),
   ]
 
   function ModeToggle({ mode, setMode }: { mode: EditorMode; setMode: (m: EditorMode) => void }) {
@@ -258,7 +284,6 @@ export default function ContentBuilder({
     )
   }
 
-  // Extract image slot numbers from content
   function getImageSlots(content: string): number[] {
     const matches = [...content.matchAll(/\[IMAGE_SLOT:(\d+)\]/g)]
     const nums = matches.map(m => parseInt(m[1]))
@@ -310,6 +335,11 @@ export default function ContentBuilder({
               {tab.id === 'previous_years' && (existingPYQs.length + importedPyqCount) > 0 && (
                 <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
                   {existingPYQs.length + importedPyqCount}
+                </span>
+              )}
+              {tab.id === 'osce' && existingModules.length > 0 && (
+                <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">
+                  {existingModules.length}
                 </span>
               )}
             </button>
@@ -687,6 +717,17 @@ export default function ContentBuilder({
           )}
         </div>
       )}
+
+      {/* OSCE */}
+      {activeTab === 'osce' && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+          <OSCEManager
+            subjectId={subjectId}
+            existingModules={existingModules}
+          />
+        </div>
+      )}
+
     </div>
   )
 }

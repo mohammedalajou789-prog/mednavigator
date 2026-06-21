@@ -64,12 +64,14 @@ export default async function ContentBuilderPage({ params }: Props) {
     { data: flashcards },
     { data: quizQuestions },
     { data: pyqs },
+    { data: videos },
   ] = await Promise.all([
     supabase.from('sheets').select('id, title, content, status, version').eq('lecture_id', lectureId).maybeSingle(),
     supabase.from('summaries').select('id, title, content, status, version').eq('lecture_id', lectureId).maybeSingle(),
     supabase.from('flashcards').select('id, front_text, back_text, tags').eq('lecture_id', lectureId).order('display_order'),
     supabase.from('quiz_questions').select('id, question, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, tags').eq('lecture_id', lectureId),
     supabase.from('previous_year_questions').select('id, question, options, correct_answer, explanation, exam_year, exam_type').eq('lecture_id', lectureId),
+    supabase.from('videos').select('id, title, description, video_url, is_preview, display_order').eq('lecture_id', lectureId).order('display_order'),
   ])
 
   const university = subject.universities as { name: string } | null
@@ -117,6 +119,7 @@ export default async function ContentBuilderPage({ params }: Props) {
             options: Array.isArray(q.options) ? q.options : [],
             exam_year: q.exam_year ?? '',
           }))}
+          existingVideos={videos ?? []}
         />
       </div>
     </div>

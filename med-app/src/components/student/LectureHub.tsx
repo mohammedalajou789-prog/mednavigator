@@ -5,6 +5,7 @@ import SheetReader from '@/components/student/SheetReader'
 import FlashcardsViewer from '@/components/student/FlashcardsViewer'
 import QuizViewer from '@/components/student/QuizViewer'
 import PreviousYearsViewer from '@/components/student/PreviousYearsViewer'
+import YouTubePlayer from '@/components/student/YouTubePlayer'
 import LockedContentCard from '@/components/student/LockedContentCard'
 import { createClient } from '@/lib/supabase/client'
 
@@ -20,6 +21,15 @@ interface Subject {
   name: string
   access_mode?: string | null
   is_free?: boolean | null
+}
+
+interface Video {
+  id: string
+  title: string
+  description: string | null
+  video_url: string
+  is_preview: boolean
+  display_order: number
 }
 
 interface LectureHubProps {
@@ -38,9 +48,10 @@ interface LectureHubProps {
   quizLocked?: boolean
   previousYearQuestions?: unknown
   pyqLocked?: boolean
+  videos?: Video[]
 }
 
-type TabId = 'sheet' | 'summary' | 'flashcards' | 'quiz' | 'previous_years'
+type TabId = 'videos' | 'sheet' | 'summary' | 'flashcards' | 'quiz' | 'previous_years'
 
 interface Tab {
   id: TabId
@@ -65,8 +76,10 @@ export default function LectureHub({
   quizLocked = false,
   previousYearQuestions,
   pyqLocked = false,
+  videos = [],
 }: LectureHubProps) {
   const tabs: Tab[] = [
+    { id: 'videos', label: 'Videos', hasContent: videos.length > 0, locked: false },
     { id: 'sheet', label: 'Sheet', hasContent: !!sheet || sheetLocked, locked: sheetLocked },
     { id: 'summary', label: 'Summary', hasContent: !!summary || summaryLocked, locked: summaryLocked },
     { id: 'flashcards', label: 'Flashcards', hasContent: (Array.isArray(flashcards) && flashcards.length > 0) || flashcardsLocked, locked: flashcardsLocked },
@@ -77,7 +90,6 @@ export default function LectureHub({
   const visibleTabs = tabs.filter((t) => t.hasContent)
   const [activeTab, setActiveTab] = useState<TabId>(visibleTabs[0]?.id ?? 'sheet')
 
-  // Record progress when tab changes
   useEffect(() => {
     if (!userId || !lecture.id) return
 
@@ -170,6 +182,11 @@ export default function LectureHub({
                     : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                 }`}
               >
+                {tab.id === 'videos' && (
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                )}
                 {tab.label}
                 {tab.locked && (
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -181,6 +198,9 @@ export default function LectureHub({
           </div>
 
           <div>
+            {activeTab === 'videos' && videos.length > 0 && (
+              <YouTubePlayer videos={videos} />
+            )}
             {activeTab === 'sheet' && (
               sheetLocked ? <LockedContentCard subjectName={subject.name} contentType="sheet" /> :
               sheet ? <SheetReader content={(sheet as { content: string }).content} title={(sheet as { title: string }).title} userName={userName} /> : null

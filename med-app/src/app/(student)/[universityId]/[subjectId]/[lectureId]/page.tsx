@@ -17,15 +17,10 @@ interface PageProps {
 
 export default async function LecturePage({ params }: PageProps) {
   const { universityId, subjectId, lectureId } = await params
-
   const supabase = await createServerClient()
 
-  // Get current user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  // Get user profile to find internal user ID
   let userId: string | null = null
   let userName: string | null = null
   if (user) {
@@ -38,7 +33,6 @@ export default async function LecturePage({ params }: PageProps) {
     userName = profile?.full_name ?? null
   }
 
-  // Get lecture info
   const { data: lecture } = await supabase
     .from('lectures')
     .select('id, title, description, status')
@@ -50,7 +44,6 @@ export default async function LecturePage({ params }: PageProps) {
     redirect(`/${universityId}/${subjectId}`)
   }
 
-  // Get subject info
   const { data: subject } = await supabase
     .from('subjects')
     .select('id, name, access_mode, is_free')
@@ -61,15 +54,25 @@ export default async function LecturePage({ params }: PageProps) {
     redirect(`/${universityId}`)
   }
 
-  // Fetch all content — each call checks subscription internally
-  const [sheetResult, summaryResult, flashcardsResult, quizResult, pyqResult] =
-    await Promise.all([
-      getSheetByLectureId(lectureId, subjectId, userId),
-      getSummaryByLectureId(lectureId, subjectId, userId),
-      getFlashcardsByLectureId(lectureId, subjectId, userId),
-      getQuizQuestionsByLectureId(lectureId, subjectId, userId),
-      getPreviousYearQuestionsByLectureId(lectureId, subjectId, userId),
-    ])
+  const [
+    sheetResult,
+    summaryResult,
+    flashcardsResult,
+    quizResult,
+    pyqResult,
+    { data: videos },
+  ] = await Promise.all([
+    getSheetByLectureId(lectureId, subjectId, userId),
+    getSummaryByLectureId(lectureId, subjectId, userId),
+    getFlashcardsByLectureId(lectureId, subjectId, userId),
+    getQuizQuestionsByLectureId(lectureId, subjectId, userId),
+    getPreviousYearQuestionsByLectureId(lectureId, subjectId, userId),
+    supabase
+      .from('videos')
+      .select('id, title, description, video_url, is_preview, display_order')
+      .eq('lecture_id', lectureId)
+      .order('display_order'),
+  ])
 
   return (
     <LectureHub
@@ -88,6 +91,7 @@ export default async function LecturePage({ params }: PageProps) {
       quizLocked={quizResult.locked}
       previousYearQuestions={pyqResult.data}
       pyqLocked={pyqResult.locked}
+      videos={videos ?? []}
     />
   )
 }

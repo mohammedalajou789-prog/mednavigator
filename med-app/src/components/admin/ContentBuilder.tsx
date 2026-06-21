@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import MNRenderer from '@/components/student/MNRenderer'
+import BulkImportTab from '@/components/admin/BulkImportTab'
+import VideoManager from '@/components/admin/VideoManager'
 import { useRouter } from 'next/navigation'
 
 interface ExistingContent {
@@ -42,6 +44,15 @@ interface PYQ {
   exam_type: string
 }
 
+interface Video {
+  id: string
+  title: string
+  description: string | null
+  video_url: string
+  is_preview: boolean
+  display_order: number
+}
+
 interface Props {
   lectureId: string
   subjectId: string
@@ -51,9 +62,11 @@ interface Props {
   existingFlashcards?: Flashcard[]
   existingQuizQuestions?: QuizQuestion[]
   existingPYQs?: PYQ[]
+  existingVideos?: Video[]
 }
 
-type TabType = 'sheet' | 'summary' | 'flashcards' | 'quiz' | 'previous_years'
+type TabType = 'videos' | 'sheet' | 'summary' | 'flashcards' | 'quiz' | 'previous_years'
+type EditorMode = 'manual' | 'import'
 
 export default function ContentBuilder({
   lectureId,
@@ -64,6 +77,7 @@ export default function ContentBuilder({
   existingFlashcards = [],
   existingQuizQuestions = [],
   existingPYQs = [],
+  existingVideos = [],
 }: Props) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<TabType>('sheet')
@@ -71,20 +85,24 @@ export default function ContentBuilder({
   const [isPublishing, setIsPublishing] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  // Sheet state
-  const [sheetTitle, setSheetTitle] = useState(existingSheet?.title ?? lectureTitle + ' — Sheet')
+  const [flashcardsMode, setFlashcardsMode] = useState<EditorMode>('manual')
+  const [quizMode, setQuizMode] = useState<EditorMode>('manual')
+  const [pyqMode, setPyqMode] = useState<EditorMode>('manual')
+
+  const [importedFlashcardsCount, setImportedFlashcardsCount] = useState(0)
+  const [importedQuizCount, setImportedQuizCount] = useState(0)
+  const [importedPyqCount, setImportedPyqCount] = useState(0)
+
+  const [sheetTitle, setSheetTitle] = useState(existingSheet?.title ?? lectureTitle + ' - Sheet')
   const [sheetContent, setSheetContent] = useState(existingSheet?.content ?? '')
 
-  // Summary state
-  const [summaryTitle, setSummaryTitle] = useState(existingSummary?.title ?? lectureTitle + ' — Summary')
+  const [summaryTitle, setSummaryTitle] = useState(existingSummary?.title ?? lectureTitle + ' - Summary')
   const [summaryContent, setSummaryContent] = useState(existingSummary?.content ?? '')
 
-  // Flashcards state
   const [flashcards, setFlashcards] = useState<Flashcard[]>(
     existingFlashcards.length > 0 ? existingFlashcards : [{ front_text: '', back_text: '', tags: [] }]
   )
 
-  // Quiz state
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>(
     existingQuizQuestions.length > 0 ? existingQuizQuestions : [{
       question: '', option_a: '', option_b: '', option_c: '', option_d: '', option_e: '',
@@ -92,7 +110,6 @@ export default function ContentBuilder({
     }]
   )
 
-  // PYQ state
   const [pyqs, setPyqs] = useState<PYQ[]>(
     existingPYQs.length > 0 ? existingPYQs : [{
       question: '', options: ['', '', '', '', ''], correct_answer: 'A',
@@ -105,7 +122,6 @@ export default function ContentBuilder({
     setTimeout(() => setMessage(null), 4000)
   }
 
-  // Save sheet or summary
   const handleSaveContent = async (status: 'draft' | 'published') => {
     const isPublish = status === 'published'
     if (isPublish) setIsPublishing(true)
@@ -136,7 +152,6 @@ export default function ContentBuilder({
     }
   }
 
-  // Save flashcards
   const handleSaveFlashcards = async () => {
     setIsSaving(true)
     try {
@@ -160,7 +175,6 @@ export default function ContentBuilder({
     }
   }
 
-  // Save quiz questions
   const handleSaveQuiz = async () => {
     setIsSaving(true)
     try {
@@ -184,7 +198,6 @@ export default function ContentBuilder({
     }
   }
 
-  // Save PYQs
   const handleSavePYQs = async () => {
     setIsSaving(true)
     try {
@@ -209,12 +222,40 @@ export default function ContentBuilder({
   }
 
   const TABS: { id: TabType; label: string }[] = [
+    { id: 'videos', label: 'Videos' },
     { id: 'sheet', label: 'Sheet' },
     { id: 'summary', label: 'Summary' },
     { id: 'flashcards', label: 'Flashcards' },
     { id: 'quiz', label: 'Quiz' },
     { id: 'previous_years', label: 'Previous Years' },
   ]
+
+  function ModeToggle({ mode, setMode }: { mode: EditorMode; setMode: (m: EditorMode) => void }) {
+    return (
+      <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit mb-4">
+        <button
+          onClick={() => setMode('manual')}
+          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            mode === 'manual'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Manual
+        </button>
+        <button
+          onClick={() => setMode('import')}
+          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            mode === 'import'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Bulk Import
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -233,6 +274,11 @@ export default function ContentBuilder({
               }`}
             >
               {tab.label}
+              {tab.id === 'videos' && existingVideos.length > 0 && (
+                <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">
+                  {existingVideos.length}
+                </span>
+              )}
               {tab.id === 'sheet' && existingSheet && (
                 <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
                   existingSheet.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
@@ -243,19 +289,19 @@ export default function ContentBuilder({
                   existingSummary.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
                 }`}>{existingSummary.status}</span>
               )}
-              {tab.id === 'flashcards' && existingFlashcards.length > 0 && (
+              {tab.id === 'flashcards' && (existingFlashcards.length + importedFlashcardsCount) > 0 && (
                 <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
-                  {existingFlashcards.length}
+                  {existingFlashcards.length + importedFlashcardsCount}
                 </span>
               )}
-              {tab.id === 'quiz' && existingQuizQuestions.length > 0 && (
+              {tab.id === 'quiz' && (existingQuizQuestions.length + importedQuizCount) > 0 && (
                 <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                  {existingQuizQuestions.length}
+                  {existingQuizQuestions.length + importedQuizCount}
                 </span>
               )}
-              {tab.id === 'previous_years' && existingPYQs.length > 0 && (
+              {tab.id === 'previous_years' && (existingPYQs.length + importedPyqCount) > 0 && (
                 <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                  {existingPYQs.length}
+                  {existingPYQs.length + importedPyqCount}
                 </span>
               )}
             </button>
@@ -263,7 +309,18 @@ export default function ContentBuilder({
         </div>
       </div>
 
-      {/* Sheet & Summary — two column layout */}
+      {/* Videos */}
+      {activeTab === 'videos' && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+          <VideoManager
+            lectureId={lectureId}
+            subjectId={subjectId}
+            existingVideos={existingVideos}
+          />
+        </div>
+      )}
+
+      {/* Sheet & Summary */}
       {(activeTab === 'sheet' || activeTab === 'summary') && (
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-4">
@@ -349,210 +406,247 @@ export default function ContentBuilder({
       {/* Flashcards */}
       {activeTab === 'flashcards' && (
         <div className="space-y-4">
-          {flashcards.map((card, index) => (
-            <div key={index} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Card {index + 1}</span>
-                {flashcards.length > 1 && (
-                  <button onClick={() => setFlashcards(prev => prev.filter((_, i) => i !== index))}
-                    className="text-xs text-red-500 hover:text-red-700">Remove</button>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Front (Question)</label>
-                  <textarea rows={4} value={card.front_text}
-                    onChange={(e) => setFlashcards(prev => prev.map((c, i) => i === index ? { ...c, front_text: e.target.value } : c))}
-                    placeholder="What is the definition of..."
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Back (Answer)</label>
-                  <textarea rows={4} value={card.back_text}
-                    onChange={(e) => setFlashcards(prev => prev.map((c, i) => i === index ? { ...c, back_text: e.target.value } : c))}
-                    placeholder="The answer is..."
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-                </div>
-              </div>
+          <ModeToggle mode={flashcardsMode} setMode={setFlashcardsMode} />
+          {flashcardsMode === 'import' ? (
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+              <BulkImportTab
+                lectureId={lectureId}
+                type="flashcards"
+                onImportSuccess={(count) => {
+                  setImportedFlashcardsCount(prev => prev + count)
+                  showMessage('success', `${count} flashcard(s) imported successfully!`)
+                  router.refresh()
+                }}
+              />
             </div>
-          ))}
-
-          <button onClick={() => setFlashcards(prev => [...prev, { front_text: '', back_text: '', tags: [] }])}
-            className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
-            + Add Flashcard
-          </button>
-
-          {message && (
-            <div className={`rounded-lg px-4 py-3 text-sm ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
-              {message.text}
-            </div>
+          ) : (
+            <>
+              {flashcards.map((card, index) => (
+                <div key={index} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Card {index + 1}</span>
+                    {flashcards.length > 1 && (
+                      <button onClick={() => setFlashcards(prev => prev.filter((_, i) => i !== index))}
+                        className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Front (Question)</label>
+                      <textarea rows={4} value={card.front_text}
+                        onChange={(e) => setFlashcards(prev => prev.map((c, i) => i === index ? { ...c, front_text: e.target.value } : c))}
+                        placeholder="What is the definition of..."
+                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Back (Answer)</label>
+                      <textarea rows={4} value={card.back_text}
+                        onChange={(e) => setFlashcards(prev => prev.map((c, i) => i === index ? { ...c, back_text: e.target.value } : c))}
+                        placeholder="The answer is..."
+                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => setFlashcards(prev => [...prev, { front_text: '', back_text: '', tags: [] }])}
+                className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+                + Add Flashcard
+              </button>
+              {message && (
+                <div className={`rounded-lg px-4 py-3 text-sm ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+                  {message.text}
+                </div>
+              )}
+              <button onClick={handleSaveFlashcards} disabled={isSaving}
+                className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                {isSaving ? 'Saving...' : `Save ${flashcards.filter(f => f.front_text && f.back_text).length} Flashcard(s)`}
+              </button>
+            </>
           )}
-
-          <button onClick={handleSaveFlashcards} disabled={isSaving}
-            className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-            {isSaving ? 'Saving...' : `Save ${flashcards.filter(f => f.front_text && f.back_text).length} Flashcard(s)`}
-          </button>
         </div>
       )}
 
       {/* Quiz */}
       {activeTab === 'quiz' && (
         <div className="space-y-4">
-          {quizQuestions.map((q, index) => (
-            <div key={index} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Question {index + 1}</span>
-                {quizQuestions.length > 1 && (
-                  <button onClick={() => setQuizQuestions(prev => prev.filter((_, i) => i !== index))}
-                    className="text-xs text-red-500 hover:text-red-700">Remove</button>
-                )}
-              </div>
-              <div className="space-y-3">
-                <textarea rows={3} value={q.question}
-                  onChange={(e) => setQuizQuestions(prev => prev.map((item, i) => i === index ? { ...item, question: e.target.value } : item))}
-                  placeholder="Write the question here..."
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-
-                <div className="grid grid-cols-2 gap-2">
-                  {(['A', 'B', 'C', 'D', 'E'] as const).map((letter) => {
-                    const field = `option_${letter.toLowerCase()}` as keyof QuizQuestion
-                    return (
-                      <div key={letter} className="flex items-center gap-2">
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                          q.correct_answer === letter ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'
-                        }`}>{letter}</span>
-                        <input type="text" value={q[field] as string}
-                          onChange={(e) => setQuizQuestions(prev => prev.map((item, i) => i === index ? { ...item, [field]: e.target.value } : item))}
-                          placeholder={`Option ${letter}`}
-                          className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <ModeToggle mode={quizMode} setMode={setQuizMode} />
+          {quizMode === 'import' ? (
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+              <BulkImportTab
+                lectureId={lectureId}
+                type="quiz"
+                onImportSuccess={(count) => {
+                  setImportedQuizCount(prev => prev + count)
+                  showMessage('success', `${count} question(s) imported successfully!`)
+                  router.refresh()
+                }}
+              />
+            </div>
+          ) : (
+            <>
+              {quizQuestions.map((q, index) => (
+                <div key={index} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Question {index + 1}</span>
+                    {quizQuestions.length > 1 && (
+                      <button onClick={() => setQuizQuestions(prev => prev.filter((_, i) => i !== index))}
+                        className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <textarea rows={3} value={q.question}
+                      onChange={(e) => setQuizQuestions(prev => prev.map((item, i) => i === index ? { ...item, question: e.target.value } : item))}
+                      placeholder="Write the question here..."
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                    <div className="grid grid-cols-2 gap-2">
+                      {(['A', 'B', 'C', 'D', 'E'] as const).map((letter) => {
+                        const field = `option_${letter.toLowerCase()}` as keyof QuizQuestion
+                        return (
+                          <div key={letter} className="flex items-center gap-2">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                              q.correct_answer === letter ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'
+                            }`}>{letter}</span>
+                            <input type="text" value={q[field] as string}
+                              onChange={(e) => setQuizQuestions(prev => prev.map((item, i) => i === index ? { ...item, [field]: e.target.value } : item))}
+                              placeholder={`Option ${letter}`}
+                              className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Correct Answer</label>
+                        <select value={q.correct_answer}
+                          onChange={(e) => setQuizQuestions(prev => prev.map((item, i) => i === index ? { ...item, correct_answer: e.target.value } : item))}
+                          className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          {['A', 'B', 'C', 'D', 'E'].map(l => <option key={l} value={l}>{l}</option>)}
+                        </select>
                       </div>
-                    )
-                  })}
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Correct Answer</label>
-                    <select value={q.correct_answer}
-                      onChange={(e) => setQuizQuestions(prev => prev.map((item, i) => i === index ? { ...item, correct_answer: e.target.value } : item))}
-                      className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      {['A', 'B', 'C', 'D', 'E'].map(l => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Explanation</label>
-                    <input type="text" value={q.explanation}
-                      onChange={(e) => setQuizQuestions(prev => prev.map((item, i) => i === index ? { ...item, explanation: e.target.value } : item))}
-                      placeholder="Why is this the correct answer?"
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <div className="flex-1">
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Explanation</label>
+                        <input type="text" value={q.explanation}
+                          onChange={(e) => setQuizQuestions(prev => prev.map((item, i) => i === index ? { ...item, explanation: e.target.value } : item))}
+                          placeholder="Why is this the correct answer?"
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
-
-          <button onClick={() => setQuizQuestions(prev => [...prev, { question: '', option_a: '', option_b: '', option_c: '', option_d: '', option_e: '', correct_answer: 'A', explanation: '', tags: [] }])}
-            className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
-            + Add Question
-          </button>
-
-          {message && (
-            <div className={`rounded-lg px-4 py-3 text-sm ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
-              {message.text}
-            </div>
+              ))}
+              <button onClick={() => setQuizQuestions(prev => [...prev, { question: '', option_a: '', option_b: '', option_c: '', option_d: '', option_e: '', correct_answer: 'A', explanation: '', tags: [] }])}
+                className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+                + Add Question
+              </button>
+              {message && (
+                <div className={`rounded-lg px-4 py-3 text-sm ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+                  {message.text}
+                </div>
+              )}
+              <button onClick={handleSaveQuiz} disabled={isSaving}
+                className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                {isSaving ? 'Saving...' : `Save ${quizQuestions.filter(q => q.question && q.option_a).length} Question(s)`}
+              </button>
+            </>
           )}
-
-          <button onClick={handleSaveQuiz} disabled={isSaving}
-            className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-            {isSaving ? 'Saving...' : `Save ${quizQuestions.filter(q => q.question && q.option_a).length} Question(s)`}
-          </button>
         </div>
       )}
 
       {/* Previous Years */}
       {activeTab === 'previous_years' && (
         <div className="space-y-4">
-          {pyqs.map((q, index) => (
-            <div key={index} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Question {index + 1}</span>
-                {pyqs.length > 1 && (
-                  <button onClick={() => setPyqs(prev => prev.filter((_, i) => i !== index))}
-                    className="text-xs text-red-500 hover:text-red-700">Remove</button>
-                )}
-              </div>
-              <div className="space-y-3">
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Exam Year</label>
-                    <input type="number" value={q.exam_year}
-                      onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, exam_year: e.target.value ? parseInt(e.target.value) : '' } : item))}
-                      placeholder="2024"
+          <ModeToggle mode={pyqMode} setMode={setPyqMode} />
+          {pyqMode === 'import' ? (
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+              <BulkImportTab
+                lectureId={lectureId}
+                type="pyq"
+                onImportSuccess={(count) => {
+                  setImportedPyqCount(prev => prev + count)
+                  showMessage('success', `${count} PYQ(s) imported successfully!`)
+                  router.refresh()
+                }}
+              />
+            </div>
+          ) : (
+            <>
+              {pyqs.map((q, index) => (
+                <div key={index} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Question {index + 1}</span>
+                    {pyqs.length > 1 && (
+                      <button onClick={() => setPyqs(prev => prev.filter((_, i) => i !== index))}
+                        className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Exam Year</label>
+                        <input type="number" value={q.exam_year}
+                          onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, exam_year: e.target.value ? parseInt(e.target.value) : '' } : item))}
+                          placeholder="2024"
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Exam Type</label>
+                        <select value={q.exam_type}
+                          onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, exam_type: e.target.value } : item))}
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <option value="final">Final</option>
+                          <option value="midterm">Midterm</option>
+                          <option value="quiz">Quiz</option>
+                          <option value="practical">Practical</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Correct Answer</label>
+                        <select value={q.correct_answer}
+                          onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, correct_answer: e.target.value } : item))}
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          {['A', 'B', 'C', 'D', 'E'].map(l => <option key={l} value={l}>{l}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <textarea rows={3} value={q.question}
+                      onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, question: e.target.value } : item))}
+                      placeholder="Write the exam question here..."
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                    <div className="grid grid-cols-2 gap-2">
+                      {q.options.map((opt, optIndex) => (
+                        <div key={optIndex} className="flex items-center gap-2">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                            q.correct_answer === String.fromCharCode(65 + optIndex) ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'
+                          }`}>{String.fromCharCode(65 + optIndex)}</span>
+                          <input type="text" value={opt}
+                            onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, options: item.options.map((o, oi) => oi === optIndex ? e.target.value : o) } : item))}
+                            placeholder={`Option ${String.fromCharCode(65 + optIndex)}`}
+                            className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      ))}
+                    </div>
+                    <input type="text" value={q.explanation}
+                      onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, explanation: e.target.value } : item))}
+                      placeholder="Explanation (optional)"
                       className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Exam Type</label>
-                    <select value={q.exam_type}
-                      onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, exam_type: e.target.value } : item))}
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      <option value="final">Final</option>
-                      <option value="midterm">Midterm</option>
-                      <option value="quiz">Quiz</option>
-                      <option value="practical">Practical</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Correct Answer</label>
-                    <select value={q.correct_answer}
-                      onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, correct_answer: e.target.value } : item))}
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      {['A', 'B', 'C', 'D', 'E'].map(l => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                  </div>
                 </div>
-
-                <textarea rows={3} value={q.question}
-                  onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, question: e.target.value } : item))}
-                  placeholder="Write the exam question here..."
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-
-                <div className="grid grid-cols-2 gap-2">
-                  {q.options.map((opt, optIndex) => (
-                    <div key={optIndex} className="flex items-center gap-2">
-                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                        q.correct_answer === String.fromCharCode(65 + optIndex) ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'
-                      }`}>{String.fromCharCode(65 + optIndex)}</span>
-                      <input type="text" value={opt}
-                        onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, options: item.options.map((o, oi) => oi === optIndex ? e.target.value : o) } : item))}
-                        placeholder={`Option ${String.fromCharCode(65 + optIndex)}`}
-                        className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    </div>
-                  ))}
+              ))}
+              <button onClick={() => setPyqs(prev => [...prev, { question: '', options: ['', '', '', '', ''], correct_answer: 'A', explanation: '', exam_year: '', exam_type: 'final' }])}
+                className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+                + Add Question
+              </button>
+              {message && (
+                <div className={`rounded-lg px-4 py-3 text-sm ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+                  {message.text}
                 </div>
-
-                <input type="text" value={q.explanation}
-                  onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, explanation: e.target.value } : item))}
-                  placeholder="Explanation (optional)"
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            </div>
-          ))}
-
-          <button onClick={() => setPyqs(prev => [...prev, { question: '', options: ['', '', '', '', ''], correct_answer: 'A', explanation: '', exam_year: '', exam_type: 'final' }])}
-            className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
-            + Add Question
-          </button>
-
-          {message && (
-            <div className={`rounded-lg px-4 py-3 text-sm ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
-              {message.text}
-            </div>
+              )}
+              <button onClick={handleSavePYQs} disabled={isSaving}
+                className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                {isSaving ? 'Saving...' : `Save ${pyqs.filter(q => q.question).length} Question(s)`}
+              </button>
+            </>
           )}
-
-          <button onClick={handleSavePYQs} disabled={isSaving}
-            className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-            {isSaving ? 'Saving...' : `Save ${pyqs.filter(q => q.question).length} Question(s)`}
-          </button>
         </div>
       )}
     </div>

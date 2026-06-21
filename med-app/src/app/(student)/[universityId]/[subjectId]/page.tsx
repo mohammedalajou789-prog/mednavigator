@@ -128,9 +128,18 @@ export default async function SubjectPage({ params }: PageProps) {
         </div>
         <h1 className="text-2xl font-semibold text-[#0F172A] dark:text-white">{subject.name}</h1>
         {subject.description && <p className="text-[#64748B] mt-2">{subject.description}</p>}
-        <p className="text-sm text-[#64748B] mt-2">
-          {totalLectures} Lectures · {groups.length} {isSystem ? 'Sub-Subjects' : 'Chapters'}
-        </p>
+        <div className="flex items-center justify-between mt-2 flex-wrap gap-3">
+          <p className="text-sm text-[#64748B]">
+            {totalLectures} Lectures · {groups.length} {isSystem ? 'Sub-Subjects' : 'Chapters'}
+          </p>
+          <Link
+            href={`/${universityId}/${subjectId}/previous-years`}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-lg text-sm font-medium hover:bg-amber-100 transition-colors"
+          >
+            <span>📅</span>
+            Previous Years Bank
+          </Link>
+        </div>
 
         {/* Progress Bar */}
         {userId && totalLectures > 0 && (

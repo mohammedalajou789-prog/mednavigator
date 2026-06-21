@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from('users')
-      .select('role')
+      .select('id, role')
       .eq('auth_user_id', user.id)
       .single()
 
@@ -28,25 +28,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type. Only JPEG, PNG, WebP, GIF allowed.' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid file type.' }, { status: 400 })
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: 'File too large. Maximum size is 5MB.' }, { status: 400 })
+      return NextResponse.json({ error: 'File too large. Max 5MB.' }, { status: 400 })
     }
 
-    // Generate unique filename
     const ext = file.name.split('.').pop() ?? 'jpg'
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`
     const filePath = entityId ? `${entityId}/${fileName}` : fileName
 
-    // Upload to Supabase Storage
     const arrayBuffer = await file.arrayBuffer()
     const buffer = new Uint8Array(arrayBuffer)
+
+    console.log('Uploading to storage:', filePath)
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('sheet-images')
@@ -56,31 +54,40 @@ export async function POST(request: NextRequest) {
       })
 
     if (uploadError) {
-      return NextResponse.json({ error: uploadError.message }, { status: 500 })
+      console.error('Storage upload error:', uploadError)
+      return NextResponse.json({ error: `Storage error: ${uploadError.message}` }, { status: 500 })
     }
 
-    // Get public URL
+    console.log('Upload success:', uploadData)
+
     const { data: urlData } = supabase.storage
       .from('sheet-images')
       .getPublicUrl(filePath)
 
-    const publicUrl = urlData.public_url
+    const publicUrl = urlData.publicUrl
 
-    // Save to media_library
+    console.log('Public URL:', publicUrl)
+
     const { data: mediaRecord, error: mediaError } = await supabase
       .from('media_library')
       .insert({
         file_name: file.name,
         file_url: publicUrl,
-        file_type: file.type,
-        uploaded_by: profile ? undefined : undefined,
+        file_type: 'image',
+        uploaded_by: profile.id,
       })
       .select()
       .single()
 
-    // If entity info provided, link to image_slots
+    if (mediaError) {
+      console.error('Media library error:', mediaError)
+      return NextResponse.json({ error: `Media library error: ${mediaError.message}` }, { status: 500 })
+    }
+
+    console.log('Media record created:', mediaRecord?.id)
+
     if (entityType && entityId && slotNumber && mediaRecord) {
-      await supabase
+      const { error: slotError } = await supabase
         .from('image_slots')
         .upsert({
           entity_type: entityType,
@@ -90,6 +97,10 @@ export async function POST(request: NextRequest) {
         }, {
           onConflict: 'entity_type,entity_id,slot_number',
         })
+
+      if (slotError) {
+        console.error('Image slot error:', slotError)
+      }
     }
 
     return NextResponse.json({
@@ -97,8 +108,9 @@ export async function POST(request: NextRequest) {
       url: publicUrl,
       media_id: mediaRecord?.id ?? null,
     })
+
   } catch (err) {
-    console.error('Image upload error:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Unexpected image upload error:', err)
+    return NextResponse.json({ error: `Unexpected error: ${String(err)}` }, { status: 500 })
   }
 }

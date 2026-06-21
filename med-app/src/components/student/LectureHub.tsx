@@ -49,6 +49,8 @@ interface LectureHubProps {
   previousYearQuestions?: unknown
   pyqLocked?: boolean
   videos?: Video[]
+  sheetImageSlots?: Record<number, string>
+  summaryImageSlots?: Record<number, string>
 }
 
 type TabId = 'videos' | 'sheet' | 'summary' | 'flashcards' | 'quiz' | 'previous_years'
@@ -77,6 +79,8 @@ export default function LectureHub({
   previousYearQuestions,
   pyqLocked = false,
   videos = [],
+  sheetImageSlots = {},
+  summaryImageSlots = {},
 }: LectureHubProps) {
   const tabs: Tab[] = [
     { id: 'videos', label: 'Videos', hasContent: videos.length > 0, locked: false },
@@ -203,11 +207,11 @@ export default function LectureHub({
             )}
             {activeTab === 'sheet' && (
               sheetLocked ? <LockedContentCard subjectName={subject.name} contentType="sheet" /> :
-              sheet ? <SheetReader content={(sheet as { content: string }).content} title={(sheet as { title: string }).title} userName={userName} /> : null
+              sheet ? <SheetReader content={(sheet as { content: string }).content} title={(sheet as { title: string }).title} userName={userName} imageSlots={sheetImageSlots} /> : null
             )}
             {activeTab === 'summary' && (
               summaryLocked ? <LockedContentCard subjectName={subject.name} contentType="summary" /> :
-              summary ? <SheetReader content={(summary as { content: string }).content} title={(summary as { title: string }).title} isSummary={true} userName={userName} /> : null
+              summary ? <SheetReader content={(summary as { content: string }).content} title={(summary as { title: string }).title} isSummary={true} userName={userName} imageSlots={summaryImageSlots} /> : null
             )}
             {activeTab === 'flashcards' && (
               flashcardsLocked ? <LockedContentCard subjectName={subject.name} contentType="flashcards" /> :

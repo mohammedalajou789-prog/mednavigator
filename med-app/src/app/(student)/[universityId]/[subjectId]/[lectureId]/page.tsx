@@ -74,6 +74,8 @@ export default async function LecturePage({ params }: PageProps) {
     quizResult,
     pyqResult,
     { data: videos },
+    { data: sheetData },
+    { data: summaryData },
   ] = await Promise.all([
     getSheetByLectureId(lectureId, subjectId, userId),
     getSummaryByLectureId(lectureId, subjectId, userId),
@@ -85,7 +87,55 @@ export default async function LecturePage({ params }: PageProps) {
       .select('id, title, description, video_url, is_preview, display_order')
       .eq('lecture_id', lectureId)
       .order('display_order'),
+    supabase
+      .from('sheets')
+      .select('id')
+      .eq('lecture_id', lectureId)
+      .maybeSingle(),
+    supabase
+      .from('summaries')
+      .select('id')
+      .eq('lecture_id', lectureId)
+      .maybeSingle(),
   ])
+
+  // Load image slots for sheet and summary
+  const sheetImageSlots: Record<number, string> = {}
+  const summaryImageSlots: Record<number, string> = {}
+
+  if (sheetData?.id) {
+    const { data: slots } = await supabase
+      .from('image_slots')
+      .select('slot_number, media_library(file_url)')
+      .eq('entity_type', 'sheet')
+      .eq('entity_id', sheetData.id)
+
+    if (slots) {
+      for (const slot of slots) {
+        const media = slot.media_library as { file_url: string } | null
+        if (media?.file_url) {
+          sheetImageSlots[slot.slot_number] = media.file_url
+        }
+      }
+    }
+  }
+
+  if (summaryData?.id) {
+    const { data: slots } = await supabase
+      .from('image_slots')
+      .select('slot_number, media_library(file_url)')
+      .eq('entity_type', 'summary')
+      .eq('entity_id', summaryData.id)
+
+    if (slots) {
+      for (const slot of slots) {
+        const media = slot.media_library as { file_url: string } | null
+        if (media?.file_url) {
+          summaryImageSlots[slot.slot_number] = media.file_url
+        }
+      }
+    }
+  }
 
   return (
     <div>
@@ -106,6 +156,8 @@ export default async function LecturePage({ params }: PageProps) {
         previousYearQuestions={pyqResult.data}
         pyqLocked={pyqResult.locked}
         videos={videos ?? []}
+      sheetImageSlots={sheetImageSlots}
+      summaryImageSlots={summaryImageSlots}
       />
       {userId && (
         <div className="max-w-5xl mx-auto px-4 pb-8">

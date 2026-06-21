@@ -6,9 +6,10 @@ interface MNRendererProps {
   content: string
   userName?: string
   showWatermark?: boolean
+  imageSlots?: Record<number, string>
 }
 
-export default function MNRenderer({ content, userName, showWatermark = false }: MNRendererProps) {
+export default function MNRenderer({ content, userName, showWatermark = false, imageSlots = {} }: MNRendererProps) {
   const blocks = parseContent(content)
   let h2Counter = 0
 
@@ -27,7 +28,7 @@ export default function MNRenderer({ content, userName, showWatermark = false }:
       <div className="max-w-3xl mx-auto space-y-0">
         {blocks.map((block, index) => {
           if (block.type === 'h2') h2Counter++
-          return renderBlock(block, index, block.type === 'h2' ? h2Counter : undefined)
+          return renderBlock(block, index, block.type === 'h2' ? h2Counter : undefined, imageSlots)
         })}
       </div>
     </div>
@@ -38,7 +39,7 @@ type BlockType =
   | 'h1' | 'h2' | 'h3'
   | 'highlight' | 'important' | 'clinical_pearl'
   | 'must_memorize' | 'previous_year'
-  | 'table' | 'text' | 'empty'
+  | 'table' | 'text' | 'empty' | 'image_slot'
   | 'card_group_start' | 'card_group_end'
 
 interface Block {
@@ -46,6 +47,8 @@ interface Block {
   content: string
   rows?: string[][]
   cards?: CardBlock[]
+  slotNumber?: number
+  slotDescription?: string
 }
 
 interface CardBlock {
@@ -66,6 +69,27 @@ function parseContent(raw: string): Block[] {
     if (line.startsWith('# ')) { blocks.push({ type: 'h1', content: line.slice(2) }); i++; continue }
     if (line.startsWith('## ')) { blocks.push({ type: 'h2', content: line.slice(3) }); i++; continue }
     if (line.startsWith('### ')) { blocks.push({ type: 'h3', content: line.slice(4) }); i++; continue }
+
+    const imageSlotMatch = line.match(/^\[IMAGE_SLOT:(\d+)\]$/)
+    const imageSlotInline = line.match(/^\[IMAGE_SLOT:(\d+)\](.+)\[\/IMAGE_SLOT\]$/)
+
+    if (imageSlotInline) {
+      blocks.push({ type: 'image_slot', content: '', slotNumber: parseInt(imageSlotInline[1]), slotDescription: imageSlotInline[2].trim() })
+      i++; continue
+    }
+
+    if (imageSlotMatch) {
+      const slotNum = parseInt(imageSlotMatch[1])
+      if (i + 1 < lines.length && lines[i + 1].trim() !== '[/IMAGE_SLOT]' && !lines[i + 1].trim().startsWith('[')) {
+        const desc = lines[i + 1].trim()
+        if (i + 2 < lines.length && lines[i + 2].trim() === '[/IMAGE_SLOT]') {
+          blocks.push({ type: 'image_slot', content: '', slotNumber: slotNum, slotDescription: desc })
+          i += 3; continue
+        }
+      }
+      blocks.push({ type: 'image_slot', content: '', slotNumber: slotNum })
+      i++; continue
+    }
 
     if (line === '[HIGHLIGHT]') {
       const { content, end } = extractBlock(lines, i + 1, '[/HIGHLIGHT]')
@@ -128,7 +152,6 @@ function extractTable(lines: string[], start: number): { rows: string[][]; end: 
   return { rows, end: i }
 }
 
-// Render inline text with **bold** and ==highlight== support
 function renderInline(text: string): React.ReactNode {
   const parts = text.split(/(==.+?==|\*\*.+?\*\*)/g)
   return parts.map((part, i) => {
@@ -142,8 +165,43 @@ function renderInline(text: string): React.ReactNode {
   })
 }
 
-function renderBlock(block: Block, key: number, h2Number?: number) {
+function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: Record<number, string> = {}) {
   switch (block.type) {
+
+    case 'image_slot': {
+      const slotNum = block.slotNumber ?? 0
+      const imageUrl = imageSlots[slotNum]
+      return (
+        <div key={key} className="my-6">
+          {imageUrl ? (
+            <figure className="space-y-2">
+              <img
+                src={imageUrl}
+                alt={block.slotDescription ?? `Image ${slotNum}`}
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 object-contain max-h-[500px] bg-slate-50 dark:bg-slate-900"
+              />
+              {block.slotDescription && (
+                <figcaption className="text-center text-xs text-slate-500 dark:text-slate-400 italic">
+                  {block.slotDescription}
+                </figcaption>
+              )}
+            </figure>
+          ) : (
+            <div className="flex items-center justify-center gap-3 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-8 bg-slate-50 dark:bg-slate-900">
+              <svg className="w-6 h-6 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+              <div>
+                <p className="text-xs font-mono text-slate-400 dark:text-slate-500">[IMAGE_SLOT:{slotNum}]</p>
+                {block.slotDescription && (
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{block.slotDescription}</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )
+    }
 
     case 'h1':
       return (
@@ -178,7 +236,7 @@ function renderBlock(block: Block, key: number, h2Number?: number) {
     case 'highlight':
       return (
         <div key={key} className="my-4 flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl px-5 py-4">
-          <span className="text-amber-400 text-lg mt-0.5">☆</span>
+          <span className="text-amber-400 text-lg mt-0.5">✦</span>
           <p className="text-[0.95rem] leading-relaxed text-amber-900 dark:text-amber-200 font-medium">
             {renderInline(block.content)}
           </p>
@@ -202,7 +260,7 @@ function renderBlock(block: Block, key: number, h2Number?: number) {
       return (
         <div key={key} className="my-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-5 py-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-blue-500 text-base">💡</span>
+            <span className="text-blue-500 text-base">💎</span>
             <span className="text-[0.7rem] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Clinical Pearl</span>
           </div>
           <p className="text-[0.93rem] leading-relaxed text-gray-800 dark:text-gray-200">
@@ -215,7 +273,7 @@ function renderBlock(block: Block, key: number, h2Number?: number) {
       return (
         <div key={key} className="my-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-5 py-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-emerald-500 text-base">🧠</span>
+            <span className="text-emerald-500 text-base">⭐</span>
             <span className="text-[0.7rem] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Must Memorize</span>
           </div>
           <p className="text-[0.93rem] leading-relaxed font-bold text-emerald-700 dark:text-emerald-300">
@@ -228,7 +286,7 @@ function renderBlock(block: Block, key: number, h2Number?: number) {
       return (
         <div key={key} className="my-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl px-5 py-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-purple-500 text-base">🎯</span>
+            <span className="text-purple-500 text-base">🗓️</span>
             <span className="text-[0.7rem] font-extrabold text-purple-600 dark:text-purple-400 uppercase tracking-widest">Previous Year</span>
           </div>
           <p className="text-[0.93rem] leading-relaxed text-gray-800 dark:text-gray-200">

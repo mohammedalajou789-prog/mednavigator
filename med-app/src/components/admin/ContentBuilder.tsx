@@ -4,6 +4,7 @@ import { useState } from 'react'
 import MNRenderer from '@/components/student/MNRenderer'
 import BulkImportTab from '@/components/admin/BulkImportTab'
 import VideoManager from '@/components/admin/VideoManager'
+import ImageUploader from '@/components/admin/ImageUploader'
 import { useRouter } from 'next/navigation'
 
 interface ExistingContent {
@@ -257,6 +258,13 @@ export default function ContentBuilder({
     )
   }
 
+  // Extract image slot numbers from content
+  function getImageSlots(content: string): number[] {
+    const matches = [...content.matchAll(/\[IMAGE_SLOT:(\d+)\]/g)]
+    const nums = matches.map(m => parseInt(m[1]))
+    return [...new Set(nums)].sort((a, b) => a - b)
+  }
+
   return (
     <div className="space-y-4">
 
@@ -322,85 +330,115 @@ export default function ContentBuilder({
 
       {/* Sheet & Summary */}
       {(activeTab === 'sheet' || activeTab === 'summary') && (
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Title</label>
-                <input
-                  type="text"
-                  value={activeTab === 'sheet' ? sheetTitle : summaryTitle}
-                  onChange={(e) => activeTab === 'sheet' ? setSheetTitle(e.target.value) : setSummaryTitle(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-medium text-gray-600">MN Syntax Content</label>
-                  {(activeTab === 'sheet' ? existingSheet : existingSummary) && (
-                    <span className="text-xs text-gray-400">Version {(activeTab === 'sheet' ? existingSheet : existingSummary)?.version}</span>
-                  )}
+        <>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={activeTab === 'sheet' ? sheetTitle : summaryTitle}
+                    onChange={(e) => activeTab === 'sheet' ? setSheetTitle(e.target.value) : setSummaryTitle(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
-                <textarea
-                  value={activeTab === 'sheet' ? sheetContent : summaryContent}
-                  onChange={(e) => activeTab === 'sheet' ? setSheetContent(e.target.value) : setSummaryContent(e.target.value)}
-                  rows={24}
-                  placeholder={`# ${lectureTitle}\n\n## Definition\n\n[IMPORTANT]\nWrite important content here.\n[/IMPORTANT]`}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-mono text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none leading-relaxed"
-                  spellCheck={false}
-                />
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-medium text-gray-600">MN Syntax Content</label>
+                    {(activeTab === 'sheet' ? existingSheet : existingSummary) && (
+                      <span className="text-xs text-gray-400">Version {(activeTab === 'sheet' ? existingSheet : existingSummary)?.version}</span>
+                    )}
+                  </div>
+                  <textarea
+                    value={activeTab === 'sheet' ? sheetContent : summaryContent}
+                    onChange={(e) => activeTab === 'sheet' ? setSheetContent(e.target.value) : setSummaryContent(e.target.value)}
+                    rows={24}
+                    placeholder={`# ${lectureTitle}\n\n## Definition\n\n[IMPORTANT]\nWrite important content here.\n[/IMPORTANT]`}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-mono text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none leading-relaxed"
+                    spellCheck={false}
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: 'Important', syntax: '\n[IMPORTANT]\n\n[/IMPORTANT]\n' },
+                    { label: 'Clinical Pearl', syntax: '\n[CLINICAL_PEARL]\n\n[/CLINICAL_PEARL]\n' },
+                    { label: 'Must Memorize', syntax: '\n[MUST_MEMORIZE]\n\n[/MUST_MEMORIZE]\n' },
+                    { label: 'Previous Year', syntax: '\n[PREVIOUS_YEAR]\n\n[/PREVIOUS_YEAR]\n' },
+                    { label: 'Highlight', syntax: '\n[HIGHLIGHT]\n\n[/HIGHLIGHT]\n' },
+                    { label: 'Image Slot', syntax: '\n[IMAGE_SLOT:1]\n' },
+                    { label: 'Table', syntax: '\n[TABLE]\n| Column 1 | Column 2 |\n|----------|----------|\n| Value 1  | Value 2  |\n[/TABLE]\n' },
+                  ].map((item) => (
+                    <button key={item.label}
+                      onClick={() => activeTab === 'sheet' ? setSheetContent(p => p + item.syntax) : setSummaryContent(p => p + item.syntax)}
+                      className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 transition-colors">
+                      + {item.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  { label: 'Important', syntax: '\n[IMPORTANT]\n\n[/IMPORTANT]\n' },
-                  { label: 'Clinical Pearl', syntax: '\n[CLINICAL_PEARL]\n\n[/CLINICAL_PEARL]\n' },
-                  { label: 'Must Memorize', syntax: '\n[MUST_MEMORIZE]\n\n[/MUST_MEMORIZE]\n' },
-                  { label: 'Previous Year', syntax: '\n[PREVIOUS_YEAR]\n\n[/PREVIOUS_YEAR]\n' },
-                  { label: 'Highlight', syntax: '\n[HIGHLIGHT]\n\n[/HIGHLIGHT]\n' },
-                  { label: 'Image Slot', syntax: '\n[IMAGE_SLOT:1]\n' },
-                  { label: 'Table', syntax: '\n[TABLE]\n| Column 1 | Column 2 |\n|----------|----------|\n| Value 1  | Value 2  |\n[/TABLE]\n' },
-                ].map((item) => (
-                  <button key={item.label}
-                    onClick={() => activeTab === 'sheet' ? setSheetContent(p => p + item.syntax) : setSummaryContent(p => p + item.syntax)}
-                    className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 transition-colors">
-                    + {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
 
-            {message && (
-              <div className={`rounded-lg px-4 py-3 text-sm ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
-                {message.text}
-              </div>
-            )}
-
-            <div className="flex items-center gap-3">
-              <button onClick={() => handleSaveContent('draft')} disabled={isSaving || isPublishing}
-                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
-                {isSaving ? 'Saving...' : 'Save Draft'}
-              </button>
-              <button onClick={() => handleSaveContent('published')} disabled={isSaving || isPublishing}
-                className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                {isPublishing ? 'Publishing...' : 'Publish'}
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Live Preview</h3>
-              <span className="text-xs text-gray-400 capitalize">{activeTab}</span>
-            </div>
-            <div className="p-5 overflow-y-auto max-h-[700px]">
-              {(activeTab === 'sheet' ? sheetContent : summaryContent) ? (
-                <MNRenderer content={activeTab === 'sheet' ? sheetContent : summaryContent} showWatermark={false} />
-              ) : (
-                <p className="text-sm text-gray-400 text-center py-12">Start typing to see preview.</p>
+              {message && (
+                <div className={`rounded-lg px-4 py-3 text-sm ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+                  {message.text}
+                </div>
               )}
+
+              <div className="flex items-center gap-3">
+                <button onClick={() => handleSaveContent('draft')} disabled={isSaving || isPublishing}
+                  className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
+                  {isSaving ? 'Saving...' : 'Save Draft'}
+                </button>
+                <button onClick={() => handleSaveContent('published')} disabled={isSaving || isPublishing}
+                  className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  {isPublishing ? 'Publishing...' : 'Publish'}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Live Preview</h3>
+                <span className="text-xs text-gray-400 capitalize">{activeTab}</span>
+              </div>
+              <div className="p-5 overflow-y-auto max-h-[700px]">
+                {(activeTab === 'sheet' ? sheetContent : summaryContent) ? (
+                  <MNRenderer content={activeTab === 'sheet' ? sheetContent : summaryContent} showWatermark={false} />
+                ) : (
+                  <p className="text-sm text-gray-400 text-center py-12">Start typing to see preview.</p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* Image Slots Manager */}
+          {(() => {
+            const content = activeTab === 'sheet' ? sheetContent : summaryContent
+            const existingId = activeTab === 'sheet' ? existingSheet?.id : existingSummary?.id
+            const uniqueSlots = getImageSlots(content)
+            if (uniqueSlots.length === 0 || !existingId) return null
+            return (
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-4">
+                  Image Slots ({uniqueSlots.length} found in content)
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {uniqueSlots.map(slot => (
+                    <ImageUploader
+                      key={slot}
+                      entityType={activeTab}
+                      entityId={existingId}
+                      slotNumber={slot}
+                      onUploadSuccess={(url, slotNumber) => {
+                        showMessage('success', `Image uploaded for slot ${slotNumber}!`)
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+        </>
       )}
 
       {/* Flashcards */}

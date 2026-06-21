@@ -51,6 +51,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin/analytics" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
             Analytics
           </Link>
+          <Link href="/admin/docs" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
+            Documentation
+          </Link>
         </nav>
 
         {/* Bottom */}

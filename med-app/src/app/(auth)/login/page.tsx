@@ -39,7 +39,7 @@ export default function LoginPage() {
       const { data: { user: authUser } } = await supabase.auth.getUser()
       if (!authUser) { setServerError('Login failed.'); return }
       const { data: userProfile } = await supabase
-        .from('users').select('role, status').eq('auth_user_id', authUser.id).single()
+        .from('users').select('role, status').eq('auth_user_id', authUser.id).single() as { data: { role: string; status: string } | null }
       if (userProfile?.status === 'disabled' || userProfile?.status === 'banned') {
         await supabase.auth.signOut()
         setServerError('Your account has been suspended.')

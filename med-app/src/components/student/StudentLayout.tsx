@@ -29,7 +29,11 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     function handleResize() {
       const mobile = window.innerWidth < 768
       setIsMobile(mobile)
-      if (!mobile) setSidebarOpen(true)
+      if (mobile) {
+        setSidebarOpen(false)
+      } else {
+        setSidebarOpen(true)
+      }
     }
     handleResize()
     window.addEventListener('resize', handleResize)

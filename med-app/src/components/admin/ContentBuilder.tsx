@@ -12,15 +12,48 @@ interface ExistingContent {
   version: number
 }
 
+interface Flashcard {
+  id?: string
+  front_text: string
+  back_text: string
+  tags: string[]
+}
+
+interface QuizQuestion {
+  id?: string
+  question: string
+  option_a: string
+  option_b: string
+  option_c: string
+  option_d: string
+  option_e: string
+  correct_answer: string
+  explanation: string
+  tags: string[]
+}
+
+interface PYQ {
+  id?: string
+  question: string
+  options: string[]
+  correct_answer: string
+  explanation: string
+  exam_year: number | ''
+  exam_type: string
+}
+
 interface Props {
   lectureId: string
   subjectId: string
   lectureTitle: string
   existingSheet: ExistingContent | null
   existingSummary: ExistingContent | null
+  existingFlashcards?: Flashcard[]
+  existingQuizQuestions?: QuizQuestion[]
+  existingPYQs?: PYQ[]
 }
 
-type TabType = 'sheet' | 'summary'
+type TabType = 'sheet' | 'summary' | 'flashcards' | 'quiz' | 'previous_years'
 
 export default function ContentBuilder({
   lectureId,
@@ -28,6 +61,9 @@ export default function ContentBuilder({
   lectureTitle,
   existingSheet,
   existingSummary,
+  existingFlashcards = [],
+  existingQuizQuestions = [],
+  existingPYQs = [],
 }: Props) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<TabType>('sheet')
@@ -43,12 +79,34 @@ export default function ContentBuilder({
   const [summaryTitle, setSummaryTitle] = useState(existingSummary?.title ?? lectureTitle + ' — Summary')
   const [summaryContent, setSummaryContent] = useState(existingSummary?.content ?? '')
 
+  // Flashcards state
+  const [flashcards, setFlashcards] = useState<Flashcard[]>(
+    existingFlashcards.length > 0 ? existingFlashcards : [{ front_text: '', back_text: '', tags: [] }]
+  )
+
+  // Quiz state
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>(
+    existingQuizQuestions.length > 0 ? existingQuizQuestions : [{
+      question: '', option_a: '', option_b: '', option_c: '', option_d: '', option_e: '',
+      correct_answer: 'A', explanation: '', tags: []
+    }]
+  )
+
+  // PYQ state
+  const [pyqs, setPyqs] = useState<PYQ[]>(
+    existingPYQs.length > 0 ? existingPYQs : [{
+      question: '', options: ['', '', '', '', ''], correct_answer: 'A',
+      explanation: '', exam_year: '', exam_type: 'final'
+    }]
+  )
+
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text })
     setTimeout(() => setMessage(null), 4000)
   }
 
-  const handleSave = async (status: 'draft' | 'published') => {
+  // Save sheet or summary
+  const handleSaveContent = async (status: 'draft' | 'published') => {
     const isPublish = status === 'published'
     if (isPublish) setIsPublishing(true)
     else setIsSaving(true)
@@ -63,112 +121,178 @@ export default function ContentBuilder({
       const res = await fetch(endpoint, {
         method: existingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: existingId,
-          lecture_id: lectureId,
-          title,
-          content,
-          status,
-        }),
+        body: JSON.stringify({ id: existingId, lecture_id: lectureId, title, content, status }),
       })
 
       const result = await res.json()
-
-      if (!res.ok) {
-        showMessage('error', result.error ?? 'Failed to save. Please try again.')
-        return
-      }
-
-      showMessage('success', isPublish ? 'Published successfully!' : 'Draft saved successfully!')
+      if (!res.ok) { showMessage('error', result.error ?? 'Failed to save.'); return }
+      showMessage('success', isPublish ? 'Published successfully!' : 'Draft saved!')
       router.refresh()
     } catch {
-      showMessage('error', 'Network error. Please check your connection.')
+      showMessage('error', 'Network error.')
     } finally {
       setIsSaving(false)
       setIsPublishing(false)
     }
   }
 
-  const activeTitle = activeTab === 'sheet' ? sheetTitle : summaryTitle
-  const setActiveTitle = activeTab === 'sheet' ? setSheetTitle : setSummaryTitle
-  const activeContent = activeTab === 'sheet' ? sheetContent : summaryContent
-  const setActiveContent = activeTab === 'sheet' ? setSheetContent : setSummaryContent
-  const existingActive = activeTab === 'sheet' ? existingSheet : existingSummary
+  // Save flashcards
+  const handleSaveFlashcards = async () => {
+    setIsSaving(true)
+    try {
+      const valid = flashcards.filter(f => f.front_text.trim() && f.back_text.trim())
+      if (valid.length === 0) { showMessage('error', 'Add at least one complete flashcard.'); return }
+
+      const res = await fetch('/api/admin/flashcards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lecture_id: lectureId, flashcards: valid }),
+      })
+
+      const result = await res.json()
+      if (!res.ok) { showMessage('error', result.error ?? 'Failed to save.'); return }
+      showMessage('success', `${valid.length} flashcard(s) saved!`)
+      router.refresh()
+    } catch {
+      showMessage('error', 'Network error.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Save quiz questions
+  const handleSaveQuiz = async () => {
+    setIsSaving(true)
+    try {
+      const valid = quizQuestions.filter(q => q.question.trim() && q.option_a.trim() && q.correct_answer.trim())
+      if (valid.length === 0) { showMessage('error', 'Add at least one complete question.'); return }
+
+      const res = await fetch('/api/admin/quiz-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lecture_id: lectureId, questions: valid }),
+      })
+
+      const result = await res.json()
+      if (!res.ok) { showMessage('error', result.error ?? 'Failed to save.'); return }
+      showMessage('success', `${valid.length} question(s) saved!`)
+      router.refresh()
+    } catch {
+      showMessage('error', 'Network error.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Save PYQs
+  const handleSavePYQs = async () => {
+    setIsSaving(true)
+    try {
+      const valid = pyqs.filter(q => q.question.trim() && q.correct_answer.trim())
+      if (valid.length === 0) { showMessage('error', 'Add at least one complete question.'); return }
+
+      const res = await fetch('/api/admin/previous-year-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lecture_id: lectureId, questions: valid }),
+      })
+
+      const result = await res.json()
+      if (!res.ok) { showMessage('error', result.error ?? 'Failed to save.'); return }
+      showMessage('success', `${valid.length} question(s) saved!`)
+      router.refresh()
+    } catch {
+      showMessage('error', 'Network error.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const TABS: { id: TabType; label: string }[] = [
+    { id: 'sheet', label: 'Sheet' },
+    { id: 'summary', label: 'Summary' },
+    { id: 'flashcards', label: 'Flashcards' },
+    { id: 'quiz', label: 'Quiz' },
+    { id: 'previous_years', label: 'Previous Years' },
+  ]
 
   return (
-    <div className="grid grid-cols-2 gap-6">
+    <div className="space-y-4">
 
-      {/* Left — Editor */}
-      <div className="space-y-4">
+      {/* Tab Bar */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+        <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-shrink-0 px-5 py-3 text-sm font-medium transition-colors capitalize ${
+                activeTab === tab.id
+                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              {tab.label}
+              {tab.id === 'sheet' && existingSheet && (
+                <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
+                  existingSheet.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                }`}>{existingSheet.status}</span>
+              )}
+              {tab.id === 'summary' && existingSummary && (
+                <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
+                  existingSummary.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                }`}>{existingSummary.status}</span>
+              )}
+              {tab.id === 'flashcards' && existingFlashcards.length > 0 && (
+                <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                  {existingFlashcards.length}
+                </span>
+              )}
+              {tab.id === 'quiz' && existingQuizQuestions.length > 0 && (
+                <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                  {existingQuizQuestions.length}
+                </span>
+              )}
+              {tab.id === 'previous_years' && existingPYQs.length > 0 && (
+                <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                  {existingPYQs.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {/* Tabs */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="flex border-b border-gray-200">
-            {(['sheet', 'summary'] as TabType[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-3 text-sm font-medium transition-colors capitalize
-                  ${activeTab === tab
-                    ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                {tab}
-                {tab === 'sheet' && existingSheet && (
-                  <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
-                    existingSheet.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {existingSheet.status}
-                  </span>
-                )}
-                {tab === 'summary' && existingSummary && (
-                  <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
-                    existingSummary.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {existingSummary.status}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          <div className="p-4 space-y-3">
-            {/* Title */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Title</label>
-              <input
-                type="text"
-                value={activeTitle}
-                onChange={(e) => setActiveTitle(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900
-                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* MN Syntax Editor */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-medium text-gray-600">MN Syntax Content</label>
-                {existingActive && (
-                  <span className="text-xs text-gray-400">Version {existingActive.version}</span>
-                )}
+      {/* Sheet & Summary — two column layout */}
+      {(activeTab === 'sheet' || activeTab === 'summary') && (
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={activeTab === 'sheet' ? sheetTitle : summaryTitle}
+                  onChange={(e) => activeTab === 'sheet' ? setSheetTitle(e.target.value) : setSummaryTitle(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
-              <textarea
-                value={activeContent}
-                onChange={(e) => setActiveContent(e.target.value)}
-                rows={24}
-                placeholder={`# ${lectureTitle}\n\n## Definition\n\n[IMPORTANT]\nWrite important content here.\n[/IMPORTANT]\n\n## Etiology\n\n[CLINICAL_PEARL]\nWrite clinical pearl here.\n[/CLINICAL_PEARL]`}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono
-                  text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500
-                  focus:border-transparent resize-none leading-relaxed"
-                spellCheck={false}
-              />
-            </div>
-
-            {/* Quick Insert Buttons */}
-            <div>
-              <p className="text-xs font-medium text-gray-600 mb-2">Quick Insert</p>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-medium text-gray-600">MN Syntax Content</label>
+                  {(activeTab === 'sheet' ? existingSheet : existingSummary) && (
+                    <span className="text-xs text-gray-400">Version {(activeTab === 'sheet' ? existingSheet : existingSummary)?.version}</span>
+                  )}
+                </div>
+                <textarea
+                  value={activeTab === 'sheet' ? sheetContent : summaryContent}
+                  onChange={(e) => activeTab === 'sheet' ? setSheetContent(e.target.value) : setSummaryContent(e.target.value)}
+                  rows={24}
+                  placeholder={`# ${lectureTitle}\n\n## Definition\n\n[IMPORTANT]\nWrite important content here.\n[/IMPORTANT]`}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-mono text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none leading-relaxed"
+                  spellCheck={false}
+                />
+              </div>
               <div className="flex flex-wrap gap-1.5">
                 {[
                   { label: 'Important', syntax: '\n[IMPORTANT]\n\n[/IMPORTANT]\n' },
@@ -179,69 +303,258 @@ export default function ContentBuilder({
                   { label: 'Image Slot', syntax: '\n[IMAGE_SLOT:1]\n' },
                   { label: 'Table', syntax: '\n[TABLE]\n| Column 1 | Column 2 |\n|----------|----------|\n| Value 1  | Value 2  |\n[/TABLE]\n' },
                 ].map((item) => (
-                  <button
-                    key={item.label}
-                    onClick={() => setActiveContent(prev => prev + item.syntax)}
-                    className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-lg
-                      hover:bg-gray-200 transition-colors"
-                  >
+                  <button key={item.label}
+                    onClick={() => activeTab === 'sheet' ? setSheetContent(p => p + item.syntax) : setSummaryContent(p => p + item.syntax)}
+                    className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 transition-colors">
                     + {item.label}
                   </button>
                 ))}
               </div>
             </div>
+
+            {message && (
+              <div className={`rounded-lg px-4 py-3 text-sm ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+                {message.text}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <button onClick={() => handleSaveContent('draft')} disabled={isSaving || isPublishing}
+                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
+                {isSaving ? 'Saving...' : 'Save Draft'}
+              </button>
+              <button onClick={() => handleSaveContent('published')} disabled={isSaving || isPublishing}
+                className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                {isPublishing ? 'Publishing...' : 'Publish'}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Live Preview</h3>
+              <span className="text-xs text-gray-400 capitalize">{activeTab}</span>
+            </div>
+            <div className="p-5 overflow-y-auto max-h-[700px]">
+              {(activeTab === 'sheet' ? sheetContent : summaryContent) ? (
+                <MNRenderer content={activeTab === 'sheet' ? sheetContent : summaryContent} showWatermark={false} />
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-12">Start typing to see preview.</p>
+              )}
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Message */}
-        {message && (
-          <div className={`rounded-lg px-4 py-3 text-sm ${
-            message.type === 'success'
-              ? 'bg-green-50 border border-green-200 text-green-700'
-              : 'bg-red-50 border border-red-200 text-red-700'
-          }`}>
-            {message.text}
-          </div>
-        )}
+      {/* Flashcards */}
+      {activeTab === 'flashcards' && (
+        <div className="space-y-4">
+          {flashcards.map((card, index) => (
+            <div key={index} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Card {index + 1}</span>
+                {flashcards.length > 1 && (
+                  <button onClick={() => setFlashcards(prev => prev.filter((_, i) => i !== index))}
+                    className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Front (Question)</label>
+                  <textarea rows={4} value={card.front_text}
+                    onChange={(e) => setFlashcards(prev => prev.map((c, i) => i === index ? { ...c, front_text: e.target.value } : c))}
+                    placeholder="What is the definition of..."
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Back (Answer)</label>
+                  <textarea rows={4} value={card.back_text}
+                    onChange={(e) => setFlashcards(prev => prev.map((c, i) => i === index ? { ...c, back_text: e.target.value } : c))}
+                    placeholder="The answer is..."
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                </div>
+              </div>
+            </div>
+          ))}
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => handleSave('draft')}
-            disabled={isSaving || isPublishing}
-            className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300
-              rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
-          >
-            {isSaving ? 'Saving...' : 'Save Draft'}
+          <button onClick={() => setFlashcards(prev => [...prev, { front_text: '', back_text: '', tags: [] }])}
+            className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+            + Add Flashcard
           </button>
-          <button
-            onClick={() => handleSave('published')}
-            disabled={isSaving || isPublishing || !activeContent.trim()}
-            className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg
-              hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {isPublishing ? 'Publishing...' : 'Publish'}
-          </button>
-        </div>
-      </div>
 
-      {/* Right — Live Preview */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-sm font-medium text-gray-700">Live Preview</h3>
-          <span className="text-xs text-gray-400 capitalize">{activeTab}</span>
-        </div>
-        <div className="p-5 overflow-y-auto max-h-[700px]">
-          {activeContent ? (
-            <MNRenderer content={activeContent} showWatermark={false} />
-          ) : (
-            <p className="text-sm text-gray-400 text-center py-12">
-              Start typing in the editor to see a preview here.
-            </p>
+          {message && (
+            <div className={`rounded-lg px-4 py-3 text-sm ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+              {message.text}
+            </div>
           )}
+
+          <button onClick={handleSaveFlashcards} disabled={isSaving}
+            className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+            {isSaving ? 'Saving...' : `Save ${flashcards.filter(f => f.front_text && f.back_text).length} Flashcard(s)`}
+          </button>
         </div>
-      </div>
+      )}
+
+      {/* Quiz */}
+      {activeTab === 'quiz' && (
+        <div className="space-y-4">
+          {quizQuestions.map((q, index) => (
+            <div key={index} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Question {index + 1}</span>
+                {quizQuestions.length > 1 && (
+                  <button onClick={() => setQuizQuestions(prev => prev.filter((_, i) => i !== index))}
+                    className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                )}
+              </div>
+              <div className="space-y-3">
+                <textarea rows={3} value={q.question}
+                  onChange={(e) => setQuizQuestions(prev => prev.map((item, i) => i === index ? { ...item, question: e.target.value } : item))}
+                  placeholder="Write the question here..."
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+
+                <div className="grid grid-cols-2 gap-2">
+                  {(['A', 'B', 'C', 'D', 'E'] as const).map((letter) => {
+                    const field = `option_${letter.toLowerCase()}` as keyof QuizQuestion
+                    return (
+                      <div key={letter} className="flex items-center gap-2">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                          q.correct_answer === letter ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'
+                        }`}>{letter}</span>
+                        <input type="text" value={q[field] as string}
+                          onChange={(e) => setQuizQuestions(prev => prev.map((item, i) => i === index ? { ...item, [field]: e.target.value } : item))}
+                          placeholder={`Option ${letter}`}
+                          className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Correct Answer</label>
+                    <select value={q.correct_answer}
+                      onChange={(e) => setQuizQuestions(prev => prev.map((item, i) => i === index ? { ...item, correct_answer: e.target.value } : item))}
+                      className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {['A', 'B', 'C', 'D', 'E'].map(l => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Explanation</label>
+                    <input type="text" value={q.explanation}
+                      onChange={(e) => setQuizQuestions(prev => prev.map((item, i) => i === index ? { ...item, explanation: e.target.value } : item))}
+                      placeholder="Why is this the correct answer?"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <button onClick={() => setQuizQuestions(prev => [...prev, { question: '', option_a: '', option_b: '', option_c: '', option_d: '', option_e: '', correct_answer: 'A', explanation: '', tags: [] }])}
+            className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+            + Add Question
+          </button>
+
+          {message && (
+            <div className={`rounded-lg px-4 py-3 text-sm ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+              {message.text}
+            </div>
+          )}
+
+          <button onClick={handleSaveQuiz} disabled={isSaving}
+            className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+            {isSaving ? 'Saving...' : `Save ${quizQuestions.filter(q => q.question && q.option_a).length} Question(s)`}
+          </button>
+        </div>
+      )}
+
+      {/* Previous Years */}
+      {activeTab === 'previous_years' && (
+        <div className="space-y-4">
+          {pyqs.map((q, index) => (
+            <div key={index} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Question {index + 1}</span>
+                {pyqs.length > 1 && (
+                  <button onClick={() => setPyqs(prev => prev.filter((_, i) => i !== index))}
+                    className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                )}
+              </div>
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Exam Year</label>
+                    <input type="number" value={q.exam_year}
+                      onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, exam_year: e.target.value ? parseInt(e.target.value) : '' } : item))}
+                      placeholder="2024"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Exam Type</label>
+                    <select value={q.exam_type}
+                      onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, exam_type: e.target.value } : item))}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="final">Final</option>
+                      <option value="midterm">Midterm</option>
+                      <option value="quiz">Quiz</option>
+                      <option value="practical">Practical</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Correct Answer</label>
+                    <select value={q.correct_answer}
+                      onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, correct_answer: e.target.value } : item))}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {['A', 'B', 'C', 'D', 'E'].map(l => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <textarea rows={3} value={q.question}
+                  onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, question: e.target.value } : item))}
+                  placeholder="Write the exam question here..."
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+
+                <div className="grid grid-cols-2 gap-2">
+                  {q.options.map((opt, optIndex) => (
+                    <div key={optIndex} className="flex items-center gap-2">
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                        q.correct_answer === String.fromCharCode(65 + optIndex) ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'
+                      }`}>{String.fromCharCode(65 + optIndex)}</span>
+                      <input type="text" value={opt}
+                        onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, options: item.options.map((o, oi) => oi === optIndex ? e.target.value : o) } : item))}
+                        placeholder={`Option ${String.fromCharCode(65 + optIndex)}`}
+                        className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                  ))}
+                </div>
+
+                <input type="text" value={q.explanation}
+                  onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, explanation: e.target.value } : item))}
+                  placeholder="Explanation (optional)"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </div>
+          ))}
+
+          <button onClick={() => setPyqs(prev => [...prev, { question: '', options: ['', '', '', '', ''], correct_answer: 'A', explanation: '', exam_year: '', exam_type: 'final' }])}
+            className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+            + Add Question
+          </button>
+
+          {message && (
+            <div className={`rounded-lg px-4 py-3 text-sm ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+              {message.text}
+            </div>
+          )}
+
+          <button onClick={handleSavePYQs} disabled={isSaving}
+            className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+            {isSaving ? 'Saving...' : `Save ${pyqs.filter(q => q.question).length} Question(s)`}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
-

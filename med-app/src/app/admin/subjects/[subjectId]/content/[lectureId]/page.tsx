@@ -24,7 +24,6 @@ export default async function ContentBuilderPage({ params }: Props) {
     redirect('/login')
   }
 
-  // Load lecture
   const { data: lecture } = await supabase
     .from('lectures')
     .select('id, title, status, subject_id, chapter_id, sub_subject_id')
@@ -33,7 +32,6 @@ export default async function ContentBuilderPage({ params }: Props) {
 
   if (!lecture) notFound()
 
-  // Load subject
   const { data: subject } = await supabase
     .from('subjects')
     .select('id, name, universities(name)')
@@ -42,7 +40,6 @@ export default async function ContentBuilderPage({ params }: Props) {
 
   if (!subject) notFound()
 
-  // Load chapter or sub-subject name
   let groupName = ''
   if (lecture.chapter_id) {
     const { data: chapter } = await supabase
@@ -60,36 +57,37 @@ export default async function ContentBuilderPage({ params }: Props) {
     groupName = sub?.title ?? ''
   }
 
-  // Load existing content
-  const { data: sheet } = await supabase
-    .from('sheets')
-    .select('id, title, content, status, version')
-    .eq('lecture_id', lectureId)
-    .maybeSingle()
-
-  const { data: summary } = await supabase
-    .from('summaries')
-    .select('id, title, content, status, version')
-    .eq('lecture_id', lectureId)
-    .maybeSingle()
+  // Load all content types
+  const [
+    { data: sheet },
+    { data: summary },
+    { data: flashcards },
+    { data: quizQuestions },
+    { data: pyqs },
+  ] = await Promise.all([
+    supabase.from('sheets').select('id, title, content, status, version').eq('lecture_id', lectureId).maybeSingle(),
+    supabase.from('summaries').select('id, title, content, status, version').eq('lecture_id', lectureId).maybeSingle(),
+    supabase.from('flashcards').select('id, front_text, back_text, tags').eq('lecture_id', lectureId).order('display_order'),
+    supabase.from('quiz_questions').select('id, question, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, tags').eq('lecture_id', lectureId),
+    supabase.from('previous_year_questions').select('id, question, options, correct_answer, explanation, exam_year, exam_type').eq('lecture_id', lectureId),
+  ])
 
   const university = subject.universities as { name: string } | null
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top bar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <nav className="flex items-center gap-2 text-sm text-gray-500">
-            <Link href="/admin" className="hover:text-gray-900 transition-colors">Dashboard</Link>
+            <Link href="/admin" className="hover:text-gray-900 dark:hover:text-white transition-colors">Dashboard</Link>
             <span>/</span>
-            <Link href="/admin/subjects" className="hover:text-gray-900 transition-colors">My Subjects</Link>
+            <Link href="/admin/subjects" className="hover:text-gray-900 dark:hover:text-white transition-colors">My Subjects</Link>
             <span>/</span>
-            <Link href={`/admin/subjects/${subjectId}`} className="hover:text-gray-900 transition-colors">
+            <Link href={`/admin/subjects/${subjectId}`} className="hover:text-gray-900 dark:hover:text-white transition-colors">
               {subject.name}
             </Link>
             <span>/</span>
-            <span className="text-gray-900 font-medium">{lecture.title}</span>
+            <span className="text-gray-900 dark:text-white font-medium">{lecture.title}</span>
           </nav>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">{university?.name}</span>
@@ -97,9 +95,7 @@ export default async function ContentBuilderPage({ params }: Props) {
             <span className="text-xs text-gray-500">{groupName}</span>
             <span className="text-gray-300">|</span>
             <span className={`text-xs px-2 py-0.5 rounded-full ${
-              lecture.status === 'published'
-                ? 'bg-green-50 text-green-700'
-                : 'bg-amber-50 text-amber-700'
+              lecture.status === 'published' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
             }`}>
               {lecture.status}
             </span>
@@ -107,7 +103,6 @@ export default async function ContentBuilderPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Content Builder */}
       <div className="max-w-7xl mx-auto px-6 py-6">
         <ContentBuilder
           lectureId={lectureId}
@@ -115,6 +110,13 @@ export default async function ContentBuilderPage({ params }: Props) {
           lectureTitle={lecture.title}
           existingSheet={sheet ?? null}
           existingSummary={summary ?? null}
+          existingFlashcards={flashcards ?? []}
+          existingQuizQuestions={quizQuestions ?? []}
+          existingPYQs={(pyqs ?? []).map(q => ({
+            ...q,
+            options: Array.isArray(q.options) ? q.options : [],
+            exam_year: q.exam_year ?? '',
+          }))}
         />
       </div>
     </div>

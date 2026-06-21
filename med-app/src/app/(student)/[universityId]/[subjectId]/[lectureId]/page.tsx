@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import LectureHub from '@/components/student/LectureHub'
+import PersonalNote from '@/components/student/PersonalNote'
 import { getSheetByLectureId } from '@/lib/services/sheets'
 import { getSummaryByLectureId } from '@/lib/services/summaries'
 import { getFlashcardsByLectureId } from '@/lib/services/flashcards'
@@ -54,6 +55,18 @@ export default async function LecturePage({ params }: PageProps) {
     redirect(`/${universityId}`)
   }
 
+  // Load note for this user + lecture
+  let existingNote = ''
+  if (userId) {
+    const { data: noteData } = await supabase
+      .from('user_notes')
+      .select('note_content')
+      .eq('user_id', userId)
+      .eq('lecture_id', lectureId)
+      .single()
+    existingNote = noteData?.note_content ?? ''
+  }
+
   const [
     sheetResult,
     summaryResult,
@@ -75,23 +88,34 @@ export default async function LecturePage({ params }: PageProps) {
   ])
 
   return (
-    <LectureHub
-      lecture={lecture}
-      subject={subject}
-      universityId={universityId}
-      userName={userName ?? undefined}
-      userId={userId ?? undefined}
-      sheet={sheetResult.data}
-      sheetLocked={sheetResult.locked}
-      summary={summaryResult.data}
-      summaryLocked={summaryResult.locked}
-      flashcards={flashcardsResult.data}
-      flashcardsLocked={flashcardsResult.locked}
-      quizQuestions={quizResult.data}
-      quizLocked={quizResult.locked}
-      previousYearQuestions={pyqResult.data}
-      pyqLocked={pyqResult.locked}
-      videos={videos ?? []}
-    />
+    <div>
+      <LectureHub
+        lecture={lecture}
+        subject={subject}
+        universityId={universityId}
+        userName={userName ?? undefined}
+        userId={userId ?? undefined}
+        sheet={sheetResult.data}
+        sheetLocked={sheetResult.locked}
+        summary={summaryResult.data}
+        summaryLocked={summaryResult.locked}
+        flashcards={flashcardsResult.data}
+        flashcardsLocked={flashcardsResult.locked}
+        quizQuestions={quizResult.data}
+        quizLocked={quizResult.locked}
+        previousYearQuestions={pyqResult.data}
+        pyqLocked={pyqResult.locked}
+        videos={videos ?? []}
+      />
+      {userId && (
+        <div className="max-w-5xl mx-auto px-4 pb-8">
+          <PersonalNote
+            lectureId={lectureId}
+            initialNote={existingNote}
+            userId={userId}
+          />
+        </div>
+      )}
+    </div>
   )
 }

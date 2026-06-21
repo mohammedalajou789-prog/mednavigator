@@ -1,6 +1,7 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import StarRating from '@/components/student/StarRating'
 
 interface PageProps {
   params: Promise<{ universityId: string; subjectId: string }>
@@ -61,19 +62,27 @@ export default async function SubjectPage({ params }: PageProps) {
   // Progress tracking
   let progressData: { lecture_id: string; completed: boolean; content_type: string; last_accessed_at: string }[] = []
   let continueReading: { lecture_id: string; content_type: string; last_accessed_at: string } | null = null
+  let checklistData: { lecture_id: string; stars: number }[] = []
 
   if (userId && lectures && lectures.length > 0) {
     const lectureIds = lectures.map(l => l.id)
 
-    const { data: progress } = await supabase
-      .from('user_progress')
-      .select('lecture_id, completed, content_type, last_accessed_at')
-      .eq('user_id', userId)
-      .in('lecture_id', lectureIds)
+    const [{ data: progress }, { data: checklist }] = await Promise.all([
+      supabase
+        .from('user_progress')
+        .select('lecture_id, completed, content_type, last_accessed_at')
+        .eq('user_id', userId)
+        .in('lecture_id', lectureIds),
+      supabase
+        .from('checklist_progress')
+        .select('lecture_id, stars')
+        .eq('user_id', userId)
+        .in('lecture_id', lectureIds),
+    ])
 
     progressData = progress ?? []
+    checklistData = (checklist ?? []).filter(c => c.lecture_id !== null) as { lecture_id: string; stars: number }[]
 
-    // Find the most recently accessed lecture for Continue Reading
     const sorted = [...progressData].sort(
       (a, b) => new Date(b.last_accessed_at).getTime() - new Date(a.last_accessed_at).getTime()
     )
@@ -89,6 +98,10 @@ export default async function SubjectPage({ params }: PageProps) {
 
   function getLectureProgress(lectureId: string) {
     return progressData.find(p => p.lecture_id === lectureId)
+  }
+
+  function getLectureStars(lectureId: string): number {
+    return checklistData.find(c => c.lecture_id === lectureId)?.stars ?? 0
   }
 
   const continueReadingLecture = continueReading
@@ -221,9 +234,16 @@ export default async function SubjectPage({ params }: PageProps) {
                             <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Preview</span>
                           )}
                         </div>
-                        <svg className="w-4 h-4 text-[#64748B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
+                        <div className="flex items-center gap-3">
+                          <StarRating
+                            lectureId={lecture.id}
+                            initialStars={getLectureStars(lecture.id)}
+                            userId={userId ?? undefined}
+                          />
+                          <svg className="w-4 h-4 text-[#64748B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
                       </Link>
                     )
                   })

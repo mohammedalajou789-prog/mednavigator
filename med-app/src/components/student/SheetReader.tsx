@@ -5,13 +5,14 @@ import MNRenderer from './MNRenderer'
 
 interface SheetReaderProps {
   content: string
-  title: string
+  title?: string
   isSummary?: boolean
   userName?: string
   imageSlots?: Record<number, string>
+  onProgressUpdate?: (pct: number) => void
 }
 
-export default function SheetReader({ content, title, isSummary = false, userName, imageSlots = {} }: SheetReaderProps) {
+export default function SheetReader({ content, title = '', isSummary = false, userName, imageSlots = {}, onProgressUpdate }: SheetReaderProps) {
   const [progress, setProgress] = useState(0)
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -21,7 +22,11 @@ export default function SheetReader({ content, title, isSummary = false, userNam
       const el = contentRef.current
       const scrollTop = el.scrollTop
       const scrollHeight = el.scrollHeight - el.clientHeight
-      if (scrollHeight > 0) setProgress(Math.round((scrollTop / scrollHeight) * 100))
+      if (scrollHeight > 0) {
+        const pct = Math.round((scrollTop / scrollHeight) * 100)
+        setProgress(pct)
+        onProgressUpdate?.(pct)
+      }
     }
     const el = contentRef.current
     el?.addEventListener('scroll', handleScroll)

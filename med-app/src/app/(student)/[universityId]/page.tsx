@@ -1,96 +1,82 @@
-import { createClient as createServerClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import SubjectCard from '@/components/student/SubjectCard'
+import type { Subject } from '@/types/database'
+import { cn } from '@/lib/utils/cn'
 
-interface PageProps {
-  params: Promise<{ universityId: string }>
+interface SubjectCardProps {
+  subject: Subject
+  universityId: string
 }
 
-export default async function UniversityPage({ params }: PageProps) {
-  const { universityId } = await params
-  const supabase = await createServerClient()
+const TYPE_LABELS = {
+  standard: 'Standard',
+  system: 'System',
+  clinical: 'Clinical',
+} as const
 
-  const { data: university } = await supabase
-    .from('universities')
-    .select('*')
-    .eq('id', universityId)
-    .eq('is_active', true)
-    .single()
+const TYPE_COLORS = {
+  standard: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  system: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+  clinical: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
+} as const
 
-  if (!university) notFound()
+const ACCESS_BADGES = {
+  free: { label: 'Free', className: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
+  premium: { label: 'Premium', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
+  mixed: { label: 'Mixed', className: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' },
+} as const
 
-  const { data: subjects } = await supabase
-    .from('subjects')
-    .select('*')
-    .eq('university_id', universityId)
-    .eq('is_published', true)
-    .eq('is_active', true)
-    .order('name')
-
-  const preclinical = subjects?.filter(s => s.category === 'preclinical') ?? []
-  const clinicalMajor = subjects?.filter(s => s.category === 'clinical_major') ?? []
-  const clinicalMinor = subjects?.filter(s => s.category === 'clinical_minor') ?? []
+export default function SubjectCard({ subject, universityId }: SubjectCardProps) {
+  const typeLabel = TYPE_LABELS[subject.subject_type] ?? subject.subject_type
+  const typeColor = TYPE_COLORS[subject.subject_type] ?? TYPE_COLORS.standard
+  const accessBadge = ACCESS_BADGES[subject.access_mode as keyof typeof ACCESS_BADGES] ?? ACCESS_BADGES.free
+  const isPremium = subject.access_mode === 'premium'
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <div className="flex items-center gap-2 text-sm text-[#64748B] mb-3">
-          <Link href="/" className="hover:text-[#2563EB]">Home</Link>
-          <span>/</span>
-          <span className="text-[#0F172A] font-medium">{university.name}</span>
+    <Link
+      href={`/${universityId}/${subject.id}`}
+      className="group relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all flex flex-col"
+    >
+      {/* Top row — badges + lock */}
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={cn('text-xs font-medium px-2 py-0.5 rounded-md', typeColor)}>
+            {typeLabel}
+          </span>
+          <span className={cn('text-xs font-medium px-2 py-0.5 rounded-md', accessBadge.className)}>
+            {accessBadge.label}
+          </span>
         </div>
-        <h1 className="text-2xl font-semibold text-[#0F172A]">{university.name}</h1>
-        <p className="text-sm text-[#64748B] mt-1">{subjects?.length ?? 0} subjects available</p>
+        {isPremium && (
+          <svg className="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+          </svg>
+        )}
       </div>
 
-      {preclinical.length > 0 && (
-        <section className="mb-10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-1 h-6 bg-[#2563EB] rounded-full" />
-            <h2 className="text-lg font-semibold text-[#0F172A]">Pre-Clinical</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {preclinical.map(subject => (
-              <SubjectCard key={subject.id} subject={subject} universityId={universityId} />
-            ))}
-          </div>
-        </section>
+      {/* Subject name */}
+      <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-snug flex-1">
+        {subject.name}
+      </h3>
+
+      {/* Description */}
+      {subject.description && (
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2 leading-relaxed">
+          {subject.description}
+        </p>
       )}
 
-      {clinicalMajor.length > 0 && (
-        <section className="mb-10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-1 h-6 bg-[#7C3AED] rounded-full" />
-            <h2 className="text-lg font-semibold text-[#0F172A]">Clinical — Major</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {clinicalMajor.map(subject => (
-              <SubjectCard key={subject.id} subject={subject} universityId={universityId} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {clinicalMinor.length > 0 && (
-        <section className="mb-10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-1 h-6 bg-[#16A34A] rounded-full" />
-            <h2 className="text-lg font-semibold text-[#0F172A]">Clinical — Minor</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {clinicalMinor.map(subject => (
-              <SubjectCard key={subject.id} subject={subject} universityId={universityId} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {subjects?.length === 0 && (
-        <div className="text-center py-20 text-[#64748B]">
-          <p>No subjects available yet.</p>
-        </div>
-      )}
-    </div>
+      {/* Bottom row */}
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+        <span className="text-xs text-slate-400 dark:text-slate-500">
+          {subject.price > 0 ? `${subject.price} JOD` : 'Free access'}
+        </span>
+        <svg
+          className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+      </div>
+    </Link>
   )
 }

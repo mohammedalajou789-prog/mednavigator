@@ -210,9 +210,10 @@ function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: R
         </h1>
       )
 
-    case 'h2':
+    case 'h2': {
+      const sectionId = `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
       return (
-        <div key={key} className="mt-10 mb-4 first:mt-0">
+        <div key={key} id={sectionId} className="mt-10 mb-4 first:mt-0 scroll-mt-6">
           <div className="flex items-center gap-3">
             <span className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">
               {h2Number}
@@ -224,6 +225,7 @@ function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: R
           <div className="mt-2 h-[2px] bg-gradient-to-r from-blue-100 to-transparent dark:from-blue-900" />
         </div>
       )
+    }
 
     case 'h3':
       return (

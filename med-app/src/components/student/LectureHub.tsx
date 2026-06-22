@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import SheetReader from '@/components/student/SheetReader'
 import FlashcardsViewer from '@/components/student/FlashcardsViewer'
 import QuizViewer from '@/components/student/QuizViewer'
@@ -58,8 +58,18 @@ type TabId = 'videos' | 'sheet' | 'summary' | 'flashcards' | 'quiz' | 'previous_
 interface Tab {
   id: TabId
   label: string
+  icon: string
   hasContent: boolean
   locked: boolean
+}
+
+const TAB_ICONS: Record<TabId, string> = {
+  videos: '▶',
+  sheet: '📄',
+  summary: '📝',
+  flashcards: '🃏',
+  quiz: '❓',
+  previous_years: '📅',
 }
 
 export default function LectureHub({
@@ -82,156 +92,260 @@ export default function LectureHub({
   sheetImageSlots = {},
   summaryImageSlots = {},
 }: LectureHubProps) {
+
   const tabs: Tab[] = [
-    { id: 'videos', label: 'Videos', hasContent: videos.length > 0, locked: false },
-    { id: 'sheet', label: 'Sheet', hasContent: !!sheet || sheetLocked, locked: sheetLocked },
-    { id: 'summary', label: 'Summary', hasContent: !!summary || summaryLocked, locked: summaryLocked },
-    { id: 'flashcards', label: 'Flashcards', hasContent: (Array.isArray(flashcards) && flashcards.length > 0) || flashcardsLocked, locked: flashcardsLocked },
-    { id: 'quiz', label: 'Quiz', hasContent: (Array.isArray(quizQuestions) && quizQuestions.length > 0) || quizLocked, locked: quizLocked },
-    { id: 'previous_years', label: 'Previous Years', hasContent: (Array.isArray(previousYearQuestions) && previousYearQuestions.length > 0) || pyqLocked, locked: pyqLocked },
+    { id: 'videos', label: 'Videos', icon: TAB_ICONS.videos, hasContent: videos.length > 0, locked: false },
+    { id: 'sheet', label: 'Sheet', icon: TAB_ICONS.sheet, hasContent: !!sheet || sheetLocked, locked: sheetLocked },
+    { id: 'summary', label: 'Summary', icon: TAB_ICONS.summary, hasContent: !!summary || summaryLocked, locked: summaryLocked },
+    { id: 'flashcards', label: 'Flashcards', icon: TAB_ICONS.flashcards, hasContent: (Array.isArray(flashcards) && flashcards.length > 0) || flashcardsLocked, locked: flashcardsLocked },
+    { id: 'quiz', label: 'Quiz', icon: TAB_ICONS.quiz, hasContent: (Array.isArray(quizQuestions) && quizQuestions.length > 0) || quizLocked, locked: quizLocked },
+    { id: 'previous_years', label: 'Previous Years', icon: TAB_ICONS.previous_years, hasContent: (Array.isArray(previousYearQuestions) && previousYearQuestions.length > 0) || pyqLocked, locked: pyqLocked },
   ]
 
   const visibleTabs = tabs.filter((t) => t.hasContent)
   const [activeTab, setActiveTab] = useState<TabId>(visibleTabs[0]?.id ?? 'sheet')
+  const [tocItems, setTocItems] = useState<{ id: string; text: string; level: number }[]>([])
+  const [note, setNote] = useState('')
+  const [noteSaving, setNoteSaving] = useState(false)
+  const [noteSaved, setNoteSaved] = useState(false)
+  const noteTimer = useRef<NodeJS.Timeout | null>(null)
 
+  // Extract TOC from sheet/summary content
+  useEffect(() => {
+    const content = activeTab === 'sheet'
+      ? (sheet as { content: string } | null)?.content
+      : activeTab === 'summary'
+      ? (summary as { content: string } | null)?.content
+      : null
+
+    if (!content) { setTocItems([]); return }
+
+    const items: { id: string; text: string; level: number }[] = []
+    const lines = content.split('\n')
+    lines.forEach(line => {
+      const h1 = line.match(/^#\s+(.+)/)
+      const h2 = line.match(/^##\s+(.+)/)
+      const h3 = line.match(/^###\s+(.+)/)
+      if (h1) items.push({ id: h1[1].toLowerCase().replace(/\s+/g, '-'), text: h1[1], level: 1 })
+      else if (h2) items.push({ id: h2[1].toLowerCase().replace(/\s+/g, '-'), text: h2[1], level: 2 })
+      else if (h3) items.push({ id: h3[1].toLowerCase().replace(/\s+/g, '-'), text: h3[1], level: 3 })
+    })
+    setTocItems(items)
+  }, [activeTab, sheet, summary])
+
+  // Load note
+  useEffect(() => {
+    if (!userId) return
+    const supabase = createClient()
+    supabase
+      .from('user_notes')
+      .select('note_content')
+      .eq('user_id', userId)
+      .eq('lecture_id', lecture.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.note_content) setNote(data.note_content)
+      })
+  }, [userId, lecture.id])
+
+  // Auto-save note
+  function handleNoteChange(val: string) {
+    setNote(val)
+    setNoteSaved(false)
+    if (noteTimer.current) clearTimeout(noteTimer.current)
+    noteTimer.current = setTimeout(async () => {
+      if (!userId) return
+      setNoteSaving(true)
+      const supabase = createClient()
+      await supabase.from('user_notes').upsert({
+        user_id: userId,
+        lecture_id: lecture.id,
+        note_content: val,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,lecture_id' })
+      setNoteSaving(false)
+      setNoteSaved(true)
+      setTimeout(() => setNoteSaved(false), 2000)
+    }, 1000)
+  }
+
+  // Record progress
   useEffect(() => {
     if (!userId || !lecture.id) return
-
+    const supabase = createClient()
     async function recordProgress() {
-      const supabase = createClient()
       const { data: existing } = await supabase
         .from('user_progress')
-        .select('id, completed')
+        .select('id')
         .eq('user_id', userId!)
         .eq('lecture_id', lecture.id)
         .eq('content_type', activeTab)
         .single()
 
       if (existing) {
-        await supabase
-          .from('user_progress')
-          .update({
-            last_accessed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id)
+        await supabase.from('user_progress').update({ last_accessed_at: new Date().toISOString() }).eq('id', existing.id)
       } else {
-        await supabase
-          .from('user_progress')
-          .insert({
-            user_id: userId,
-            lecture_id: lecture.id,
-            content_type: activeTab,
-            progress_percentage: 0,
-            completed: false,
-            last_accessed_at: new Date().toISOString(),
-          })
+        await supabase.from('user_progress').insert({
+          user_id: userId,
+          lecture_id: lecture.id,
+          content_type: activeTab,
+          progress_percentage: 0,
+          completed: false,
+          last_accessed_at: new Date().toISOString(),
+        })
       }
     }
-
     recordProgress()
   }, [activeTab, userId, lecture.id])
 
   async function markAsCompleted() {
     if (!userId) return
     const supabase = createClient()
-    await supabase
-      .from('user_progress')
-      .upsert({
-        user_id: userId,
-        lecture_id: lecture.id,
-        content_type: activeTab,
-        progress_percentage: 100,
-        completed: true,
-        last_accessed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id,lecture_id,content_type'
-      })
+    await supabase.from('user_progress').upsert({
+      user_id: userId,
+      lecture_id: lecture.id,
+      content_type: activeTab,
+      progress_percentage: 100,
+      completed: true,
+      last_accessed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,lecture_id,content_type' })
   }
 
-  return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
+  const showSidebar = (activeTab === 'sheet' || activeTab === 'summary') && !sheetLocked && !summaryLocked
 
-      {/* Lecture header */}
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm text-slate-400 dark:text-slate-500 mb-1">{subject.name}</p>
-          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">{lecture.title}</h1>
-          {lecture.description && (
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{lecture.description}</p>
+  return (
+    <div className="flex flex-col h-full">
+
+      {/* Header */}
+      <div className="px-6 pt-6 pb-0">
+        <div className="flex items-start justify-between gap-4 mb-5">
+          <div>
+            <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">
+              {subject.name}
+            </p>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white leading-snug">
+              {lecture.title}
+            </h1>
+            {lecture.description && (
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{lecture.description}</p>
+            )}
+          </div>
+          {userId && (
+            <button
+              onClick={markAsCompleted}
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 text-sm font-medium bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+            >
+              ✓ Mark as Done
+            </button>
           )}
         </div>
-        {userId && (
-          <button
-            onClick={markAsCompleted}
-            className="flex-shrink-0 px-4 py-2 text-sm font-medium bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
-          >
-            ✓ Mark as Done
-          </button>
-        )}
-      </div>
 
-      {/* Tabs */}
-      {visibleTabs.length > 0 ? (
-        <>
-          <div className="flex gap-1 border-b border-slate-200 dark:border-slate-700 mb-6 overflow-x-auto">
+        {/* Tabs */}
+        {visibleTabs.length > 0 && (
+          <div className="flex gap-1 overflow-x-auto">
             {visibleTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap transition-all border-b-2 ${
                   activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                    ? 'bg-white dark:bg-slate-800 border-blue-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
                 }`}
               >
-                {tab.id === 'videos' && (
-                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                )}
-                {tab.label}
+                <span className="text-base leading-none">{tab.icon}</span>
+                <span>{tab.label}</span>
                 {tab.locked && (
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                  </svg>
+                  <span className="text-amber-400 text-xs">🔒</span>
                 )}
               </button>
             ))}
           </div>
+        )}
 
-          <div>
-            {activeTab === 'videos' && videos.length > 0 && (
-              <YouTubePlayer videos={videos} />
-            )}
-            {activeTab === 'sheet' && (
-              sheetLocked ? <LockedContentCard subjectName={subject.name} contentType="sheet" /> :
-              sheet ? <SheetReader content={(sheet as { content: string }).content} title={(sheet as { title: string }).title} userName={userName} imageSlots={sheetImageSlots} /> : null
-            )}
-            {activeTab === 'summary' && (
-              summaryLocked ? <LockedContentCard subjectName={subject.name} contentType="summary" /> :
-              summary ? <SheetReader content={(summary as { content: string }).content} title={(summary as { title: string }).title} isSummary={true} userName={userName} imageSlots={summaryImageSlots} /> : null
-            )}
-            {activeTab === 'flashcards' && (
-              flashcardsLocked ? <LockedContentCard subjectName={subject.name} contentType="flashcards" /> :
-              flashcards ? <FlashcardsViewer flashcards={flashcards as never} userName={userName} /> : null
-            )}
-            {activeTab === 'quiz' && (
-              quizLocked ? <LockedContentCard subjectName={subject.name} contentType="quiz" /> :
-              quizQuestions ? <QuizViewer questions={quizQuestions as never} userName={userName} /> : null
-            )}
-            {activeTab === 'previous_years' && (
-              pyqLocked ? <LockedContentCard subjectName={subject.name} contentType="previous_years" /> :
-              previousYearQuestions ? <PreviousYearsViewer questions={previousYearQuestions as never} userName={userName} /> : null
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
-          <p className="text-slate-400 dark:text-slate-500 text-sm">No content available for this lecture yet.</p>
+        <div className="border-b border-slate-200 dark:border-slate-700" />
+      </div>
+
+      {/* Content + Right Sidebar */}
+      <div className="flex flex-1 min-h-0 gap-0">
+
+        {/* Main content */}
+        <div className="flex-1 min-w-0 overflow-auto">
+          {visibleTabs.length === 0 ? (
+            <div className="flex items-center justify-center h-64 text-slate-400 dark:text-slate-500 text-sm">
+              No content available for this lecture yet.
+            </div>
+          ) : (
+            <>
+              {activeTab === 'videos' && videos.length > 0 && <div className="p-6"><YouTubePlayer videos={videos} /></div>}
+              {activeTab === 'sheet' && (sheetLocked ? <div className="p-6"><LockedContentCard subjectName={subject.name} contentType="sheet" /></div> : sheet ? <SheetReader content={(sheet as { content: string }).content} title={(sheet as { title: string }).title} userName={userName} imageSlots={sheetImageSlots} /> : null)}
+              {activeTab === 'summary' && (summaryLocked ? <div className="p-6"><LockedContentCard subjectName={subject.name} contentType="summary" /></div> : summary ? <SheetReader content={(summary as { content: string }).content} title={(summary as { title: string }).title} isSummary={true} userName={userName} imageSlots={summaryImageSlots} /> : null)}
+              {activeTab === 'flashcards' && (flashcardsLocked ? <div className="p-6"><LockedContentCard subjectName={subject.name} contentType="flashcards" /></div> : flashcards ? <FlashcardsViewer flashcards={flashcards as never} userName={userName} /> : null)}
+              {activeTab === 'quiz' && (quizLocked ? <div className="p-6"><LockedContentCard subjectName={subject.name} contentType="quiz" /></div> : quizQuestions ? <QuizViewer questions={quizQuestions as never} userName={userName} /> : null)}
+              {activeTab === 'previous_years' && (pyqLocked ? <div className="p-6"><LockedContentCard subjectName={subject.name} contentType="previous_years" /></div> : previousYearQuestions ? <PreviousYearsViewer questions={previousYearQuestions as never} userName={userName} /> : null)}
+            </>
+          )}
         </div>
-      )}
+
+        {/* Right Sidebar */}
+        <aside className="w-72 flex-shrink-0 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col overflow-hidden">
+
+          {/* Table of Contents */}
+          {showSidebar && tocItems.length > 0 && (
+            <div className="flex-1 overflow-y-auto p-4 border-b border-slate-200 dark:border-slate-700">
+              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+                Contents
+              </p>
+              <nav className="space-y-0.5">
+                {tocItems.map((item, i) => (
+                  <div
+                    key={i}
+                    className={`text-xs py-1.5 px-2 rounded cursor-pointer text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors leading-snug ${
+                      item.level === 1 ? 'font-semibold' :
+                      item.level === 2 ? 'pl-4 text-slate-500 dark:text-slate-400' :
+                      'pl-6 text-slate-400 dark:text-slate-500'
+                    }`}
+                  >
+                    {item.text}
+                  </div>
+                ))}
+              </nav>
+            </div>
+          )}
+
+          {/* Personal Notes */}
+          {userId && (
+            <div className="flex flex-col p-4" style={{ minHeight: showSidebar && tocItems.length > 0 ? '200px' : '100%' }}>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  My Notes
+                </p>
+                <span className="text-xs text-slate-400 dark:text-slate-500">
+                  {noteSaving ? 'Saving...' : noteSaved ? '✓ Saved' : ''}
+                </span>
+              </div>
+              <textarea
+                value={note}
+                onChange={e => handleNoteChange(e.target.value)}
+                placeholder="Add a personal note..."
+                className="flex-1 w-full text-xs text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-600 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg p-3 outline-none focus:border-blue-400 dark:focus:border-blue-500 resize-none leading-relaxed"
+                style={{ minHeight: '120px' }}
+              />
+            </div>
+          )}
+
+          {/* Empty state for right sidebar */}
+          {!showSidebar && !userId && (
+            <div className="flex-1 flex items-center justify-center p-4">
+              <p className="text-xs text-slate-400 dark:text-slate-500 text-center">
+                Open a sheet to see the table of contents
+              </p>
+            </div>
+          )}
+
+        </aside>
+      </div>
     </div>
   )
 }

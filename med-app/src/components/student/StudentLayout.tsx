@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useUserStore } from '@/stores/userStore'
 import { useUIStore } from '@/stores/uiStore'
-useUIStorimport { createClient } from '@/lib/supabase/client'e
+import { createClient } from '@/lib/supabase/client'
 
 interface StudentLayoutProps {
   children: React.ReactNode

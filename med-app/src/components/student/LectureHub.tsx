@@ -55,21 +55,11 @@ interface LectureHubProps {
 
 type TabId = 'videos' | 'sheet' | 'summary' | 'flashcards' | 'quiz' | 'previous_years'
 
-interface Tab {
-  id: TabId
-  label: string
-  icon: string
-  hasContent: boolean
-  locked: boolean
-}
-
-const TAB_ICONS: Record<TabId, string> = {
-  videos: '▶',
-  sheet: '📄',
-  summary: '📝',
-  flashcards: '🃏',
-  quiz: '❓',
-  previous_years: '📅',
+interface TocItem {
+  id: string
+  text: string
+  level: number
+  index: number
 }
 
 export default function LectureHub({
@@ -93,24 +83,29 @@ export default function LectureHub({
   summaryImageSlots = {},
 }: LectureHubProps) {
 
-  const tabs: Tab[] = [
-    { id: 'videos', label: 'Videos', icon: TAB_ICONS.videos, hasContent: videos.length > 0, locked: false },
-    { id: 'sheet', label: 'Sheet', icon: TAB_ICONS.sheet, hasContent: !!sheet || sheetLocked, locked: sheetLocked },
-    { id: 'summary', label: 'Summary', icon: TAB_ICONS.summary, hasContent: !!summary || summaryLocked, locked: summaryLocked },
-    { id: 'flashcards', label: 'Flashcards', icon: TAB_ICONS.flashcards, hasContent: (Array.isArray(flashcards) && flashcards.length > 0) || flashcardsLocked, locked: flashcardsLocked },
-    { id: 'quiz', label: 'Quiz', icon: TAB_ICONS.quiz, hasContent: (Array.isArray(quizQuestions) && quizQuestions.length > 0) || quizLocked, locked: quizLocked },
-    { id: 'previous_years', label: 'Previous Years', icon: TAB_ICONS.previous_years, hasContent: (Array.isArray(previousYearQuestions) && previousYearQuestions.length > 0) || pyqLocked, locked: pyqLocked },
+  const allTabs = [
+    { id: 'videos' as TabId, label: 'Videos', hasContent: videos.length > 0, locked: false },
+    { id: 'sheet' as TabId, label: 'Sheet', hasContent: !!sheet || sheetLocked, locked: sheetLocked },
+    { id: 'summary' as TabId, label: 'Summary', hasContent: !!summary || summaryLocked, locked: summaryLocked },
+    { id: 'flashcards' as TabId, label: 'Flashcards', hasContent: (Array.isArray(flashcards) && flashcards.length > 0) || flashcardsLocked, locked: flashcardsLocked },
+    { id: 'quiz' as TabId, label: 'Quiz', hasContent: (Array.isArray(quizQuestions) && quizQuestions.length > 0) || quizLocked, locked: quizLocked },
+    { id: 'previous_years' as TabId, label: 'Prev. Years', hasContent: (Array.isArray(previousYearQuestions) && previousYearQuestions.length > 0) || pyqLocked, locked: pyqLocked },
   ]
 
-  const visibleTabs = tabs.filter((t) => t.hasContent)
+  const visibleTabs = allTabs.filter(t => t.hasContent)
   const [activeTab, setActiveTab] = useState<TabId>(visibleTabs[0]?.id ?? 'sheet')
-  const [tocItems, setTocItems] = useState<{ id: string; text: string; level: number }[]>([])
+  const [tocItems, setTocItems] = useState<TocItem[]>([])
+  const [activeTocId, setActiveTocId] = useState<string>('')
+  const [progress, setProgress] = useState(0)
   const [note, setNote] = useState('')
   const [noteSaving, setNoteSaving] = useState(false)
   const [noteSaved, setNoteSaved] = useState(false)
+  const [bookmarked, setBookmarked] = useState(false)
+  const [completed, setCompleted] = useState(false)
   const noteTimer = useRef<NodeJS.Timeout | null>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
 
-  // Extract TOC from sheet/summary content
+  // Extract TOC
   useEffect(() => {
     const content = activeTab === 'sheet'
       ? (sheet as { content: string } | null)?.content
@@ -120,35 +115,64 @@ export default function LectureHub({
 
     if (!content) { setTocItems([]); return }
 
-    const items: { id: string; text: string; level: number }[] = []
-    const lines = content.split('\n')
-    lines.forEach(line => {
-      const h1 = line.match(/^#\s+(.+)/)
+    const items: TocItem[] = []
+    let h2Index = 0
+    content.split('\n').forEach(line => {
       const h2 = line.match(/^##\s+(.+)/)
       const h3 = line.match(/^###\s+(.+)/)
-      if (h1) items.push({ id: h1[1].toLowerCase().replace(/\s+/g, '-'), text: h1[1], level: 1 })
-      else if (h2) items.push({ id: h2[1].toLowerCase().replace(/\s+/g, '-'), text: h2[1], level: 2 })
-      else if (h3) items.push({ id: h3[1].toLowerCase().replace(/\s+/g, '-'), text: h3[1], level: 3 })
+      if (h2) {
+        h2Index++
+        items.push({
+          id: `section-${h2[1].toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`,
+          text: h2[1],
+          level: 2,
+          index: h2Index
+        })
+      } else if (h3) {
+        items.push({
+          id: `section-${h3[1].toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`,
+          text: h3[1],
+          level: 3,
+          index: 0
+        })
+      }
     })
     setTocItems(items)
+    if (items.length > 0) setActiveTocId(items[0].id)
   }, [activeTab, sheet, summary])
 
-  // Load note
+  // Load note + bookmark + progress
   useEffect(() => {
     if (!userId) return
     const supabase = createClient()
-    supabase
-      .from('user_notes')
-      .select('note_content')
-      .eq('user_id', userId)
-      .eq('lecture_id', lecture.id)
-      .single()
+    supabase.from('user_notes').select('note_content').eq('user_id', userId).eq('lecture_id', lecture.id).single()
+      .then(({ data }) => { if (data?.note_content) setNote(data.note_content) })
+    supabase.from('bookmarks').select('id').eq('user_id', userId).eq('lecture_id', lecture.id).eq('bookmark_type', 'lecture').single()
+      .then(({ data }) => { setBookmarked(!!data) })
+    supabase.from('user_progress').select('progress_percentage, completed').eq('user_id', userId).eq('lecture_id', lecture.id).eq('content_type', activeTab).single()
       .then(({ data }) => {
-        if (data?.note_content) setNote(data.note_content)
+        if (data) {
+          setProgress(data.progress_percentage ?? 0)
+          setCompleted(data.completed ?? false)
+        }
       })
-  }, [userId, lecture.id])
+  }, [userId, lecture.id, activeTab])
 
-  // Auto-save note
+  // Record progress on tab change
+  useEffect(() => {
+    if (!userId || !lecture.id) return
+    const supabase = createClient()
+    async function recordProgress() {
+      const { data: existing } = await supabase.from('user_progress').select('id').eq('user_id', userId!).eq('lecture_id', lecture.id).eq('content_type', activeTab).single()
+      if (existing) {
+        await supabase.from('user_progress').update({ last_accessed_at: new Date().toISOString() }).eq('id', existing.id)
+      } else {
+        await supabase.from('user_progress').insert({ user_id: userId, lecture_id: lecture.id, content_type: activeTab, progress_percentage: 0, completed: false, last_accessed_at: new Date().toISOString() })
+      }
+    }
+    recordProgress()
+  }, [activeTab, userId, lecture.id])
+
   function handleNoteChange(val: string) {
     setNote(val)
     setNoteSaved(false)
@@ -157,130 +181,97 @@ export default function LectureHub({
       if (!userId) return
       setNoteSaving(true)
       const supabase = createClient()
-      await supabase.from('user_notes').upsert({
-        user_id: userId,
-        lecture_id: lecture.id,
-        note_content: val,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,lecture_id' })
+      await supabase.from('user_notes').upsert({ user_id: userId, lecture_id: lecture.id, note_content: val, updated_at: new Date().toISOString() }, { onConflict: 'user_id,lecture_id' })
       setNoteSaving(false)
       setNoteSaved(true)
       setTimeout(() => setNoteSaved(false), 2000)
     }, 1000)
   }
 
-  // Record progress
-  useEffect(() => {
-    if (!userId || !lecture.id) return
-    const supabase = createClient()
-    async function recordProgress() {
-      const { data: existing } = await supabase
-        .from('user_progress')
-        .select('id')
-        .eq('user_id', userId!)
-        .eq('lecture_id', lecture.id)
-        .eq('content_type', activeTab)
-        .single()
-
-      if (existing) {
-        await supabase.from('user_progress').update({ last_accessed_at: new Date().toISOString() }).eq('id', existing.id)
-      } else {
-        await supabase.from('user_progress').insert({
-          user_id: userId,
-          lecture_id: lecture.id,
-          content_type: activeTab,
-          progress_percentage: 0,
-          completed: false,
-          last_accessed_at: new Date().toISOString(),
-        })
-      }
-    }
-    recordProgress()
-  }, [activeTab, userId, lecture.id])
-
-  async function markAsCompleted() {
+  async function handleMarkCompleted() {
     if (!userId) return
     const supabase = createClient()
-    await supabase.from('user_progress').upsert({
-      user_id: userId,
-      lecture_id: lecture.id,
-      content_type: activeTab,
-      progress_percentage: 100,
-      completed: true,
-      last_accessed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,lecture_id,content_type' })
+    await supabase.from('user_progress').upsert({ user_id: userId, lecture_id: lecture.id, content_type: activeTab, progress_percentage: 100, completed: true, last_accessed_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'user_id,lecture_id,content_type' })
+    setCompleted(true)
+    setProgress(100)
   }
 
-  const showSidebar = (activeTab === 'sheet' || activeTab === 'summary') && !sheetLocked && !summaryLocked
+  async function handleBookmark() {
+    if (!userId) return
+    const supabase = createClient()
+    if (bookmarked) {
+      await supabase.from('bookmarks').delete().eq('user_id', userId).eq('lecture_id', lecture.id).eq('bookmark_type', 'lecture')
+      setBookmarked(false)
+    } else {
+      await supabase.from('bookmarks').insert({ user_id: userId, lecture_id: lecture.id, bookmark_type: 'lecture' })
+      setBookmarked(true)
+    }
+  }
+
+  function scrollToSection(id: string) {
+    const el = document.getElementById(id)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setActiveTocId(id)
+    }
+  }
+
+  const showRightSidebar = true
+  const h2Items = tocItems.filter(t => t.level === 2)
+
+  // Circular progress SVG
+  const radius = 28
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference - (progress / 100) * circumference
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 0px)' }}>
 
-      {/* Header */}
-      <div className="px-6 pt-6 pb-0">
-        <div className="flex items-start justify-between gap-4 mb-5">
-          <div>
-            <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">
-              {subject.name}
-            </p>
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white leading-snug">
-              {lecture.title}
-            </h1>
-            {lecture.description && (
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{lecture.description}</p>
-            )}
-          </div>
-          {userId && (
-            <button
-              onClick={markAsCompleted}
-              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 text-sm font-medium bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
-            >
-              ✓ Mark as Done
-            </button>
-          )}
+      {/* Header bar */}
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 pt-5 pb-0 flex-shrink-0">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 mb-3">
+          <span>{subject.name}</span>
+          <span>›</span>
+          <span className="text-slate-600 dark:text-slate-300 font-medium">{lecture.title}</span>
         </div>
 
-        {/* Tabs */}
-        {visibleTabs.length > 0 && (
-          <div className="flex gap-1 overflow-x-auto">
-            {visibleTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap transition-all border-b-2 ${
-                  activeTab === tab.id
-                    ? 'bg-white dark:bg-slate-800 border-blue-600 text-blue-600 dark:text-blue-400 shadow-sm'
-                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                }`}
-              >
-                <span className="text-base leading-none">{tab.icon}</span>
-                <span>{tab.label}</span>
-                {tab.locked && (
-                  <span className="text-amber-400 text-xs">🔒</span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Title */}
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
+          {lecture.title}
+        </h1>
 
-        <div className="border-b border-slate-200 dark:border-slate-700" />
+        {/* Tabs */}
+        <div className="flex gap-0 overflow-x-auto">
+          {visibleTabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+                activeTab === tab.id
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300'
+              }`}
+            >
+              {tab.label}
+              {tab.locked && <span className="text-amber-400 text-xs">🔒</span>}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Content + Right Sidebar */}
-      <div className="flex flex-1 min-h-0 gap-0">
+      {/* Main area */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* Main content */}
-        <div className="flex-1 min-w-0 overflow-auto">
+        {/* Content */}
+        <div className="flex-1 min-w-0 overflow-auto bg-[#F8FAFC] dark:bg-slate-950">
           {visibleTabs.length === 0 ? (
-            <div className="flex items-center justify-center h-64 text-slate-400 dark:text-slate-500 text-sm">
-              No content available for this lecture yet.
-            </div>
+            <div className="flex items-center justify-center h-64 text-slate-400 text-sm">No content available yet.</div>
           ) : (
             <>
-              {activeTab === 'videos' && videos.length > 0 && <div className="p-6"><YouTubePlayer videos={videos} /></div>}
-              {activeTab === 'sheet' && (sheetLocked ? <div className="p-6"><LockedContentCard subjectName={subject.name} contentType="sheet" /></div> : sheet ? <SheetReader content={(sheet as { content: string }).content} title={(sheet as { title: string }).title} userName={userName} imageSlots={sheetImageSlots} /> : null)}
-              {activeTab === 'summary' && (summaryLocked ? <div className="p-6"><LockedContentCard subjectName={subject.name} contentType="summary" /></div> : summary ? <SheetReader content={(summary as { content: string }).content} title={(summary as { title: string }).title} isSummary={true} userName={userName} imageSlots={summaryImageSlots} /> : null)}
+              {activeTab === 'videos' && <div className="p-6"><YouTubePlayer videos={videos} /></div>}
+              {activeTab === 'sheet' && (sheetLocked ? <div className="p-6"><LockedContentCard subjectName={subject.name} contentType="sheet" /></div> : sheet ? <SheetReader content={(sheet as any).content} title={(sheet as any).title} userName={userName} imageSlots={sheetImageSlots} /> : null)}
+              {activeTab === 'summary' && (summaryLocked ? <div className="p-6"><LockedContentCard subjectName={subject.name} contentType="summary" /></div> : summary ? <SheetReader content={(summary as any).content} title={(summary as any).title} isSummary={true} userName={userName} imageSlots={summaryImageSlots} /> : null)}
               {activeTab === 'flashcards' && (flashcardsLocked ? <div className="p-6"><LockedContentCard subjectName={subject.name} contentType="flashcards" /></div> : flashcards ? <FlashcardsViewer flashcards={flashcards as never} userName={userName} /> : null)}
               {activeTab === 'quiz' && (quizLocked ? <div className="p-6"><LockedContentCard subjectName={subject.name} contentType="quiz" /></div> : quizQuestions ? <QuizViewer questions={quizQuestions as never} userName={userName} /> : null)}
               {activeTab === 'previous_years' && (pyqLocked ? <div className="p-6"><LockedContentCard subjectName={subject.name} contentType="previous_years" /></div> : previousYearQuestions ? <PreviousYearsViewer questions={previousYearQuestions as never} userName={userName} /> : null)}
@@ -289,89 +280,142 @@ export default function LectureHub({
         </div>
 
         {/* Right Sidebar */}
-        <aside className="w-72 flex-shrink-0 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col overflow-hidden">
+        <aside className="w-72 flex-shrink-0 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-y-auto flex flex-col gap-0">
+
+          {/* Progress Card */}
+          <div className="p-4 border-b border-slate-100 dark:border-slate-700">
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Your Progress</p>
+            <div className="flex items-center gap-4">
+              <div className="relative flex-shrink-0">
+                <svg width="72" height="72" className="-rotate-90">
+                  <circle cx="36" cy="36" r={radius} fill="none" stroke="#E2E8F0" strokeWidth="6" className="dark:stroke-slate-700" />
+                  <circle cx="36" cy="36" r={radius} fill="none" stroke="#2563EB" strokeWidth="6"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-sm font-bold text-slate-800 dark:text-white">{progress}%</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                  {completed ? 'Completed!' : progress > 0 ? 'Keep going!' : 'Not started'}
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                  {completed ? 'Great work' : 'Reading progress'}
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Table of Contents */}
-          {showSidebar && tocItems.length > 0 && (
-            <div className="flex-1 overflow-y-auto p-4 border-b border-slate-200 dark:border-slate-700">
-              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
-                Contents
-              </p>
+          {h2Items.length > 0 && (
+            <div className="p-4 border-b border-slate-100 dark:border-slate-700">
+              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Table of Contents</p>
               <nav className="space-y-0.5">
-                {tocItems.filter(item => item.level === 1).map((item, i) => {
-                  const sectionId = `section-${item.text.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        const el = document.getElementById(sectionId)
-                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                      }}
-                      className="w-full text-left flex items-center gap-2.5 py-2 px-2 rounded-lg cursor-pointer transition-all group hover:bg-slate-100 dark:hover:bg-slate-700"
-                    >
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[10px] font-bold flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                        {i + 1}
-                      </span>
-                      <span className="text-xs text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white leading-snug font-medium">
-                        {item.text}
-                      </span>
-                    </button>
-                  )
-                })}
-              </nav>
-            </div>
-          )}
-          {showSidebar && tocItems.length > 0 && (
-            <div className="flex-1 overflow-y-auto p-4 border-b border-slate-200 dark:border-slate-700">
-              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
-                Contents
-              </p>
-              <nav className="space-y-0.5">
-                {tocItems.map((item, i) => (
-                  <div
-                    key={i}
-                    className={`text-xs py-1.5 px-2 rounded cursor-pointer text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors leading-snug ${
-                      item.level === 1 ? 'font-semibold' :
-                      item.level === 2 ? 'pl-4 text-slate-500 dark:text-slate-400' :
-                      'pl-6 text-slate-400 dark:text-slate-500'
+                {h2Items.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
+                    className={`w-full text-left flex items-center gap-3 px-2 py-2 rounded-lg transition-all group ${
+                      activeTocId === item.id
+                        ? 'bg-blue-50 dark:bg-blue-900/20'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
                     }`}
                   >
-                    {item.text}
-                  </div>
+                    <span className={`flex-shrink-0 w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center transition-colors ${
+                      activeTocId === item.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 group-hover:text-blue-600 dark:group-hover:text-blue-400'
+                    }`}>
+                      {item.index}
+                    </span>
+                    <span className={`text-xs leading-snug font-medium transition-colors ${
+                      activeTocId === item.id
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white'
+                    }`}>
+                      {item.text}
+                    </span>
+                  </button>
                 ))}
               </nav>
             </div>
           )}
 
-          {/* Personal Notes */}
+          {/* My Notes */}
           {userId && (
-            <div className="flex flex-col p-4" style={{ minHeight: showSidebar && tocItems.length > 0 ? '200px' : '100%' }}>
+            <div className="p-4 border-b border-slate-100 dark:border-slate-700">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  My Notes
-                </p>
-                <span className="text-xs text-slate-400 dark:text-slate-500">
-                  {noteSaving ? 'Saving...' : noteSaved ? '✓ Saved' : ''}
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">My Notes</p>
+                <span className={`text-[10px] font-medium transition-opacity ${noteSaving || noteSaved ? 'opacity-100' : 'opacity-0'} ${noteSaved ? 'text-green-500' : 'text-slate-400'}`}>
+                  {noteSaving ? 'Saving...' : '✓ Saved'}
                 </span>
               </div>
               <textarea
                 value={note}
                 onChange={e => handleNoteChange(e.target.value)}
-                placeholder="Add a personal note..."
-                className="flex-1 w-full text-xs text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-600 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg p-3 outline-none focus:border-blue-400 dark:focus:border-blue-500 resize-none leading-relaxed"
-                style={{ minHeight: '120px' }}
+                placeholder="Write your notes here..."
+                className="w-full text-xs text-slate-700 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg p-3 outline-none focus:border-blue-400 resize-none leading-relaxed"
+                rows={4}
               />
             </div>
           )}
 
-          {/* Empty state for right sidebar */}
-          {!showSidebar && !userId && (
-            <div className="flex-1 flex items-center justify-center p-4">
-              <p className="text-xs text-slate-400 dark:text-slate-500 text-center">
-                Open a sheet to see the table of contents
-              </p>
+          {/* Learning Tools */}
+          <div className="p-4 border-b border-slate-100 dark:border-slate-700">
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Learning Tools</p>
+            <div className="grid grid-cols-4 gap-2">
+              {visibleTabs.filter(t => t.id !== 'videos').map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-lg text-center transition-all ${
+                    activeTab === tab.id
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      : 'bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <span className="text-base">
+                    {tab.id === 'sheet' ? '📄' : tab.id === 'summary' ? '📝' : tab.id === 'flashcards' ? '🃏' : tab.id === 'quiz' ? '❓' : '📅'}
+                  </span>
+                  <span className="text-[9px] font-medium leading-tight">{tab.label}</span>
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+
+          {/* Actions */}
+          <div className="p-4">
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Actions</p>
+            <div className="space-y-2">
+              <button
+                onClick={handleMarkCompleted}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  completed
+                    ? 'bg-green-600 text-white cursor-default'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+              >
+                {completed ? '✓ Completed' : '✓ Mark as Completed'}
+              </button>
+              {userId && (
+                <button
+                  onClick={handleBookmark}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border ${
+                    bookmarked
+                      ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                      : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                  }`}
+                >
+                  {bookmarked ? '🔖 Bookmarked' : '🔖 Bookmark'}
+                </button>
+              )}
+            </div>
+          </div>
 
         </aside>
       </div>

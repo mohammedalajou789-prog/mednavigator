@@ -1,241 +1,647 @@
-import { createClient as createServerClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { getAllUniversities } from '@/lib/services/universities'
+import { createBrowserClient } from '@supabase/ssr'
 
-export default async function StudentHomePage() {
-  const supabase = await createServerClient()
+interface UserProfile {
+  id: string
+  full_name: string | null
+  email: string | null
+  default_university_id: string | null
+  role: string
+}
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+interface University {
+  id: string
+  name: string
+  logo_url: string | null
+}
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*, universities(id, name, logo_url)')
-    .eq('auth_user_id', user.id)
-    .single()
+interface Subject {
+  id: string
+  name: string
+  subject_type: 'standard' | 'system' | 'clinical'
+  access_mode: 'free' | 'premium' | 'mixed'
+  university_id: string
+}
 
-  const { data: subscriptions } = await supabase
-    .from('subject_subscriptions')
-    .select('*, subjects(id, name, subject_type, access_mode, university_id)')
-    .eq('user_id', profile?.id)
-    .eq('status', 'active')
+interface Subscription {
+  id: string
+  subject_id: string
+  status: 'active' | 'expired' | 'revoked'
+  end_date: string
+  subject: Subject
+}
 
-  const { data: pinnedRows } = await supabase
-    .from('pinned_subjects')
-    .select('*, subjects(id, name, subject_type, access_mode, university_id, universities(name))')
-    .eq('user_id', profile?.id)
-    .order('created_at', { ascending: false })
-    .limit(6)
+interface Progress {
+  lecture_id: string
+  content_type: string
+  progress_percentage: number
+  completed: boolean
+  last_accessed_at: string
+  lecture: {
+    id: string
+    title: string
+    subject_id: string | null
+    chapter_id: string | null
+  }
+}
 
-  const { count: bookmarkCount } = await supabase
-    .from('bookmarks')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', profile?.id)
+interface PinnedSubject {
+  subject_id: string
+  subject: Subject & {
+    university: { id: string; name: string }
+  }
+}
 
-  const { data: universities } = await getAllUniversities()
+interface Notification {
+  id: string
+  title: string
+  message: string
+  priority: 'normal' | 'important' | 'critical'
+  created_at: string
+}
 
-  const firstName = profile?.full_name?.split(' ')[0] ?? 'Student'
-  const universityId = profile?.default_university_id
-  const university = profile?.universities as { id: string; name: string; logo_url?: string } | null
-  const hasUniversity = !!universityId && !!university
+function getTypeLabel(type: string) {
+  if (type === 'standard') return 'Standard'
+  if (type === 'system') return 'System'
+  if (type === 'clinical') return 'Clinical'
+  return type
+}
+
+function getAccessLabel(mode: string) {
+  if (mode === 'free') return 'Free'
+  if (mode === 'premium') return 'Premium'
+  if (mode === 'mixed') return 'Mixed'
+  return mode
+}
+
+function getDaysRemaining(endDate: string): number {
+  const end = new Date(endDate)
+  const now = new Date()
+  const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  return Math.max(0, diff)
+}
+
+function formatTimeAgo(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffHrs = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  if (diffHrs < 1) return 'Just now'
+  if (diffHrs < 24) return `${diffHrs}h ago`
+  if (diffDays === 1) return 'Yesterday'
+  return `${diffDays}d ago`
+}
+
+function getInitials(name: string | null): string {
+  if (!name) return 'U'
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+}
+
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div className={`animate-pulse rounded-lg bg-gray-200 dark:bg-slate-700 ${className ?? ''}`} />
+  )
+}
+
+function KpiCard({
+  icon,
+  label,
+  value,
+  sub,
+  color,
+}: {
+  icon: string
+  label: string
+  value: string | number
+  sub?: string
+  color: 'blue' | 'purple' | 'green' | 'amber'
+}) {
+  const colorMap = {
+    blue: {
+      bg: 'bg-blue-50 dark:bg-blue-950/40',
+      icon: 'text-blue-600 dark:text-blue-400',
+      value: 'text-blue-700 dark:text-blue-300',
+    },
+    purple: {
+      bg: 'bg-purple-50 dark:bg-purple-950/40',
+      icon: 'text-purple-600 dark:text-purple-400',
+      value: 'text-purple-700 dark:text-purple-300',
+    },
+    green: {
+      bg: 'bg-green-50 dark:bg-green-950/40',
+      icon: 'text-green-600 dark:text-green-400',
+      value: 'text-green-700 dark:text-green-300',
+    },
+    amber: {
+      bg: 'bg-amber-50 dark:bg-amber-950/40',
+      icon: 'text-amber-600 dark:text-amber-400',
+      value: 'text-amber-700 dark:text-amber-300',
+    },
+  }
+  const c = colorMap[color]
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 flex items-start gap-4 shadow-sm">
+      <div className={`rounded-xl p-3 ${c.bg}`}>
+        <span className={`text-xl ${c.icon}`}>{icon}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+          {label}
+        </p>
+        <p className={`text-2xl font-semibold ${c.value}`}>{value}</p>
+        {sub && (
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{sub}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TypeBadge({ type }: { type: string }) {
+  const map: Record<string, string> = {
+    standard: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    system: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+    clinical: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
+  }
+  return (
+    <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${map[type] ?? 'bg-slate-100 text-slate-600'}`}>
+      {getTypeLabel(type)}
+    </span>
+  )
+}
+
+function AccessBadge({ mode }: { mode: string }) {
+  const map: Record<string, string> = {
+    free: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+    premium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    mixed: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+  }
+  return (
+    <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${map[mode] ?? 'bg-slate-100 text-slate-600'}`}>
+      {getAccessLabel(mode)}
+    </span>
+  )
+}
+
+export default function StudentDashboard() {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [university, setUniversity] = useState<University | null>(null)
+  const [pinnedSubjects, setPinnedSubjects] = useState<PinnedSubject[]>([])
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const [recentProgress, setRecentProgress] = useState<Progress[]>([])
+  const [bookmarkCount, setBookmarkCount] = useState(0)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [activeSubjectCount, setActiveSubjectCount] = useState(0)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+
+  useEffect(() => {
+    async function load() {
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) return
+
+      const { data: profile } = await supabase
+        .from('users')
+        .select('id, full_name, email, default_university_id, role')
+        .eq('auth_user_id', authUser.id)
+        .single()
+
+      if (!profile) return
+      setUser(profile)
+
+      const [
+        uniResult,
+        pinnedResult,
+        subsResult,
+        progressResult,
+        bookmarkResult,
+        notifResult,
+        activeSubsResult,
+      ] = await Promise.all([
+        profile.default_university_id
+          ? supabase
+              .from('universities')
+              .select('id, name, logo_url')
+              .eq('id', profile.default_university_id)
+              .single()
+          : Promise.resolve({ data: null }),
+
+        supabase
+          .from('pinned_subjects')
+          .select(`
+            subject_id,
+            subject:subjects (
+              id, name, subject_type, access_mode, university_id,
+              university:universities ( id, name )
+            )
+          `)
+          .eq('user_id', profile.id)
+          .limit(6),
+
+        supabase
+          .from('subject_subscriptions')
+          .select(`
+            id, subject_id, status, end_date,
+            subject:subjects ( id, name, subject_type, access_mode, university_id )
+          `)
+          .eq('user_id', profile.id)
+          .eq('status', 'active')
+          .order('end_date', { ascending: true })
+          .limit(5),
+
+        supabase
+          .from('user_progress')
+          .select(`
+            lecture_id, content_type, progress_percentage, completed, last_accessed_at,
+            lecture:lectures ( id, title, subject_id, chapter_id )
+          `)
+          .eq('user_id', profile.id)
+          .order('last_accessed_at', { ascending: false })
+          .limit(5),
+
+        supabase
+          .from('bookmarks')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', profile.id),
+
+        supabase
+          .from('notifications')
+          .select('id, title, message, priority, created_at')
+          .or(`target_type.eq.all,and(target_type.eq.user,user_id.eq.${profile.id})`)
+          .order('created_at', { ascending: false })
+          .limit(5),
+
+        supabase
+          .from('subject_subscriptions')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', profile.id)
+          .eq('status', 'active'),
+      ])
+
+      if (uniResult.data) setUniversity(uniResult.data as University)
+      if (pinnedResult.data) setPinnedSubjects(pinnedResult.data as unknown as PinnedSubject[])
+      if (subsResult.data) setSubscriptions(subsResult.data as unknown as Subscription[])
+      if (progressResult.data) setRecentProgress(progressResult.data as unknown as Progress[])
+      if (bookmarkResult.count !== null) setBookmarkCount(bookmarkResult.count)
+      if (notifResult.data) setNotifications(notifResult.data as Notification[])
+      if (activeSubsResult.count !== null) setActiveSubjectCount(activeSubsResult.count)
+
+      const { data: readIds } = await supabase
+        .from('notification_reads')
+        .select('notification_id')
+        .eq('user_id', profile.id)
+
+      const readSet = new Set((readIds ?? []).map((r: { notification_id: string }) => r.notification_id))
+      const unread = (notifResult.data ?? []).filter((n: Notification) => !readSet.has(n.id)).length
+      setUnreadCount(unread)
+
+      setLoading(false)
+    }
+
+    load()
+  }, [])
+
+  const lastProgress = recentProgress.find(p => !p.completed && p.progress_percentage > 0)
+    ?? recentProgress[0]
+    ?? null
+
+  const overallProgress = recentProgress.length > 0
+    ? Math.round(recentProgress.reduce((acc, p) => acc + p.progress_percentage, 0) / recentProgress.length)
+    : 0
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
+        </div>
+        <Skeleton className="h-40 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-36 w-full" />)}
+        </div>
+      </div>
+    )
+  }
+
+  const firstName = user?.full_name?.split(' ')[0] ?? 'Student'
+
+  return (
+    <div className="p-6 space-y-8 max-w-7xl">
 
       {/* Welcome Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-[#0F172A] dark:text-white">
-          Welcome back, {firstName} 👋
-        </h1>
-        {hasUniversity ? (
-          <p className="text-[#64748B] mt-1">{university.name}</p>
-        ) : (
-          <p className="text-[#64748B] mt-1">Select a university to start browsing</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+            {getInitials(user?.full_name ?? null)}
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
+              Welcome back, {firstName}
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {university?.name ?? 'No university selected'} &middot;{' '}
+              {new Date().toLocaleDateString('en-GB', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+              })}
+            </p>
+          </div>
+        </div>
+        {university && (
+          <Link
+            href={`/${university.id}`}
+            className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Browse subjects →
+          </Link>
         )}
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-[#E2E8F0] dark:border-gray-800 p-5 shadow-sm">
-          <p className="text-sm text-[#64748B]">Active Subjects</p>
-          <p className="text-3xl font-semibold text-[#0F172A] dark:text-white mt-1">
-            {subscriptions?.length ?? 0}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-[#E2E8F0] dark:border-gray-800 p-5 shadow-sm">
-          <p className="text-sm text-[#64748B]">Bookmarks</p>
-          <p className="text-3xl font-semibold text-[#0F172A] dark:text-white mt-1">
-            {bookmarkCount ?? 0}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-[#E2E8F0] dark:border-gray-800 p-5 shadow-sm">
-          <p className="text-sm text-[#64748B]">Pinned Subjects</p>
-          <p className="text-3xl font-semibold text-[#0F172A] dark:text-white mt-1">
-            {pinnedRows?.length ?? 0}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-[#E2E8F0] dark:border-gray-800 p-5 shadow-sm">
-          <p className="text-sm text-[#64748B]">My University</p>
-          {hasUniversity ? (
-            <>
-              <p className="text-sm font-semibold text-[#0F172A] dark:text-white mt-2 truncate">
-                {university.name}
-              </p>
-              <Link
-                href={`/${universityId}`}
-                className="text-xs text-[#2563EB] mt-1 block hover:underline"
-              >
-                Browse subjects →
-              </Link>
-            </>
-          ) : (
-            <p className="text-sm text-[#64748B] mt-2">Not assigned yet</p>
-          )}
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard icon="📚" label="Active Subjects" value={activeSubjectCount} sub="subscribed" color="blue" />
+        <KpiCard icon="📈" label="Overall Progress" value={`${overallProgress}%`} sub={`${recentProgress.filter(p => p.completed).length} lectures done`} color="green" />
+        <KpiCard icon="🔖" label="Bookmarks" value={bookmarkCount} sub="saved items" color="purple" />
+        <KpiCard icon="🔔" label="Notifications" value={unreadCount} sub={unreadCount === 0 ? 'all read' : 'unread'} color="amber" />
       </div>
 
-      {/* University Section */}
-      {hasUniversity ? (
-        // Student has a university — show quick access to their subjects
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#0F172A] dark:text-white">
-              My University
-            </h2>
-            <Link
-              href={`/${universityId}`}
-              className="text-sm text-[#2563EB] hover:underline"
-            >
-              View all subjects →
-            </Link>
-          </div>
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-[#E2E8F0] dark:border-gray-800 p-6 shadow-sm flex items-center gap-5">
-            <div className="w-14 h-14 rounded-xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center flex-shrink-0">
-              {university.logo_url ? (
-                <img src={university.logo_url} alt={university.name} className="w-10 h-10 object-contain" />
-              ) : (
-                <span className="text-blue-600 text-lg font-bold">
-                  {university.name.slice(0, 2).toUpperCase()}
-                </span>
-              )}
+      {/* Continue Learning */}
+      {lastProgress && lastProgress.lecture && (
+        <section>
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-3">
+            Continue learning
+          </h2>
+          <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-5">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex items-start gap-4">
+                <div className="h-11 w-11 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0 text-white text-lg">
+                  ▶
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-blue-500 dark:text-blue-400 uppercase tracking-wide mb-1">
+                    {lastProgress.content_type.replace('_', ' ')}
+                  </p>
+                  <p className="font-semibold text-slate-900 dark:text-white text-base">
+                    {lastProgress.lecture.title}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Last accessed {formatTimeAgo(lastProgress.last_accessed_at)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-2xl font-semibold text-blue-600 dark:text-blue-400">
+                    {lastProgress.progress_percentage}%
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">completed</p>
+                </div>
+                <Link
+                  href={
+                    lastProgress.lecture.subject_id
+                      ? `/${university?.id ?? ''}/${lastProgress.lecture.subject_id}/${lastProgress.lecture.id}`
+                      : '#'
+                  }
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 transition-colors"
+                >
+                  Resume →
+                </Link>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-[#0F172A] dark:text-white">{university.name}</p>
-              <p className="text-sm text-[#64748B] mt-0.5">Your registered university</p>
+            <div className="mt-4 h-1.5 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                style={{ width: `${lastProgress.progress_percentage}%` }}
+              />
             </div>
-            <Link
-              href={`/${universityId}`}
-              className="px-4 py-2 bg-[#2563EB] text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex-shrink-0"
-            >
-              Browse Subjects
-            </Link>
           </div>
         </section>
-      ) : (
-        // Student has NO university — show university selector
-        <section className="mb-8">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[#0F172A] dark:text-white">
-              Browse Universities
-            </h2>
-            <p className="text-sm text-[#64748B] mt-1">
-              Your university is not assigned yet. Select any university below to start browsing its content.
+      )}
+
+      {/* Pinned Subjects */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">
+            Pinned subjects
+          </h2>
+          {university && (
+            <Link href={`/${university.id}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+              View all
+            </Link>
+          )}
+        </div>
+
+        {pinnedSubjects.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
+            <p className="text-2xl mb-2">📌</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">No pinned subjects yet.</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+              Pin a subject from the subject page to see it here.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {universities && universities.length > 0 ? (
-              universities.map((uni) => (
-                <Link
-                  key={uni.id}
-                  href={`/${uni.id}`}
-                  className="bg-white dark:bg-gray-900 rounded-xl border border-[#E2E8F0] dark:border-gray-800 p-5 shadow-sm hover:border-[#2563EB] hover:shadow-md transition-all flex items-center gap-4"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center flex-shrink-0">
-                    {uni.logo_url ? (
-                      <img src={uni.logo_url} alt={uni.name} className="w-7 h-7 object-contain" />
-                    ) : (
-                      <span className="text-blue-600 text-sm font-bold">
-                        {uni.name.slice(0, 2).toUpperCase()}
-                      </span>
-                    )}
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {pinnedSubjects.map(({ subject_id, subject }) => (
+              <Link
+                key={subject_id}
+                href={`/${subject.university_id}/${subject_id}`}
+                className="block rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all group"
+              >
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-lg flex-shrink-0">
+                    📖
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-[#0F172A] dark:text-white text-sm truncate">
-                      {uni.name}
-                    </p>
-                    <p className="text-xs text-[#64748B] mt-0.5">Browse subjects →</p>
+                  <div className="flex gap-1.5 flex-wrap justify-end">
+                    <TypeBadge type={subject.subject_type} />
+                    <AccessBadge mode={subject.access_mode} />
                   </div>
-                </Link>
-              ))
-            ) : (
-              <div className="col-span-3 text-center py-8 text-[#64748B] text-sm">
-                No universities available yet.
-              </div>
-            )}
+                </div>
+                <p className="font-semibold text-slate-900 dark:text-white text-sm leading-snug">
+                  {subject.name}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {subject.university?.name ?? ''}
+                </p>
+              </Link>
+            ))}
           </div>
-        </section>
-      )}
-
-      {/* Also browse other universities */}
-      {hasUniversity && universities && universities.length > 1 && (
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-[#0F172A] dark:text-white mb-4">
-            Other Universities
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {universities
-              .filter((uni) => uni.id !== universityId)
-              .map((uni) => (
-                <Link
-                  key={uni.id}
-                  href={`/${uni.id}`}
-                  className="bg-white dark:bg-gray-900 rounded-xl border border-[#E2E8F0] dark:border-gray-800 p-5 shadow-sm hover:border-[#2563EB] hover:shadow-md transition-all flex items-center gap-4"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-                    {uni.logo_url ? (
-                      <img src={uni.logo_url} alt={uni.name} className="w-7 h-7 object-contain" />
-                    ) : (
-                      <span className="text-gray-500 text-sm font-bold">
-                        {uni.name.slice(0, 2).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-[#0F172A] dark:text-white text-sm truncate">
-                      {uni.name}
-                    </p>
-                    <p className="text-xs text-[#64748B] mt-0.5">Browse subjects →</p>
-                  </div>
-                </Link>
-              ))}
-          </div>
-        </section>
-      )}
-
-      {/* Quick Access */}
-      <section>
-        <h2 className="text-lg font-semibold text-[#0F172A] dark:text-white mb-4">Quick Access</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { icon: '🏫', label: 'My Subjects', href: hasUniversity ? `/${universityId}` : '/home' },
-            { icon: '📖', label: 'Bookmarks', href: '/bookmarks' },
-            { icon: '🔔', label: 'Notifications', href: '/notifications' },
-            { icon: '👤', label: 'Profile', href: '/profile' },
-          ].map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="bg-white dark:bg-gray-900 rounded-xl border border-[#E2E8F0] dark:border-gray-800 p-4 shadow-sm hover:border-[#2563EB] hover:shadow-md transition-all text-center group"
-            >
-              <div className="text-3xl mb-2">{item.icon}</div>
-              <p className="text-sm font-medium text-[#64748B] group-hover:text-[#2563EB] transition-colors">
-                {item.label}
-              </p>
-            </Link>
-          ))}
-        </div>
+        )}
       </section>
+
+      {/* Active Subscriptions */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">
+            Active subscriptions
+          </h2>
+          <Link href="/subscriptions" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+            View all
+          </Link>
+        </div>
+
+        {subscriptions.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
+            <p className="text-2xl mb-2">🔓</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">No active subscriptions.</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+              Contact support to activate access to premium subjects.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {subscriptions.map(sub => {
+              const days = getDaysRemaining(sub.end_date)
+              const isExpiringSoon = days <= 7
+              return (
+                <div
+                  key={sub.id}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-9 w-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-base flex-shrink-0">
+                      ✓
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-900 dark:text-white text-sm truncate">
+                        {sub.subject?.name ?? 'Unknown subject'}
+                      </p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                        Expires{' '}
+                        {new Date(sub.end_date).toLocaleDateString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <span className={`text-sm font-semibold ${isExpiringSoon ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
+                      {days}d left
+                    </span>
+                    {isExpiringSoon && (
+                      <p className="text-xs text-amber-500 dark:text-amber-400 mt-0.5">Expiring soon</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Bottom Grid: Recent Activity + Notifications */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Recent Activity */}
+        <section>
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-3">
+            Recent activity
+          </h2>
+          {recentProgress.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
+              <p className="text-2xl mb-2">🕐</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No activity yet.</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-y divide-slate-100 dark:divide-slate-700">
+              {recentProgress.map((p, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3">
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${p.completed ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-700'}`}>
+                    {p.content_type === 'sheet' ? '📄' :
+                     p.content_type === 'flashcards' ? '🃏' :
+                     p.content_type === 'quiz' ? '❓' :
+                     p.content_type === 'previous_years' ? '📅' : '📝'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
+                      {p.lecture?.title ?? 'Lecture'}
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 capitalize">
+                      {p.content_type.replace('_', ' ')} · {p.progress_percentage}%
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    {p.completed && (
+                      <p className="text-xs font-medium text-green-600 dark:text-green-400">Done</p>
+                    )}
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      {formatTimeAgo(p.last_accessed_at)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Notifications */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">
+              Notifications
+              {unreadCount > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center h-5 w-5 text-xs font-semibold bg-blue-600 text-white rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </h2>
+            <Link href="/notifications" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+              View all
+            </Link>
+          </div>
+          {notifications.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
+              <p className="text-2xl mb-2">🔕</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No notifications.</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-y divide-slate-100 dark:divide-slate-700">
+              {notifications.map(n => (
+                <div key={n.id} className="flex items-start gap-3 px-4 py-3">
+                  <div className={`mt-0.5 h-8 w-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${
+                    n.priority === 'critical' ? 'bg-red-100 dark:bg-red-900/30' :
+                    n.priority === 'important' ? 'bg-amber-100 dark:bg-amber-900/30' :
+                    'bg-slate-100 dark:bg-slate-700'
+                  }`}>
+                    🔔
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug">
+                      {n.title}
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate">
+                      {n.message}
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                      {formatTimeAgo(n.created_at)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+      </div>
     </div>
   )
 }

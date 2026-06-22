@@ -7,11 +7,22 @@ import { cn } from '@/lib/utils/cn'
 import { useUIStore } from '@/stores/uiStore'
 import { useUser } from '@/hooks/useUser'
 
-const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/home', icon: 'ti-home' },
-  { label: 'Bookmarks', href: '/bookmarks', icon: 'ti-bookmark' },
-  { label: 'Notifications', href: '/notifications', icon: 'ti-bell' },
-  { label: 'Profile', href: '/profile', icon: 'ti-user' },
+const NAV_GROUPS = [
+  {
+    label: 'Learning',
+    items: [
+      { label: 'Dashboard', href: '/home' },
+      { label: 'Bookmarks', href: '/bookmarks' },
+      { label: 'Notifications', href: '/notifications' },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { label: 'Profile', href: '/profile' },
+      { label: 'Subscriptions', href: '/subscriptions' },
+    ],
+  },
 ]
 
 interface StudentLayoutProps {
@@ -21,24 +32,22 @@ interface StudentLayoutProps {
 export default function StudentLayout({ children }: StudentLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { sidebarOpen, setSidebarOpen, isMobile, setIsMobile, theme, setTheme } = useUIStore()
+  const { theme, setTheme } = useUIStore()
   const { user, isLoading } = useUser()
   const [searchQuery, setSearchQuery] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     function handleResize() {
       const mobile = window.innerWidth < 768
       setIsMobile(mobile)
-      if (mobile) {
-        setSidebarOpen(false)
-      } else {
-        setSidebarOpen(true)
-      }
+      setSidebarOpen(!mobile)
     }
     handleResize()
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [setIsMobile, setSidebarOpen])
+  }, [])
 
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -48,7 +57,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-950 flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -56,10 +65,10 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-        <header className="h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-6 justify-between sticky top-0 z-20">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-950">
+        <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-6 justify-between sticky top-0 z-20">
           <Link href="/" className="text-lg font-bold">
-            <span className="text-blue-600">Med</span>
+            <span className="text-blue-400">Med</span>
             <span className="text-gray-900 dark:text-white">Navigator</span>
           </Link>
           <div className="flex items-center gap-2">
@@ -76,8 +85,12 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     )
   }
 
+  const initials = user.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) ?? 'MN'
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-950 flex">
+
+      {/* Mobile overlay */}
       {isMobile && sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-30"
@@ -85,62 +98,68 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
         />
       )}
 
-      <aside
-        className={cn(
-          'fixed top-0 left-0 h-full z-40 flex flex-col',
-          'bg-slate-800 text-white transition-all duration-200',
-          sidebarOpen ? 'w-56' : 'w-0 overflow-hidden',
-          !isMobile && 'relative'
-        )}
-      >
-        <div className="h-14 flex items-center px-5 border-b border-slate-700 flex-shrink-0">
-          <Link href="/" className="text-base font-bold">
+      {/* Sidebar */}
+      <aside className={cn(
+        'fixed top-0 left-0 h-full z-40 flex flex-col bg-[#1E293B] text-white transition-all duration-200',
+        sidebarOpen ? 'w-64' : 'w-0 overflow-hidden'
+      )}>
+
+        {/* Logo */}
+        <div className="h-16 flex items-center px-6 border-b border-slate-700 gap-3 flex-shrink-0">
+          <span className="text-lg font-bold">
             <span className="text-blue-400">Med</span>
             <span className="text-white">Navigator</span>
-          </Link>
+          </span>
         </div>
 
+        {/* User Info */}
         <div className="px-4 py-3 border-b border-slate-700 flex-shrink-0">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-semibold">
-                {user.full_name?.slice(0, 2).toUpperCase() ?? 'MN'}
-              </span>
+              <span className="text-white text-xs font-semibold">{initials}</span>
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-white truncate">
-                {user.full_name ?? 'Student'}
-              </p>
-              <p className="text-xs text-slate-400 truncate capitalize">{user.role ?? 'student'}</p>
+              <p className="text-sm font-medium text-white truncate">{user.full_name ?? 'Student'}</p>
+              <p className="text-xs text-slate-400">Student</p>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 py-3 overflow-y-auto">
-          <div className="space-y-0.5 px-2">
-            {NAV_ITEMS.map((item) => {
-              const active = pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => isMobile && setSidebarOpen(false)}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
-                    active
-                      ? 'bg-blue-600/20 text-blue-400'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-700'
-                  )}
-                >
-                  <i className={cn('ti', item.icon, 'text-base')} aria-hidden="true" />
-                  <span>{item.label}</span>
-                </Link>
-              )
-            })}
+        {/* Navigation */}
+        <nav className="flex-1 py-2 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="px-3 space-y-4">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.label}>
+                <p className="px-3 mb-1 text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">
+                  {group.label}
+                </p>
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const active = pathname === item.href
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => isMobile && setSidebarOpen(false)}
+                        className={cn(
+                          'flex items-center px-3 py-1.5 rounded-lg text-sm transition-colors',
+                          active
+                            ? 'bg-blue-600/20 text-blue-400'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </nav>
 
-        <div className="border-t border-slate-700 py-3 px-2 flex-shrink-0">
+        {/* Logout */}
+        <div className="border-t border-slate-700 p-3 flex-shrink-0">
           <button
             onClick={async () => {
               await fetch('/api/auth/logout', { method: 'POST' })
@@ -148,14 +167,16 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             }}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-slate-700 transition-colors"
           >
-            <i className="ti ti-logout text-base" aria-hidden="true" />
-            <span>Logout</span>
+            Logout
           </button>
         </div>
       </aside>
 
-      <div className={cn('flex-1 flex flex-col min-w-0', !isMobile && sidebarOpen && 'ml-56')}>
-        <header className="h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 gap-3 sticky top-0 z-20">
+      {/* Main content */}
+      <div className={cn('flex-1 flex flex-col min-w-0 transition-all duration-200', sidebarOpen && !isMobile && 'ml-64')}>
+
+        {/* Top Bar */}
+        <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 gap-3 sticky top-0 z-20">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -164,8 +185,8 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             <i className="ti ti-menu-2 text-lg" aria-hidden="true" />
           </button>
 
-          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-sm">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-md">
+            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
               <i className="ti ti-search text-sm text-gray-400" aria-hidden="true" />
               <input
                 type="text"
@@ -188,15 +209,8 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                 else setTheme('light')
               }}
               className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              title={`Theme: ${theme}`}
             >
-              <i
-                className={cn(
-                  'ti text-lg',
-                  theme === 'dark' ? 'ti-moon' : theme === 'light' ? 'ti-sun' : 'ti-device-laptop'
-                )}
-                aria-hidden="true"
-              />
+              <i className={cn('ti text-lg', theme === 'dark' ? 'ti-moon' : theme === 'light' ? 'ti-sun' : 'ti-device-laptop')} aria-hidden="true" />
             </button>
             <Link href="/profile" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               <i className="ti ti-user-circle text-lg" aria-hidden="true" />
@@ -204,10 +218,12 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
           </div>
         </header>
 
+        {/* Page content */}
         <main className="flex-1 overflow-auto">
           {children}
         </main>
 
+        {/* Mobile bottom nav */}
         {isMobile && (
           <nav className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex justify-around py-2 px-4">
             {[
@@ -221,10 +237,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={cn(
-                    'flex flex-col items-center gap-0.5 text-[10px]',
-                    active ? 'text-blue-600' : 'text-gray-400'
-                  )}
+                  className={cn('flex flex-col items-center gap-0.5 text-[10px]', active ? 'text-blue-600' : 'text-gray-400')}
                 >
                   <i className={cn('ti', item.icon, 'text-xl')} aria-hidden="true" />
                   {item.label}

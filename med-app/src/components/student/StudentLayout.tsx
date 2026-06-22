@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useUserStore } from '@/stores/userStore'
 import { useUIStore } from '@/stores/uiStore'
-import { createBrowserClient } from '@/lib/supabase/client'
+useUIStorimport { createClient } from '@/lib/supabase/client'e
 
 interface StudentLayoutProps {
   children: React.ReactNode
@@ -53,7 +53,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   }, [setSidebarOpen])
 
   async function handleLogout() {
-    const supabase = createBrowserClient()
+    const supabase = createClient()
     await supabase.auth.signOut()
     clearUser()
     window.location.href = '/'

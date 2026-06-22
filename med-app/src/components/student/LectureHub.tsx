@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createBrowserClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { useUserStore } from '@/stores/userStore'
 import LectureRightSidebar from '@/components/student/LectureRightSidebar'
 import SheetReader from '@/components/student/SheetReader'
@@ -109,7 +109,7 @@ export default function LectureHub({
   chapterName,
 }: LectureHubProps) {
   const { user } = useUserStore()
-  const supabase = createBrowserClient()
+  const supabase = createClient()
 
   // Determine which tabs actually have content
   const availableTabs = ALL_TABS

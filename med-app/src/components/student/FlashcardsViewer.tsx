@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Flashcard } from '@/types/database'
 import WatermarkOverlay from '@/components/common/WatermarkOverlay'
 import ContentProtectionWrapper from '@/components/common/ContentProtectionWrapper'
@@ -9,9 +9,10 @@ import MNRenderer from '@/components/student/MNRenderer'
 interface FlashcardsViewerProps {
   flashcards: Flashcard[]
   userName?: string
+  onStatsChange?: (stats: { total: number; easy: number; medium: number; hard: number; current: number }) => void
 }
 
-export default function FlashcardsViewer({ flashcards, userName }: FlashcardsViewerProps) {
+export default function FlashcardsViewer({ flashcards, userName, onStatsChange }: FlashcardsViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [cards, setCards] = useState(flashcards)
@@ -22,6 +23,17 @@ export default function FlashcardsViewer({ flashcards, userName }: FlashcardsVie
   const easyCount = Object.values(ratings).filter((r) => r === 'easy').length
   const mediumCount = Object.values(ratings).filter((r) => r === 'medium').length
   const hardCount = Object.values(ratings).filter((r) => r === 'hard').length
+
+  // Emit stats to parent whenever they change
+  useEffect(() => {
+    onStatsChange?.({
+      total,
+      easy: easyCount,
+      medium: mediumCount,
+      hard: hardCount,
+      current: currentIndex + 1,
+    })
+  }, [currentIndex, easyCount, mediumCount, hardCount, total])
 
   function handleShuffle() {
     setCards([...cards].sort(() => Math.random() - 0.5))

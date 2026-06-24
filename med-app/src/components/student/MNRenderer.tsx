@@ -25,10 +25,24 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
           ))}
         </div>
       )}
-      <div className="max-w-3xl mx-auto space-y-0">
-        {blocks.map((block, index) => {
-          if (block.type === 'h2') h2Counter++
-          return renderBlock(block, index, block.type === 'h2' ? h2Counter : undefined, imageSlots)
+      <div>
+        {groupBlocksIntoSections(blocks).map((section, sIdx) => {
+          if (section.type === 'pre') {
+            return section.blocks.map((block, bIdx) => {
+              if (block.type === 'h2') h2Counter++
+              return renderBlock(block, `pre-${sIdx}-${bIdx}`, block.type === 'h2' ? h2Counter : undefined, imageSlots)
+            })
+          }
+          h2Counter++
+          const currentH2 = h2Counter
+          return (
+            <div key={`sec-${sIdx}`} style={{ background: '#fff', border: '1px solid #ECEEF3', borderRadius: '18px', padding: '24px 26px', marginBottom: '18px', boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)' }}>
+              {renderBlock(section.heading, `h2-${sIdx}`, currentH2, imageSlots)}
+              {section.blocks.map((block, bIdx) =>
+                renderBlock(block, `sec-${sIdx}-${bIdx}`, undefined, imageSlots)
+              )}
+            </div>
+          )
         })}
       </div>
     </div>
@@ -54,6 +68,31 @@ interface Block {
 interface CardBlock {
   type: 'important' | 'clinical_pearl' | 'must_memorize' | 'previous_year'
   content: string
+}
+
+type SectionGroup =
+  | { type: 'pre'; blocks: Block[] }
+  | { type: 'section'; heading: Block; blocks: Block[] }
+
+function groupBlocksIntoSections(blocks: Block[]): SectionGroup[] {
+  const result: SectionGroup[] = []
+  let pre: Block[] = []
+  let current: { type: 'section'; heading: Block; blocks: Block[] } | null = null
+
+  for (const block of blocks) {
+    if (block.type === 'h2') {
+      if (pre.length > 0) { result.push({ type: 'pre', blocks: pre }); pre = [] }
+      if (current) result.push(current)
+      current = { type: 'section', heading: block, blocks: [] }
+    } else if (current) {
+      current.blocks.push(block)
+    } else {
+      pre.push(block)
+    }
+  }
+  if (pre.length > 0) result.push({ type: 'pre', blocks: pre })
+  if (current) result.push(current)
+  return result
 }
 
 function parseContent(raw: string): Block[] {
@@ -205,7 +244,7 @@ function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: R
 
     case 'h1':
       return (
-        <h1 key={key} className="text-[2.4rem] font-black text-gray-950 dark:text-white mt-12 mb-6 first:mt-0 tracking-tight leading-[1.15]">
+        <h1 key={key} style={{ fontSize: '2.4rem', fontWeight: 900, color: '#15203A', marginTop: '0', marginBottom: '24px', letterSpacing: '-0.025em', lineHeight: 1.15 }}>
           {block.content}
         </h1>
       )
@@ -213,16 +252,15 @@ function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: R
     case 'h2': {
       const sectionId = `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
       return (
-        <div key={key} id={sectionId} className="mt-16 mb-6 first:mt-0 scroll-mt-24">
-          <div className="flex items-center gap-4">
-            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center shadow-sm">
+        <div key={key} id={sectionId} style={{ scrollMarginTop: '96px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)', color: '#fff', fontSize: '14px', fontWeight: 700, flexShrink: 0, boxShadow: '0 5px 12px -4px rgba(47,107,255,.6)' }}>
               {h2Number}
             </span>
-            <h2 className="text-[1rem] font-black text-slate-900 dark:text-white uppercase tracking-[0.08em]">
-              {block.content}
-            </h2>
+            <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>
+              {block.content.toUpperCase()}
+            </span>
           </div>
-          <div className="mt-3 ml-12 h-[1px] bg-slate-200 dark:bg-slate-700" />
         </div>
       )
     }
@@ -237,70 +275,70 @@ function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: R
 
     case 'highlight':
       return (
-        <div key={key} className="my-4 flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl px-5 py-4">
-          <span className="text-amber-400 text-lg mt-0.5">✦</span>
-          <p className="text-[0.95rem] leading-relaxed text-amber-900 dark:text-amber-200 font-medium">
-            {renderInline(block.content)}
-          </p>
+        <div key={key} style={{ display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#FFFAED,#FFFDF8)', border: '1px solid #F4E6BC', marginBottom: '16px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#FCEFC4', color: '#D89A06', flexShrink: 0 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
+          </span>
+          <p style={{ margin: 0, fontSize: '16px', lineHeight: 1.7, color: '#534820' }}>{renderInline(block.content)}</p>
         </div>
       )
 
     case 'important':
       return (
-        <div key={key} className="my-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-5 py-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-red-500 text-base">⚠️</span>
-            <span className="text-[0.7rem] font-extrabold text-red-600 dark:text-red-400 uppercase tracking-widest">Important</span>
+        <div key={key} style={{ position: 'relative', overflow: 'hidden', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#FFF4F3,#FFFAFA)', border: '1px solid #FAD7D3', marginBottom: '16px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#FBDAD6', color: '#DC4842', flexShrink: 0 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </span>
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.1em', color: '#DC4842', marginBottom: '5px' }}>IMPORTANT</div>
+            <p style={{ margin: 0, fontSize: '15.5px', lineHeight: 1.65, color: '#5A4341' }}>{renderInline(block.content)}</p>
           </div>
-          <p className="text-[0.93rem] leading-relaxed text-gray-800 dark:text-gray-200">
-            {renderInline(block.content)}
-          </p>
         </div>
       )
 
     case 'clinical_pearl':
       return (
-        <div key={key} className="my-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-5 py-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-blue-500 text-base">💎</span>
-            <span className="text-[0.7rem] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Clinical Pearl</span>
+        <div key={key} style={{ display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#EEF4FF,#F7FAFF)', border: '1px solid #DCE6FB', marginBottom: '16px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#DCE7FF', color: '#2F6BFF', flexShrink: 0 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </span>
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF', marginBottom: '5px' }}>CLINICAL PEARL</div>
+            <p style={{ margin: 0, fontSize: '15.5px', lineHeight: 1.65, color: '#39496B' }}>{renderInline(block.content)}</p>
           </div>
-          <p className="text-[0.93rem] leading-relaxed text-gray-800 dark:text-gray-200">
-            {renderInline(block.content)}
-          </p>
         </div>
       )
 
     case 'must_memorize':
       return (
-        <div key={key} className="my-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-5 py-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-emerald-500 text-base">⭐</span>
-            <span className="text-[0.7rem] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Must Memorize</span>
+        <div key={key} style={{ display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#EDFBF4,#F5FDF8)', border: '1px solid #B8EDD3', marginBottom: '16px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#C8F0DC', color: '#138A5A', flexShrink: 0 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </span>
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.1em', color: '#138A5A', marginBottom: '5px' }}>MUST MEMORIZE</div>
+            <p style={{ margin: 0, fontSize: '15.5px', lineHeight: 1.65, fontWeight: 700, color: '#1A5C3A' }}>{renderInline(block.content)}</p>
           </div>
-          <p className="text-[0.93rem] leading-relaxed font-bold text-emerald-700 dark:text-emerald-300">
-            {renderInline(block.content)}
-          </p>
         </div>
       )
 
     case 'previous_year':
       return (
-        <div key={key} className="my-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl px-5 py-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-purple-500 text-base">🗓️</span>
-            <span className="text-[0.7rem] font-extrabold text-purple-600 dark:text-purple-400 uppercase tracking-widest">Previous Year</span>
+        <div key={key} style={{ display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#F6F0FF,#FAF7FF)', border: '1px solid #DDD0FA', marginBottom: '16px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#EDE0FC', color: '#7C3AED', flexShrink: 0 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </span>
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.1em', color: '#7C3AED', marginBottom: '5px' }}>PREVIOUS YEAR</div>
+            <p style={{ margin: 0, fontSize: '15.5px', lineHeight: 1.65, color: '#3D2A6B' }}>{renderInline(block.content)}</p>
           </div>
-          <p className="text-[0.93rem] leading-relaxed text-gray-800 dark:text-gray-200">
-            {renderInline(block.content)}
-          </p>
         </div>
       )
 
     case 'table':
       if (!block.rows || block.rows.length === 0) return null
       return (
-        <div key={key} className="my-6 overflow-x-auto rounded-xl border border-blue-100 dark:border-blue-900 shadow-sm">
+        <div key={key} className="my-6 overflow-x-auto rounded-xl shadow-sm">
           <table className="w-full text-[0.9rem]">
             <thead>
               <tr className="bg-blue-50 dark:bg-blue-900/40">
@@ -337,7 +375,7 @@ function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: R
 
     default:
       return (
-        <p key={key} className="text-[1rem] text-slate-700 dark:text-slate-300 leading-[1.85] my-3">
+        <p key={key} style={{ fontSize: '15.5px', lineHeight: 1.75, color: '#3C4661', margin: '0 0 14px' }}>
           {renderInline(block.content)}
         </p>
       )

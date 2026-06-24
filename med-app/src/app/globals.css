@@ -126,7 +126,12 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background: #F5F6FA;
+    color: #1B2335;
   }
 }
 /* Hide scrollbar for lecture content */
@@ -163,4 +168,8 @@ aside::-webkit-scrollbar-thumb {
 
 aside::-webkit-scrollbar-thumb:hover {
   background: #E2E8F0;
+}
+/* Sidebar section separators — use spacing not borders */
+aside > div {
+  border-bottom: none !important;
 }

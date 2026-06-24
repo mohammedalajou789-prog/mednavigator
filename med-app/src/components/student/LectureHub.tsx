@@ -325,93 +325,84 @@ export default function LectureHub({
       {/* ── CENTER: only this scrolls ── */}
       <div
         id="lecture-content-scroll"
-        className="flex-1 min-w-0 bg-[#F8FAFC] dark:bg-slate-950"
-        style={{ overflowY: 'auto', height: '100%' }}
+        className="flex-1 min-w-0"
+        style={{ overflowY: 'auto', height: '100%', background: '#F5F6FA' }}
       >
-        {/* Sticky header inside the scroll container */}
-        <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+        {/* Hero card */}
+        <div style={{ padding: '22px 26px 0', background: '#F5F6FA' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#7A8499', fontWeight: 500 }}>
+              <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              <Link href={`/${universityId}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>Subjects</Link>
+              <span style={{ color: '#C5CBD6' }}>/</span>
+              <Link href={`/${universityId}/${subject.id}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>{subject.name}</Link>
+              <span style={{ color: '#C5CBD6' }}>/</span>
+              <span style={{ color: '#1B2335', fontWeight: 700 }}>{lecture.title}</span>
+            </div>
+          </div>
 
-          {/* Blue accent line at top */}
-          <div className="h-[3px] bg-gradient-to-r from-blue-600 via-blue-500 to-violet-500" />
-
-          <div className="px-8 pt-3 pb-3">
-            {/* Breadcrumb — hides on scroll */}
-            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${scrolled ? 'max-h-0 opacity-0 mb-0' : 'max-h-10 opacity-100 mb-2'}`}>
-            <nav className="flex items-center gap-1.5 text-[11px] text-slate-400">
-              <Link href={`/${universityId}`} className="hover:text-blue-600 transition-colors flex items-center gap-1">
-                <i className="ti ti-book text-[11px]" />
-                Subjects
-              </Link>
-              <i className="ti ti-chevron-right text-[10px] text-slate-300" />
-              <Link
-                href={`/${universityId}/${subject.id}`}
-                className="hover:text-blue-600 transition-colors truncate max-w-[140px] font-medium text-slate-500 dark:text-slate-400"
-              >
-                {subject.name}
-              </Link>
-              <i className="ti ti-chevron-right text-[10px] text-slate-300" />
-              <span className="text-slate-400 dark:text-slate-500 truncate max-w-[200px]">
-                {lecture.title}
+          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '22px', padding: '28px 30px 24px', marginBottom: '22px', background: 'linear-gradient(120deg,#E8F0FF 0%,#EFF4FF 46%,#FAFBFF 100%)', border: '1px solid #DFE8FB', boxShadow: '0 1px 2px rgba(16,24,40,.04),0 22px 46px -30px rgba(40,90,200,.4)' }}>
+            {/* Badges top right */}
+            <div style={{ position: 'absolute', top: '24px', right: '28px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '9px' }}>
+              {isCompleted ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', background: '#E7F7EF', border: '1px solid #C7EBD8', color: '#138A5A', fontSize: '12.5px', fontWeight: 700 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  Completed
+                </span>
+              ) : (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', background: '#EFF4FF', border: '1px solid #D5E2FF', color: '#2F6BFF', fontSize: '12.5px', fontWeight: 700 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  In Progress
+                </span>
+              )}
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', background: '#FFF6E0', border: '1px solid #F3E1AE', color: '#A1730A', fontSize: '12.5px', fontWeight: 700 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#E5A700" stroke="#E5A700" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                {subject.access_mode === 'free' ? 'Free' : 'Premium'}
               </span>
-            </nav>
             </div>
 
-            {/* Title row */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3 min-w-0">
-                {/* Icon */}
-                <div className={`rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm transition-all duration-300 ${scrolled ? 'w-6 h-6' : 'w-8 h-8'}`}>
-                  <i className={`ti ti-file-text text-white transition-all duration-300 ${scrolled ? 'text-[11px]' : 'text-[15px]'}`} />
-                </div>
-                <div className="min-w-0">
-                  <h1 className={`font-bold text-slate-900 dark:text-white leading-tight transition-all duration-300 ${scrolled ? 'text-[15px]' : 'text-[18px]'}`}>
-                    {lecture.title}
-                  </h1>
-                </div>
-              </div>
-
-              {/* Status badges */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {isCompleted ? (
-                  <span className="flex items-center gap-1.5 text-[11px] font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-2.5 py-1 rounded-full">
-                    <i className="ti ti-circle-check-filled text-[12px]" />
-                    Completed
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-full">
-                    <i className="ti ti-clock text-[12px]" />
-                    In Progress
-                  </span>
-                )}
-                <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full border ${
-                  subject.access_mode === 'free'
-                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
-                    : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
-                }`}>
-                  {subject.access_mode === 'free' ? '✓ Free' : '★ Premium'}
-                </span>
+            {/* Title */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: '18px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '54px', height: '54px', borderRadius: '15px', background: 'linear-gradient(150deg,#3B79FF,#2F6BFF)', color: '#fff', flexShrink: 0, boxShadow: '0 10px 22px -8px rgba(47,107,255,.7)' }}>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+              </span>
+              <div style={{ paddingTop: '2px' }}>
+                <h1 style={{ margin: 0, fontSize: '40px', lineHeight: 1.05, fontWeight: 800, letterSpacing: '-0.025em', color: '#15203A' }}>{lecture.title}</h1>
+                <div style={{ marginTop: '7px', fontSize: '15px', fontWeight: 600, color: '#2F6BFF' }}>{subject.name}</div>
               </div>
             </div>
 
             {/* Progress bar */}
-            {(activeTab === 'sheet' || activeTab === 'summary') && progressPercent > 0 && (
-              <div className="mt-3 flex items-center gap-3">
-                <div className="flex-1 h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
-                    style={{ width: `${progressPercent}%` }}
-                  />
+            {(activeTab === 'sheet' || activeTab === 'summary') && (
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '16px', marginTop: '22px' }}>
+                <div style={{ position: 'relative', width: '54px', height: '54px', flexShrink: 0 }}>
+                  <svg width="54" height="54" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="26" fill="none" stroke="#D6E2FB" strokeWidth="7"/>
+                    <circle cx="32" cy="32" r="26" fill="none" stroke="#2F6BFF" strokeWidth="7" strokeLinecap="round"
+                      strokeDasharray="163.36"
+                      strokeDashoffset={163.36 - (163.36 * progressPercent / 100)}
+                      transform="rotate(-90 32 32)"
+                      style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+                    />
+                  </svg>
+                  <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 800, color: '#2F6BFF' }}>{progressPercent}%</span>
                 </div>
-                <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 flex-shrink-0">
-                  {progressPercent}% read
-                </span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, letterSpacing: '.04em', color: '#6B7689', textTransform: 'uppercase' }}>Reading Progress</span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#2F6BFF' }}>{progressPercent}% read</span>
+                  </div>
+                  <div style={{ height: '8px', borderRadius: '6px', background: '#D9E3F8', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${progressPercent}%`, borderRadius: '6px', background: 'linear-gradient(90deg,#3B79FF,#2F6BFF)', transition: 'width .25s ease' }} />
+                  </div>
+                </div>
               </div>
             )}
           </div>
         </div>
 
         {/* Content */}
-        <div className="px-8 py-6 max-w-[900px]">
+        <div style={{ padding: '0 26px 120px' }}>
           {isCurrentTabLocked ? (
             <LockedContentCard subjectName={subject.name} />
           ) : (
@@ -464,11 +455,11 @@ export default function LectureHub({
 
       {/* ── RIGHT SIDEBAR: never scrolls with content ── */}
       <aside
-        className="flex-shrink-0 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 flex flex-col"
-        style={{ width: '300px', height: '100%', overflowY: 'auto' }}
+        className="flex-shrink-0 bg-white dark:bg-slate-900 flex flex-col"
+        style={{ width: '300px', height: '100%', overflowY: 'auto', borderLeft: '1px solid rgba(0,0,0,0.06)' }}
       >
         {/* CONTENT SWITCHER */}
-        <div className="p-4 border-b border-slate-100 dark:border-slate-700/60 flex-shrink-0">
+        <div className="p-4 flex-shrink-0">
           <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
             Content
           </p>

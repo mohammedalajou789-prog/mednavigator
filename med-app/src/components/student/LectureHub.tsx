@@ -121,13 +121,60 @@ interface LectureHubProps {
   summaryImageSlots: Record<number, string>
 }
 
-const ALL_TABS = [
-  { id: 'sheet',          label: 'Sheet',         icon: '📄' },
-  { id: 'summary',        label: 'Summary',        icon: '📝' },
-  { id: 'flashcards',     label: 'Flashcards',     icon: '🃏' },
-  { id: 'quiz',           label: 'Quiz',           icon: '❓' },
-  { id: 'previous_years', label: 'Previous Years', icon: '📅' },
-]
+const TAB_CONFIG: Record<string, { label: string; icon: React.ReactNode }> = {
+  sheet: {
+    label: 'Sheet',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="9" y1="13" x2="15" y2="13"/>
+        <line x1="9" y1="17" x2="13" y2="17"/>
+      </svg>
+    ),
+  },
+  summary: {
+    label: 'Summary',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="9" y1="13" x2="15" y2="13"/>
+        <line x1="9" y1="17" x2="11" y2="17"/>
+      </svg>
+    ),
+  },
+  flashcards: {
+    label: 'Flashcards',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="2"/>
+        <line x1="2" y1="10" x2="22" y2="10"/>
+      </svg>
+    ),
+  },
+  quiz: {
+    label: 'Quiz',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    ),
+  },
+  previous_years: {
+    label: 'Previous Years',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+    ),
+  },
+}
+
+const ALL_TABS = ['sheet', 'summary', 'flashcards', 'quiz', 'previous_years']
 
 export function extractToc(content: string): TocSection[] {
   const lines = content.split('\n')
@@ -177,40 +224,27 @@ export default function LectureHub({
   const supabase = createClient()
 
   const availableTabs = ALL_TABS.filter((t) => {
-    if (t.id === 'sheet')          return !!sheet || sheetLocked
-    if (t.id === 'summary')        return !!summary || summaryLocked
-    if (t.id === 'flashcards')     return flashcards.length > 0 || flashcardsLocked
-    if (t.id === 'quiz')           return quizQuestions.length > 0 || quizLocked
-    if (t.id === 'previous_years') return previousYearQuestions.length > 0 || pyqLocked
+    if (t === 'sheet')          return !!sheet || sheetLocked
+    if (t === 'summary')        return !!summary || summaryLocked
+    if (t === 'flashcards')     return flashcards.length > 0 || flashcardsLocked
+    if (t === 'quiz')           return quizQuestions.length > 0 || quizLocked
+    if (t === 'previous_years') return previousYearQuestions.length > 0 || pyqLocked
     return false
   })
 
-  const [activeTab, setActiveTab]             = useState(availableTabs[0]?.id ?? 'sheet')
-  const [scrolled, setScrolled] = useState(false)
-
-  useEffect(() => {
-    const el = document.getElementById('lecture-content-scroll')
-    if (!el) return
-    let last = false
-    const onScroll = () => {
-      const isReadingTab = activeTab === 'sheet' || activeTab === 'summary'
-      const next = isReadingTab && el.scrollTop > 80
-      if (next !== last) { last = next; setScrolled(next) }
-    }
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
-  }, [activeTab])
+  const [activeTab, setActiveTab]           = useState(availableTabs[0] ?? 'sheet')
   const [progressPercent, setProgressPercent] = useState(0)
-  const [isCompleted, setIsCompleted]         = useState(false)
-  const [isBookmarked, setIsBookmarked]       = useState(false)
-  const [flashcardStats, setFlashcardStats]   = useState<FlashcardStats>({
+  const [isCompleted, setIsCompleted]       = useState(false)
+  const [isBookmarked, setIsBookmarked]     = useState(false)
+  const [flashcardStats, setFlashcardStats] = useState<FlashcardStats>({
     total: flashcards.length, easy: 0, medium: 0, hard: 0, current: 1, important: 0,
   })
   const [quizStats, setQuizStats] = useState<QuizStats>({
     total: quizQuestions.length, answered: 0, correct: 0, current: 1, important: 0,
   })
-  const [pyqStats, setPyqStats] = useState({ total: previousYearQuestions.length, important: 0, answered: 0 })
-  
+  const [pyqStats, setPyqStats] = useState({
+    total: previousYearQuestions.length, important: 0, answered: 0,
+  })
 
   const tocSections: TocSection[] =
     activeTab === 'sheet'   ? extractToc(sheet?.content ?? '') :
@@ -253,17 +287,17 @@ export default function LectureHub({
   }, [user, lecture.id, activeTab])
 
   function handleTocClick(id: string) {
-  const el = document.getElementById(id)
-  const scrollContainer = document.getElementById('lecture-content-scroll')
-  if (el && scrollContainer) {
-    const elTop = el.getBoundingClientRect().top
-    const containerTop = scrollContainer.getBoundingClientRect().top
-    const offset = elTop - containerTop + scrollContainer.scrollTop - 120
-    scrollContainer.scrollTo({ top: offset, behavior: 'smooth' })
-  } else if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const el = document.getElementById(id)
+    const scrollContainer = document.getElementById('lecture-content-scroll')
+    if (el && scrollContainer) {
+      const elTop = el.getBoundingClientRect().top
+      const containerTop = scrollContainer.getBoundingClientRect().top
+      const offset = elTop - containerTop + scrollContainer.scrollTop - 120
+      scrollContainer.scrollTo({ top: offset, behavior: 'smooth' })
+    } else if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
   }
-}
 
   async function handleMarkComplete() {
     if (!user) return
@@ -319,38 +353,68 @@ export default function LectureHub({
   }
 
   return (
-    // This outer div fills whatever height the parent gives us
-    <div className="flex" style={{ height: '100%', overflow: 'hidden' }}>
+    <div className="flex" style={{ height: 'calc(100vh - 72px)', overflow: 'hidden', position: 'relative' }}>
 
-      {/* ── CENTER: only this scrolls ── */}
+      {/* ── CENTER: scrollable content ── */}
       <div
         id="lecture-content-scroll"
         className="flex-1 min-w-0"
-        style={{ overflowY: 'auto', height: '100%', background: '#F5F6FA' }}
+        style={{ overflowY: 'auto', height: 'calc(100vh - 72px)', background: '#F5F6FA' }}
       >
+        {/* Mobile tabs — visible only on mobile */}
+        <div className="lg:hidden flex gap-1 px-4 pt-3 pb-2 bg-white border-b border-slate-100 overflow-x-auto" style={{ flexShrink: 0 }}>
+          {availableTabs.map((tabId) => {
+            const cfg = TAB_CONFIG[tabId]
+            const isActive = activeTab === tabId
+            return (
+              <button
+                key={tabId}
+                onClick={() => setActiveTab(tabId)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '20px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: isActive ? 600 : 500,
+                  background: isActive ? '#EEF3FF' : '#F3F4F6',
+                  color: isActive ? '#2563EB' : '#6B7280',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                {cfg.icon}
+                {cfg.label}
+              </button>
+            )
+          })}
+        </div>
+
         {/* Hero card */}
-        <div style={{ padding: '22px 26px 0', background: '#F5F6FA' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '18px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#7A8499', fontWeight: 500 }}>
-              <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-              <Link href={`/${universityId}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>Subjects</Link>
-              <span style={{ color: '#C5CBD6' }}>/</span>
-              <Link href={`/${universityId}/${subject.id}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>{subject.name}</Link>
-              <span style={{ color: '#C5CBD6' }}>/</span>
-              <span style={{ color: '#1B2335', fontWeight: 700 }}>{lecture.title}</span>
-            </div>
+        <div style={{ padding: 'clamp(12px, 3vw, 22px) clamp(12px, 3vw, 26px) 0', background: '#F5F6FA' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#7A8499', fontWeight: 500, marginBottom: '18px' }}>
+            <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            <Link href={`/${universityId}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>Subjects</Link>
+            <span style={{ color: '#C5CBD6' }}>/</span>
+            <Link href={`/${universityId}/${subject.id}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>{subject.name}</Link>
+            <span style={{ color: '#C5CBD6' }}>/</span>
+            <span style={{ color: '#1B2335', fontWeight: 700 }}>{lecture.title}</span>
           </div>
 
-          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '22px', padding: '28px 30px 24px', marginBottom: '22px', background: 'linear-gradient(120deg,#E8F0FF 0%,#EFF4FF 46%,#FAFBFF 100%)', border: '1px solid #DFE8FB', boxShadow: '0 1px 2px rgba(16,24,40,.04),0 22px 46px -30px rgba(40,90,200,.4)' }}>
-            {/* Badges top right */}
-            <div style={{ position: 'absolute', top: '24px', right: '28px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '9px' }}>
+          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '16px', padding: 'clamp(14px, 4vw, 28px) clamp(14px, 4vw, 30px) clamp(12px, 3vw, 24px)', marginBottom: '16px', background: 'linear-gradient(120deg,#E8F0FF 0%,#EFF4FF 46%,#FAFBFF 100%)', border: '1px solid #DFE8FB', boxShadow: '0 1px 2px rgba(16,24,40,.04),0 22px 46px -30px rgba(40,90,200,.4)' }}>
+            {/* Pink glow */}
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '320px', height: '160px', background: 'radial-gradient(ellipse at center, rgba(249,168,212,0.3) 0%, rgba(216,180,254,0.15) 55%, transparent 75%)', pointerEvents: 'none', borderRadius: '50%', filter: 'blur(24px)', zIndex: 0 }} />
+            <div className="hidden sm:flex" style={{ position: 'absolute', top: '24px', right: '28px', flexDirection: 'column', alignItems: 'flex-end', gap: '9px' }}>
               {isCompleted ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', background: '#E7F7EF', border: '1px solid #C7EBD8', color: '#138A5A', fontSize: '12.5px', fontWeight: 700 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius:'20px', background: '#E7F7EF', border: '1px solid #C7EBD8', color: '#138A5A', fontSize: '12.5px', fontWeight: 700 }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                   Completed
                 </span>
               ) : (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', background: '#EFF4FF', border: '1px solid #D5E2FF', color: '#2F6BFF', fontSize: '12.5px', fontWeight: 700 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius:'20px', background: '#EFF4FF', border: '1px solid #D5E2FF', color: '#2F6BFF', fontSize: '12.5px', fontWeight: 700 }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   In Progress
                 </span>
@@ -361,18 +425,27 @@ export default function LectureHub({
               </span>
             </div>
 
-            {/* Title */}
+            {/* Mobile badges row */}
+            <div className="flex sm:hidden gap-2 mb-3 flex-wrap">
+              {isCompleted ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius:'20px', background: '#E7F7EF', border: '1px solid #C7EBD8', color: '#138A5A', fontSize: '11px', fontWeight: 700 }}>✓ Completed</span>
+              ) : (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius:'20px', background: '#EFF4FF', border: '1px solid #D5E2FF', color: '#2F6BFF', fontSize: '11px', fontWeight: 700 }}>In Progress</span>
+              )}
+              <span style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#FFF6E0', border: '1px solid #F3E1AE', color: '#A1730A', fontSize: '11px', fontWeight: 700 }}>
+                ★ {subject.access_mode === 'free' ? 'Free' : 'Premium'}
+              </span>
+            </div>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: '18px' }}>
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '54px', height: '54px', borderRadius: '15px', background: 'linear-gradient(150deg,#3B79FF,#2F6BFF)', color: '#fff', flexShrink: 0, boxShadow: '0 10px 22px -8px rgba(47,107,255,.7)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '54px', height:'54px', borderRadius: '15px', background: 'linear-gradient(150deg,#3B79FF,#2F6BFF)', color: '#fff', flexShrink: 0, boxShadow: '0 10px 22px -8px rgba(47,107,255,.7)' }}>
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
               </span>
               <div style={{ paddingTop: '2px' }}>
-                <h1 style={{ margin: 0, fontSize: '40px', lineHeight: 1.05, fontWeight: 800, letterSpacing: '-0.025em', color: '#15203A' }}>{lecture.title}</h1>
+                <h1 style={{ margin: 0, fontSize: 'clamp(22px, 5vw, 40px)', lineHeight: 1.1, fontWeight: 800, letterSpacing: '-0.025em', color: '#15203A' }}>{lecture.title}</h1>
                 <div style={{ marginTop: '7px', fontSize: '15px', fontWeight: 600, color: '#2F6BFF' }}>{subject.name}</div>
               </div>
             </div>
 
-            {/* Progress bar */}
             {(activeTab === 'sheet' || activeTab === 'summary') && (
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '16px', marginTop: '22px' }}>
                 <div style={{ position: 'relative', width: '54px', height: '54px', flexShrink: 0 }}>
@@ -401,8 +474,8 @@ export default function LectureHub({
           </div>
         </div>
 
-        {/* Content */}
-        <div style={{ padding: '0 26px 120px' }}>
+        {/* Content area */}
+        <div style={{ padding: '0 clamp(12px, 3vw, 26px) 120px' }}>
           {isCurrentTabLocked ? (
             <LockedContentCard subjectName={subject.name} />
           ) : (
@@ -453,272 +526,415 @@ export default function LectureHub({
         </div>
       </div>
 
-      {/* ── RIGHT SIDEBAR: never scrolls with content ── */}
+      {/* ── RIGHT SIDEBAR — desktop only ── */}
       <aside
-        className="flex-shrink-0 bg-white dark:bg-slate-900 flex flex-col"
-        style={{ width: '300px', height: '100%', overflowY: 'auto', borderLeft: '1px solid rgba(0,0,0,0.06)' }}
+        id="lecture-right-sidebar"
+        className="hidden lg:flex"
+        style={{
+          width: '272px',
+          height: 'calc(100vh - 72px)',
+          overflowY: 'auto',
+          borderLeft: '1px solid #EEF0F4',
+          background: '#F7F8FA',
+          flexDirection: 'column',
+          gap: '12px',
+          padding: '16px 12px',
+          flexShrink: 0,
+        }}
       >
-        {/* CONTENT SWITCHER */}
-        <div className="p-4 flex-shrink-0">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
-            Content
-          </p>
-          <div className="space-y-0.5">
-            {availableTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`
-                  w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-all
-                  ${activeTab === tab.id
-                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200'
-                  }
-                `}
-              >
-                <span className="text-base w-5 text-center flex-shrink-0">{tab.icon}</span>
-                <span>{tab.label}</span>
-                {activeTab === tab.id && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
-                )}
-              </button>
-            ))}
+        {/* ── CONTENT CARD ── */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '16px',
+          border: '1px solid #EAEDF2',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        }}>
+          <div style={{ padding: '14px 16px 10px' }}>
+            <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
+              Content
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {availableTabs.map((tabId) => {
+                const cfg = TAB_CONFIG[tabId]
+                const isActive = activeTab === tabId
+                return (
+                  <button
+                    key={tabId}
+                    onClick={() => setActiveTab(tabId)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: isActive ? '#EEF3FF' : 'transparent',
+                      color: isActive ? '#2563EB' : '#6B7280',
+                      transition: 'all 0.15s ease',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        background: isActive ? '#DBEAFE' : '#F3F4F6',
+                        color: isActive ? '#2563EB' : '#9CA3AF',
+                        flexShrink: 0,
+                        transition: 'all 0.15s ease',
+                      }}>
+                        {cfg.icon}
+                      </span>
+                      <span style={{ fontSize: '13.5px', fontWeight: isActive ? 600 : 500 }}>
+                        {cfg.label}
+                      </span>
+                    </div>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke={isActive ? '#2563EB' : '#D1D5DB'}
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
 
-        {/* READING PROGRESS */}
+        {/* ── READING PROGRESS CARD ── */}
         {(activeTab === 'sheet' || activeTab === 'summary') && (
-          <div className="p-4 border-b border-slate-100 dark:border-slate-700/60 flex-shrink-0">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
+          <div style={{
+            background: '#fff',
+            borderRadius: '16px',
+            border: '1px solid #EAEDF2',
+            padding: '14px 16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          }}>
+            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Reading Progress
             </p>
-            <div className="flex items-center gap-3 mb-2">
-              <CircleProgress pct={progressPercent} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' }}>
+              {/* Circle */}
+              <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
+                <svg width="56" height="56" viewBox="0 0 56 56">
+                  <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
+                  <circle
+                    cx="28" cy="28" r="22"
+                    fill="none"
+                    stroke="#2563EB"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeDasharray="138.23"
+                    strokeDashoffset={138.23 - (138.23 * progressPercent / 100)}
+                    transform="rotate(-90 28 28)"
+                    style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+                  />
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB' }}>{progressPercent}%</span>
+                </div>
+              </div>
+              {/* Text */}
               <div>
-                <p className="text-[14px] font-semibold text-slate-800 dark:text-slate-100">
-                  {progressPercent}% read
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>
+                  {progressPercent >= 100 ? 'Finished!' : progressPercent > 0 ? 'Keep reading' : 'Keep reading'}
                 </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  {progressPercent >= 100 ? '🎉 Finished!' : progressPercent > 0 ? 'Keep going' : 'Not started'}
+                <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94A3B8', fontWeight: 500 }}>
+                  {progressPercent >= 100 ? 'Great job!' : progressPercent > 0 ? `${progressPercent}% done` : 'Not started'}
                 </p>
               </div>
             </div>
-            <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
-              <div
-                className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                style={{ width: `${progressPercent}%` }}
-              />
+            {/* Progress bar */}
+            <div style={{ height: '6px', borderRadius: '999px', background: '#EEF0F4', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%',
+                width: `${progressPercent}%`,
+                borderRadius: '999px',
+                background: 'linear-gradient(90deg, #3B82F6, #2563EB)',
+                transition: 'width 0.3s ease',
+              }} />
             </div>
           </div>
         )}
 
-        {/* FLASHCARD STATS */}
-        {activeTab === 'flashcards' && flashcardStats && (
-          <div className="p-4 border-b border-slate-100 dark:border-slate-700/60 flex-shrink-0">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+        {/* ── FLASHCARD STATS CARD ── */}
+        {activeTab === 'flashcards' && (
+          <div style={{
+            background: '#fff',
+            borderRadius: '16px',
+            border: '1px solid #EAEDF2',
+            padding: '14px 16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          }}>
+            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Progress
             </p>
-            <div className="flex items-center gap-3 mb-3">
-              <CircleProgress
-                pct={flashcardStats.total > 0
-                  ? Math.round((flashcardStats.current / flashcardStats.total) * 100)
-                  : 0}
-              />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' }}>
+              <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
+                <svg width="56" height="56" viewBox="0 0 56 56">
+                  <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
+                  <circle cx="28" cy="28" r="22" fill="none" stroke="#2563EB" strokeWidth="5" strokeLinecap="round"
+                    strokeDasharray="138.23"
+                    strokeDashoffset={flashcardStats.total > 0 ? 138.23 - (138.23 * flashcardStats.current / flashcardStats.total) : 138.23}
+                    transform="rotate(-90 28 28)"
+                    style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+                  />
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#2563EB' }}>{flashcardStats.current}/{flashcardStats.total}</span>
+                </div>
+              </div>
               <div>
-                <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">
-                  Card {flashcardStats.current} of {flashcardStats.total}
-                </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  {flashcardStats.total - flashcardStats.current} remaining
-                </p>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>Card {flashcardStats.current}</p>
+                <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94A3B8' }}>{flashcardStats.total - flashcardStats.current} remaining</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-center">
-                <p className="text-[16px] font-bold text-blue-600 dark:text-blue-400">{flashcardStats.total}</p>
-                <p className="text-[10px] text-blue-700 dark:text-blue-500 font-medium">Total</p>
-              </div>
-              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2 text-center">
-                <p className="text-[16px] font-bold text-amber-500 dark:text-amber-400">{flashcardStats.important}</p>
-                <p className="text-[10px] text-amber-700 dark:text-amber-500 font-medium">⭐ Important</p>
-              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <StatPill label="Total" value={flashcardStats.total} color="blue" />
+              <StatPill label="Important" value={flashcardStats.important} color="amber" />
             </div>
           </div>
         )}
 
-        {/* QUIZ STATS */}
-        {activeTab === 'quiz' && quizStats && (
-          <div className="p-4 border-b border-slate-100 dark:border-slate-700/60 flex-shrink-0">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+        {/* ── QUIZ STATS CARD ── */}
+        {activeTab === 'quiz' && (
+          <div style={{
+            background: '#fff',
+            borderRadius: '16px',
+            border: '1px solid #EAEDF2',
+            padding: '14px 16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          }}>
+            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Quiz Progress
             </p>
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-center">
-                <p className="text-[16px] font-bold text-blue-600 dark:text-blue-400">{quizStats.total}</p>
-                <p className="text-[10px] text-blue-700 dark:text-blue-500 font-medium">Total</p>
-              </div>
-              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2 text-center">
-                <p className="text-[16px] font-bold text-amber-500 dark:text-amber-400">{quizStats.important}</p>
-                <p className="text-[10px] text-amber-700 dark:text-amber-500 font-medium">⭐ Important</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 text-center">
-                <p className="text-[16px] font-bold text-green-600 dark:text-green-400">{quizStats.correct}</p>
-                <p className="text-[10px] text-green-700 dark:text-green-500 font-medium">Correct</p>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-2 text-center">
-                <p className="text-[16px] font-bold text-slate-600 dark:text-slate-300">{quizStats.answered}</p>
-                <p className="text-[10px] text-slate-500 font-medium">Done</p>
-              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <StatPill label="Total" value={quizStats.total} color="blue" />
+              <StatPill label="Correct" value={quizStats.correct} color="green" />
+              <StatPill label="Answered" value={quizStats.answered} color="slate" />
+              <StatPill label="Important" value={quizStats.important} color="amber" />
             </div>
           </div>
         )}
 
-        {/* PYQ STATS */}
+        {/* ── PYQ STATS CARD ── */}
         {activeTab === 'previous_years' && (
-          <div className="p-4 border-b border-slate-100 dark:border-slate-700/60 flex-shrink-0">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
+          <div style={{
+            background: '#fff',
+            borderRadius: '16px',
+            border: '1px solid #EAEDF2',
+            padding: '14px 16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          }}>
+            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Previous Years
             </p>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-center">
-                <p className="text-[16px] font-bold text-blue-600 dark:text-blue-400">{pyqStats.total}</p>
-                <p className="text-[10px] text-blue-700 dark:text-blue-500 font-medium">Total</p>
-              </div>
-              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2 text-center">
-                <p className="text-[16px] font-bold text-amber-500 dark:text-amber-400">{pyqStats.important}</p>
-                <p className="text-[10px] text-amber-700 dark:text-amber-500 font-medium">⭐ Important</p>
-              </div>
-              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 text-center">
-                <p className="text-[16px] font-bold text-green-600 dark:text-green-400">{pyqStats.answered}</p>
-                <p className="text-[10px] text-green-700 dark:text-green-500 font-medium">Answered</p>
-              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+              <StatPill label="Total" value={pyqStats.total} color="blue" />
+              <StatPill label="Important" value={pyqStats.important} color="amber" />
+              <StatPill label="Answered" value={pyqStats.answered} color="green" />
             </div>
           </div>
         )}
 
-        {/* TABLE OF CONTENTS */}
+        {/* ── TABLE OF CONTENTS CARD ── */}
         {tocSections.length > 0 && (
-          <div className="p-4 border-b border-slate-100 dark:border-slate-700/60 flex-shrink-0">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
+          <div style={{
+            background: '#fff',
+            borderRadius: '16px',
+            border: '1px solid #EAEDF2',
+            padding: '14px 16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          }}>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Table of Contents
             </p>
-            <nav className="space-y-0.5 max-h-[260px] overflow-y-auto">
-              {tocSections.map((section, idx) => (
-                <button
-                  key={section.id}
-                  onClick={() => handleTocClick(section.id)}
-                  className="w-full flex items-start gap-2.5 px-2 py-1.5 rounded-lg text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group"
-                >
-                  {section.level <= 2 && (
-                    <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '260px', overflowY: 'auto' }}>
+              {tocSections
+                .filter(s => s.level <= 2)
+                .map((section, idx) => (
+                  <button
+                    key={section.id}
+                    onClick={() => handleTocClick(section.id)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '8px 10px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'background 0.12s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#F5F7FF')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <span style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: '#2563EB',
+                      color: '#fff',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
                       {idx + 1}
                     </span>
-                  )}
-                  <span className={`
-                    text-[12px] leading-snug transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400
-                    ${section.level === 1 ? 'font-semibold text-slate-700 dark:text-slate-200' :
-                      section.level === 2 ? 'font-medium text-slate-600 dark:text-slate-300' :
-                      'text-slate-500 dark:text-slate-400 pl-4'}
-                  `}>
-                    {section.label}
-                  </span>
-                </button>
-              ))}
+                    <span style={{
+                      fontSize: '12.5px',
+                      fontWeight: section.level === 1 ? 600 : 500,
+                      color: section.level === 1 ? '#1E293B' : '#475569',
+                      lineHeight: 1.4,
+                    }}>
+                      {section.label}
+                    </span>
+                  </button>
+                ))}
             </nav>
           </div>
         )}
 
-        {/* MY NOTES */}
+        {/* ── NOTES CARD ── */}
         <NotesPanel lectureId={lecture.id} />
 
-        {/* LECTURE INFO */}
-        <div className="p-4 border-b border-slate-100 dark:border-slate-700/60 flex-shrink-0">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
-            Lecture Info
-          </p>
-          <div className="space-y-1.5">
-            {lectureStats.sections > 0 && (
-              <div className="flex items-center justify-between text-[12px]">
-                <span className="text-slate-500 dark:text-slate-400">Sections</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-200">{lectureStats.sections}</span>
-              </div>
-            )}
-            {lectureStats.flashcards > 0 && (
-              <div className="flex items-center justify-between text-[12px]">
-                <span className="text-slate-500 dark:text-slate-400">Flashcards</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-200">{lectureStats.flashcards}</span>
-              </div>
-            )}
-            {lectureStats.quiz > 0 && (
-              <div className="flex items-center justify-between text-[12px]">
-                <span className="text-slate-500 dark:text-slate-400">Quiz Questions</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-200">{lectureStats.quiz}</span>
-              </div>
-            )}
-            {lectureStats.pyq > 0 && (
-              <div className="flex items-center justify-between text-[12px]">
-                <span className="text-slate-500 dark:text-slate-400">Previous Years</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-200">{lectureStats.pyq}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ACTIONS */}
-        <div className="p-4 flex-shrink-0">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
+        {/* ── ACTIONS CARD ── */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '16px',
+          border: '1px solid #EAEDF2',
+          padding: '14px 16px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        }}>
+          <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             Actions
           </p>
-          <div className="space-y-2">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <button
               onClick={handleMarkComplete}
-              className={`
-                w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-semibold transition-all duration-200
-                ${isCompleted
-                  ? 'bg-green-600 hover:bg-green-700 text-white ring-2 ring-green-300 dark:ring-green-700'
-                  : 'bg-slate-100 dark:bg-slate-700 hover:bg-blue-600 hover:text-white text-slate-600 dark:text-slate-300'
-                }
-              `}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '10px',
+                borderRadius: '10px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 600,
+                background: isCompleted ? '#16A34A' : '#EEF3FF',
+                color: isCompleted ? '#fff' : '#2563EB',
+                transition: 'all 0.15s ease',
+              }}
             >
-              <i className={`ti ${isCompleted ? 'ti-circle-check-filled' : 'ti-circle'} text-[15px]`} />
-              {isCompleted ? '✓ Completed' : 'Mark as Completed'}
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                {isCompleted
+                  ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>
+                  : <circle cx="12" cy="12" r="10"/>
+                }
+              </svg>
+              {isCompleted ? 'Completed' : 'Mark as Completed'}
             </button>
             <button
               onClick={handleToggleBookmark}
-              className={`
-                w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-medium border transition-all duration-200
-                ${isBookmarked
-                  ? 'bg-amber-500 border-amber-500 text-white ring-2 ring-amber-200 dark:ring-amber-800'
-                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-amber-400 hover:text-amber-600'
-                }
-              `}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '10px',
+                borderRadius: '10px',
+                border: '1px solid #EAEDF2',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 500,
+                background: isBookmarked ? '#FFF7ED' : '#fff',
+                color: isBookmarked ? '#D97706' : '#6B7280',
+                transition: 'all 0.15s ease',
+              }}
             >
-              <i className={`ti ${isBookmarked ? 'ti-bookmark-filled' : 'ti-bookmark'} text-[14px]`} />
-              {isBookmarked ? '★ Bookmarked' : 'Bookmark'}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? '#D97706' : 'none'} stroke={isBookmarked ? '#D97706' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+              </svg>
+              {isBookmarked ? 'Bookmarked' : 'Bookmark'}
             </button>
             <Link
               href={`/${universityId}/${subject.id}`}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-medium border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '10px',
+                borderRadius: '10px',
+                border: '1px solid #EAEDF2',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#6B7280',
+                background: '#fff',
+                textDecoration: 'none',
+                transition: 'all 0.15s ease',
+              }}
             >
-              <i className="ti ti-arrow-left text-[14px]" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
               Back to Subject
             </Link>
           </div>
         </div>
+
+        {/* bottom spacing */}
+        <div style={{ height: '8px' }} />
       </aside>
     </div>
   )
 }
 
-// ── Notes Panel ────────────────────────────────────────────────────────────────
+// ── Stat Pill ──────────────────────────────────────────────────────────────
+
+function StatPill({ label, value, color }: { label: string; value: number; color: 'blue' | 'green' | 'amber' | 'slate' }) {
+  const bg    = color === 'blue' ? '#EFF6FF' : color === 'green' ? '#F0FDF4' : color === 'amber' ? '#FFFBEB' : '#F8FAFC'
+  const text  = color === 'blue' ? '#2563EB' : color === 'green' ? '#16A34A' : color === 'amber' ? '#D97706' : '#64748B'
+  const sub   = color === 'blue' ? '#3B82F6' : color === 'green' ? '#22C55E' : color === 'amber' ? '#F59E0B' : '#94A3B8'
+  return (
+    <div style={{ background: bg, borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
+      <p style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: text }}>{value}</p>
+      <p style={{ margin: '2px 0 0', fontSize: '10px', fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</p>
+    </div>
+  )
+}
+
+// ── Notes Panel ────────────────────────────────────────────────────────────
 
 function NotesPanel({ lectureId }: { lectureId: string }) {
   const { user } = useUserStore()
   const supabase = createClient()
-  const [note, setNote] = useState('')
-  const [saved, setSaved] = useState(false)
+  const [note, setNote]     = useState('')
+  const [saved, setSaved]   = useState(false)
   const [loading, setLoading] = useState(true)
   const [noteId, setNoteId] = useState<string | null>(null)
   const saveTimer = useRef<NodeJS.Timeout | null>(null)
@@ -763,56 +979,48 @@ function NotesPanel({ lectureId }: { lectureId: string }) {
   if (!user) return null
 
   return (
-    <div className="p-4 border-b border-slate-100 dark:border-slate-700/60 flex-shrink-0">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+    <div style={{
+      background: '#fff',
+      borderRadius: '16px',
+      border: '1px solid #EAEDF2',
+      padding: '14px 16px',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+        <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           My Notes
         </p>
         {saved && (
-          <span className="text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1">
-            <i className="ti ti-check text-[11px]" /> Saved
-          </span>
+          <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 600 }}>✓ Saved</span>
         )}
         {!saved && note.length > 0 && (
-          <span className="text-[10px] text-slate-400">Saving...</span>
+          <span style={{ fontSize: '10px', color: '#94A3B8' }}>Saving...</span>
         )}
       </div>
       {loading ? (
-        <div className="h-20 bg-slate-100 dark:bg-slate-700 rounded-lg animate-pulse" />
+        <div style={{ height: '80px', background: '#F1F5F9', borderRadius: '10px' }} />
       ) : (
         <textarea
           value={note}
           onChange={(e) => handleChange(e.target.value)}
           placeholder="Write your notes here..."
           rows={4}
-          className="w-full text-[12.5px] text-slate-700 dark:text-slate-200 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-2.5 resize-none outline-none focus:border-amber-400 dark:focus:border-amber-600 placeholder-slate-400 transition-all leading-relaxed"
+          style={{
+            width: '100%',
+            fontSize: '12.5px',
+            color: '#374151',
+            background: '#FEFCE8',
+            border: '1px solid #FDE68A',
+            borderRadius: '10px',
+            padding: '10px',
+            resize: 'none',
+            outline: 'none',
+            lineHeight: 1.6,
+            fontFamily: 'inherit',
+            boxSizing: 'border-box',
+          }}
         />
       )}
-    </div>
-  )
-}
-
-// ── Circle Progress ────────────────────────────────────────────────────────────
-
-function CircleProgress({ pct, color = 'blue' }: { pct: number; color?: 'blue' | 'green' | 'amber' | 'red' }) {
-  const CIRC = 157.08
-  const offset = CIRC - (CIRC * pct) / 100
-  const stroke =
-    color === 'green' ? '#16A34A' :
-    color === 'amber' ? '#D97706' :
-    color === 'red'   ? '#DC2626' : '#2563EB'
-  return (
-    <div className="relative w-[48px] h-[48px] flex-shrink-0">
-      <svg width="48" height="48" viewBox="0 0 52 52" className="rotate-[-90deg]">
-        <circle cx="26" cy="26" r="22" fill="none" stroke="#E2E8F0" strokeWidth="4" className="dark:stroke-slate-700" />
-        <circle cx="26" cy="26" r="22" fill="none" stroke={stroke} strokeWidth="4"
-          strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 0.4s ease' }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100">{pct}%</span>
-      </div>
     </div>
   )
 }

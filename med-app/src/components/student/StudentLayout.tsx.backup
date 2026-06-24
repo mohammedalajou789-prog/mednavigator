@@ -126,7 +126,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-2 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <nav className="flex-1 py-2 overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           <div className="px-3 space-y-4">
             {NAV_GROUPS.map((group) => (
               <div key={group.label}>
@@ -219,7 +219,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-hidden" style={{ height: '100%' }}>
           {children}
         </main>
 

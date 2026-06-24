@@ -25,6 +25,13 @@ const FEATURES = [
 ]
 
 export default async function LandingPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { redirect } = await import('next/navigation')
+    redirect('/home')
+  }
+
   const universities = await getActiveUniversities()
 
   return (

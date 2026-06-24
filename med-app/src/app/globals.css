@@ -154,22 +154,28 @@
 
 /* Hide scrollbar for right sidebar */
 aside::-webkit-scrollbar {
-  width: 3px;
+  width: 0px;
 }
-
-aside::-webkit-scrollbar-track {
-  background: transparent;
+aside nav::-webkit-scrollbar {
+  width: 0px;
 }
-
-aside::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 999px;
+#lecture-right-sidebar::-webkit-scrollbar {
+  width: 0px;
 }
-
-aside::-webkit-scrollbar-thumb:hover {
-  background: #E2E8F0;
+/* Mobile lecture page fixes */
+@media (max-width: 1023px) {
+  #lecture-content-scroll {
+    height: calc(100vh - 72px) !important;
+  }
 }
-/* Sidebar section separators — use spacing not borders */
-aside > div {
-  border-bottom: none !important;
+/* Mobile typography scaling */
+@media (max-width: 1023px) {
+  #lecture-content-scroll h1 { font-size: 1.6rem !important; }
+  #lecture-content-scroll h2 { font-size: 1.1rem !important; }
+  #lecture-content-scroll h3 { font-size: 0.95rem !important; }
+  #lecture-content-scroll p,
+  #lecture-content-scroll li,
+  #lecture-content-scroll td,
+  #lecture-content-scroll span { font-size: 13.5px !important; }
+  #lecture-content-scroll .mn-block { font-size: 13px !important; }
 }

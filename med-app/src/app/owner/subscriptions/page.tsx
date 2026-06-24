@@ -6,7 +6,7 @@ export default async function SubscriptionsPage() {
 
   const { data: subscriptions } = await supabase
     .from('subject_subscriptions')
-    .select('id, status, start_date, end_date, created_at, users(id, full_name, email), subjects(id, name, universities(name))')
+    .select('id, status, start_date, end_date, created_at, user_id, subjects(id, name, universities(name))')
     .order('created_at', { ascending: false })
 
   const activeCount = subscriptions?.filter((s) => s.status === 'active').length ?? 0
@@ -20,7 +20,6 @@ export default async function SubscriptionsPage() {
 
   return (
     <div className="p-8">
-      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-semibold text-[#0F172A]">Subscriptions</h1>
@@ -34,7 +33,6 @@ export default async function SubscriptionsPage() {
         </Link>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-xl border border-[#E2E8F0] p-5 shadow-sm">
           <p className="text-sm text-[#64748B]">Total</p>
@@ -54,7 +52,6 @@ export default async function SubscriptionsPage() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-[#E2E8F0]">
           <h2 className="font-semibold text-[#0F172A]">All Subscriptions</h2>
@@ -67,7 +64,7 @@ export default async function SubscriptionsPage() {
           <table className="w-full">
             <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wider">Student</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wider">User ID</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wider">Subject</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wider">Expiry</th>
@@ -78,13 +75,11 @@ export default async function SubscriptionsPage() {
             <tbody className="divide-y divide-[#E2E8F0]">
               {subscriptions.map((sub) => {
                 const daysLeft = getDaysRemaining(sub.end_date)
-                const user = sub.users as { id: string; full_name: string; email: string } | null
                 const subject = sub.subjects as { id: string; name: string; universities: { name: string } | null } | null
                 return (
                   <tr key={sub.id} className="hover:bg-[#F8FAFC] transition-colors">
                     <td className="px-6 py-4">
-                      <p className="font-medium text-[#0F172A] text-sm">{user?.full_name ?? '—'}</p>
-                      <p className="text-xs text-[#64748B]">{user?.email ?? '—'}</p>
+                      <p className="font-medium text-[#0F172A] text-sm">{sub.user_id}</p>
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-sm font-medium text-[#0F172A]">{subject?.name ?? '—'}</p>

@@ -73,10 +73,10 @@ export default async function NotificationsPage() {
                     </div>
                     <p className="text-[#64748B] text-sm leading-relaxed">{notif.message}</p>
                     <p className="text-xs text-[#64748B] mt-2">
-                      {new Date(notif.created_at).toLocaleDateString('en-US', {
+                      {notif.created_at ? new Date(notif.created_at).toLocaleDateString('en-US', {
                         year: 'numeric', month: 'short', day: 'numeric',
-                        hour: '2-digit', minute: '2-digit'
-                      })}
+                        hour: '2-digit', minute: '2-digit',
+                      }) : ''}
                     </p>
                   </div>
                 </div>

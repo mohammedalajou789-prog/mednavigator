@@ -1,13 +1,12 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import ContentBuilder from '@/components/admin/ContentBuilder'
 
 interface PageProps {
   params: Promise<{ subjectId: string }>
 }
 
-export default async function ContentBuilderPage({ params }: PageProps) {
+export default async function ContentPage({ params }: PageProps) {
   const { subjectId } = await params
   const supabase = await createServerClient()
 
@@ -16,7 +15,7 @@ export default async function ContentBuilderPage({ params }: PageProps) {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('*')
+    .select('id, role')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -24,25 +23,11 @@ export default async function ContentBuilderPage({ params }: PageProps) {
 
   const { data: subject } = await supabase
     .from('subjects')
-    .select('*, universities(id, name)')
+    .select('id, name, subject_type, universities(name)')
     .eq('id', subjectId)
     .single()
 
   if (!subject) notFound()
-
-  const { data: chapters } = await supabase
-    .from('chapters')
-    .select('id, title, display_order')
-    .eq('subject_id', subjectId)
-    .is('archived_at', null)
-    .order('display_order')
-
-  const { data: subSubjects } = await supabase
-    .from('sub_subjects')
-    .select('id, title, display_order')
-    .eq('subject_id', subjectId)
-    .is('archived_at', null)
-    .order('display_order')
 
   const { data: lectures } = await supabase
     .from('lectures')
@@ -51,37 +36,63 @@ export default async function ContentBuilderPage({ params }: PageProps) {
     .is('archived_at', null)
     .order('display_order')
 
-  const isSystem = subject.subject_type === 'system'
-  const university = subject.universities as Record<string, unknown> | null
+  const university = subject.universities as { name: string } | null
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      {/* Top Bar */}
-      <div className="bg-[#1E293B] text-white px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-bold text-blue-400">MedNavigator</span>
-          <span className="text-[#64748B] text-sm">/</span>
-          <span className="text-sm text-gray-300">Content Builder</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/admin/subjects/${subjectId}`}
-            className="text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            ← Back to Subject
-          </Link>
-        </div>
+    <div className="p-6 max-w-4xl mx-auto">
+      <div className="mb-6">
+        <Link
+          href={`/admin/subjects/${subjectId}`}
+          className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          ← Back to Subject
+        </Link>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mt-2">
+          {subject.name}
+        </h1>
+        <p className="text-gray-500 text-sm mt-1">{university?.name} — Select a lecture to edit its content</p>
       </div>
 
-      <ContentBuilder
-        subject={subject}
-        universityName={String(university?.name ?? '')}
-        chapters={chapters ?? []}
-        subSubjects={subSubjects ?? []}
-        lectures={lectures ?? []}
-        isSystem={isSystem}
-        userId={profile.id}
-      />
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Lectures</h2>
+        </div>
+        {!lectures || lectures.length === 0 ? (
+          <div className="px-5 py-16 text-center text-gray-500 text-sm">
+            No lectures yet. Add lectures from the subject page first.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {lectures.map((lecture) => (
+              <Link
+                key={lecture.id}
+                href={`/admin/subjects/${subjectId}/content/${lecture.id}`}
+                className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+              >
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors">
+                    {lecture.title}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    lecture.status === 'published'
+                      ? 'bg-green-50 text-green-700'
+                      : lecture.status === 'draft'
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {lecture.status}
+                  </span>
+                  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

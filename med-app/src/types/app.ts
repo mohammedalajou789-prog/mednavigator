@@ -1,4 +1,4 @@
-import type { UserRole, Subject, University, SubjectSubscription } from './database'
+export type UserRole = 'owner' | 'admin' | 'student'
 
 export interface UserProfile {
   id: string
@@ -22,6 +22,51 @@ export function getDashboardRoute(role: UserRole): DashboardRoute {
   if (role === 'owner') return '/owner'
   if (role === 'admin') return '/admin'
   return '/'
+}
+
+export interface Subject {
+  id: string
+  university_id: string
+  name: string
+  description: string | null
+  subject_type: string
+  category: string | null
+  access_mode: string | null
+  price: number | null
+  is_free: boolean | null
+  is_published: boolean | null
+  is_active: boolean | null
+  thumbnail_url: string | null
+  cover_media_id: string | null
+  created_at: string | null
+  updated_at: string | null
+  archived_at: string | null
+}
+
+export interface University {
+  id: string
+  name: string
+  country: string | null
+  description: string | null
+  logo_url: string | null
+  logo_media_id: string | null
+  cover_media_id: string | null
+  is_active: boolean | null
+  created_at: string | null
+  updated_at: string | null
+  archived_at: string | null
+}
+
+export interface SubjectSubscription {
+  id: string
+  user_id: string
+  subject_id: string
+  start_date: string
+  end_date: string
+  expiry_date: string | null
+  status: string
+  notes: string | null
+  created_at: string | null
 }
 
 export interface SubjectWithAccess extends Subject {

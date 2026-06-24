@@ -60,8 +60,8 @@ export default async function SubjectPage({ params }: PageProps) {
     .order('display_order')
 
   // Progress tracking
-  let progressData: { lecture_id: string; completed: boolean; content_type: string; last_accessed_at: string }[] = []
-  let continueReading: { lecture_id: string; content_type: string; last_accessed_at: string } | null = null
+  let progressData: { lecture_id: string; completed: boolean; content_type: string; last_accessed_at: string | null }[] = []
+  let continueReading: { lecture_id: string; content_type: string; last_accessed_at: string | null } | null = null
   let checklistData: { lecture_id: string; stars: number }[] = []
 
   if (userId && lectures && lectures.length > 0) {
@@ -80,11 +80,11 @@ export default async function SubjectPage({ params }: PageProps) {
         .in('lecture_id', lectureIds),
     ])
 
-    progressData = progress ?? []
+    progressData = (progress ?? []).filter(p => p.lecture_id !== null) as typeof progressData
     checklistData = (checklist ?? []).filter(c => c.lecture_id !== null) as { lecture_id: string; stars: number }[]
 
     const sorted = [...progressData].sort(
-      (a, b) => new Date(b.last_accessed_at).getTime() - new Date(a.last_accessed_at).getTime()
+      (a, b) => new Date(b.last_accessed_at ?? 0).getTime() - new Date(a.last_accessed_at ?? 0).getTime()
     )
     continueReading = sorted[0] ?? null
   }
@@ -105,8 +105,7 @@ export default async function SubjectPage({ params }: PageProps) {
   }
 
   const continueReadingLecture = continueReading
-    ? lectures?.find(l => l.lecture_id === continueReading?.lecture_id) ??
-      lectures?.find(l => l.id === continueReading?.lecture_id)
+    ? lectures?.find(l => l.id === continueReading?.lecture_id)
     : null
 
   return (

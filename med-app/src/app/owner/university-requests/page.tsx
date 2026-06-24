@@ -39,7 +39,6 @@ export default async function UniversityRequestsPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <nav className="flex items-center gap-2 text-sm text-gray-500 mb-1">
@@ -59,7 +58,6 @@ export default async function UniversityRequestsPage() {
         )}
       </div>
 
-      {/* Pending Requests */}
       {pending.length > 0 && (
         <div className="mb-8">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
@@ -82,7 +80,9 @@ export default async function UniversityRequestsPage() {
                         <p>Requested by: <span className="text-gray-700 font-medium">{student?.full_name}</span></p>
                         <p>Email: <span className="text-gray-700">{student?.email}</span></p>
                         {student?.phone && <p>Phone: <span className="text-gray-700">{student.phone}</span></p>}
-                        <p>Date: <span className="text-gray-700">{new Date(request.created_at).toLocaleDateString()}</span></p>
+                        <p>Date: <span className="text-gray-700">
+                          {request.created_at ? new Date(request.created_at).toLocaleDateString() : '—'}
+                        </span></p>
                       </div>
                     </div>
                     <UniversityRequestActions
@@ -97,14 +97,12 @@ export default async function UniversityRequestsPage() {
         </div>
       )}
 
-      {/* No pending */}
       {pending.length === 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-12 text-center mb-8">
           <p className="text-gray-400 text-sm">No pending university requests.</p>
         </div>
       )}
 
-      {/* Reviewed Requests */}
       {reviewed.length > 0 && (
         <div>
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
@@ -137,7 +135,7 @@ export default async function UniversityRequestsPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3 text-gray-500">
-                        {new Date(request.created_at).toLocaleDateString()}
+                        {request.created_at ? new Date(request.created_at).toLocaleDateString() : '—'}
                       </td>
                     </tr>
                   )

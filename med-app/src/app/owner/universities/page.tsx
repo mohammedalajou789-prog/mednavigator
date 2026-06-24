@@ -14,7 +14,6 @@ export default async function UniversitiesPage() {
 
   return (
     <div className="p-8">
-      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-semibold text-[#0F172A]">Universities</h1>
@@ -28,7 +27,6 @@ export default async function UniversitiesPage() {
         </Link>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-xl border border-[#E2E8F0] p-5 shadow-sm">
           <p className="text-sm text-[#64748B]">Total Universities</p>
@@ -44,7 +42,6 @@ export default async function UniversitiesPage() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-[#E2E8F0]">
           <h2 className="font-semibold text-[#0F172A]">All Universities</h2>
@@ -92,7 +89,7 @@ export default async function UniversitiesPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-[#64748B]">
-                    {new Date(uni.created_at).toLocaleDateString()}
+                    {uni.created_at ? new Date(uni.created_at).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">

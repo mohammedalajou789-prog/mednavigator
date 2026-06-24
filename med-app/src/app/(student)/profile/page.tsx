@@ -36,7 +36,13 @@ export default async function ProfilePage() {
         created_at: profile.created_at ?? '',
       }}
       universityName={university?.name ?? '—'}
-      device={device ?? null}
+      device={device ? {
+        id: device.id,
+        device_name: device.device_name ?? null,
+        is_active: device.is_active ?? false,
+        last_login_at: device.last_login_at ?? null,
+        created_at: device.created_at ?? '',
+      } : null}
     />
   )
 }

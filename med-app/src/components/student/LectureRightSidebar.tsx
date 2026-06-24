@@ -32,15 +32,11 @@ interface LectureRightSidebarProps {
   subjectId: string
   universityId: string
   activeTab: string
-  // Sheet/Summary
   tocSections?: TocSection[]
   onTocClick?: (id: string) => void
   progressPercent?: number
-  // Flashcard stats
   flashcardStats?: FlashcardStats
-  // Quiz stats
   quizStats?: QuizStats
-  // Actions
   isCompleted: boolean
   isBookmarked: boolean
   onMarkComplete: () => void
@@ -67,7 +63,6 @@ export default function LectureRightSidebar({
   return (
     <aside className="w-[260px] min-w-[260px] bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 overflow-y-auto flex flex-col gap-3 p-3">
 
-      {/* Tab-aware content */}
       {(activeTab === 'sheet' || activeTab === 'summary') && (
         <SheetSidebar
           tocSections={tocSections}
@@ -89,7 +84,6 @@ export default function LectureRightSidebar({
         <PreviousYearsSidebar />
       )}
 
-      {/* Actions — always visible */}
       <ActionCard
         isCompleted={isCompleted}
         isBookmarked={isBookmarked}
@@ -116,10 +110,8 @@ function SheetSidebar({
 }) {
   return (
     <>
-      {/* Progress */}
       <ProgressCard progressPercent={progressPercent} />
 
-      {/* Table of Contents */}
       {tocSections.length > 0 && (
         <SidebarCard title="Table of Contents">
           <div className="flex flex-col gap-0">
@@ -151,9 +143,28 @@ function SheetSidebar({
         </SidebarCard>
       )}
 
-      {/* Notes */}
       <NotesCard lectureId={lectureId} />
     </>
+  )
+}
+
+// ── Progress Card ──────────────────────────────────────────────────────────────
+
+function ProgressCard({ progressPercent }: { progressPercent: number }) {
+  return (
+    <SidebarCard title="Reading Progress">
+      <div className="flex items-center gap-3">
+        <CircleProgress pct={progressPercent} />
+        <div>
+          <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">
+            {progressPercent}% read
+          </p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            {progressPercent >= 100 ? 'Finished!' : 'Keep going'}
+          </p>
+        </div>
+      </div>
+    </SidebarCard>
   )
 }
 
@@ -193,8 +204,8 @@ function FlashcardSidebar({ stats }: { stats: FlashcardStats }) {
       <SidebarCard title="Study Tips">
         <div className="space-y-2">
           <Tip icon="ti-repeat" text="Review hard cards first" />
-          <Tip icon="ti-brain" text="Use active recall — try to answer before flipping" />
-          <Tip icon="ti-clock" text="Short daily sessions work better than long ones" />
+          <Tip icon="ti-brain" text="Try to answer before flipping" />
+          <Tip icon="ti-clock" text="Short daily sessions work better" />
         </div>
       </SidebarCard>
     </>
@@ -220,7 +231,6 @@ function QuizSidebar({ stats }: { stats: QuizStats }) {
             </p>
           </div>
         </div>
-
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-center">
             <p className="text-[18px] font-bold text-blue-600 dark:text-blue-400">{stats.total}</p>
@@ -331,9 +341,7 @@ function NotesCard({ lectureId }: { lectureId: string }) {
             className="w-full text-[12.5px] text-slate-700 dark:text-slate-200 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-2.5 resize-none outline-none focus:border-amber-400 dark:focus:border-amber-600 placeholder-slate-400 transition-all leading-relaxed"
           />
           <div className="flex items-center justify-between mt-1.5">
-            <span className="text-[10px] text-slate-400">
-              {note.length} characters
-            </span>
+            <span className="text-[10px] text-slate-400">{note.length} characters</span>
             {saved && (
               <span className="text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1">
                 <i className="ti ti-check text-[11px]" aria-hidden="true" />

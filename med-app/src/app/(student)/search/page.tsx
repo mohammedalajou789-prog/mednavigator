@@ -20,7 +20,7 @@ export default async function SearchPage({
   const { data: recentSearches } = await supabase
     .from('search_history')
     .select('id, search_query, created_at')
-    .eq('user_id', profile?.id)
+    .eq('user_id', profile?.id ?? '')
     .order('created_at', { ascending: false })
     .limit(10)
 
@@ -35,7 +35,10 @@ export default async function SearchPage({
       </div>
       <SearchClient
         userId={profile?.id ?? ''}
-        recentSearches={recentSearches ?? []}
+        recentSearches={(recentSearches ?? []).map(s => ({
+          ...s,
+          created_at: s.created_at ?? '',
+        }))}
         initialQuery={initialQuery}
       />
     </div>

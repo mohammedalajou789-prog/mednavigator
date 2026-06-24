@@ -57,7 +57,6 @@ export default async function ContentBuilderPage({ params }: Props) {
     groupName = sub?.title ?? ''
   }
 
-  // Load all content types
   const [
     { data: sheet },
     { data: summary },
@@ -77,7 +76,6 @@ export default async function ContentBuilderPage({ params }: Props) {
   ])
 
   const isClinic = subject?.subject_type === 'clinical'
-
   const university = subject.universities as { name: string } | null
 
   return (
@@ -116,14 +114,24 @@ export default async function ContentBuilderPage({ params }: Props) {
           lectureTitle={lecture.title}
           existingSheet={sheet ?? null}
           existingSummary={summary ?? null}
-          existingFlashcards={flashcards ?? []}
-          existingQuizQuestions={quizQuestions ?? []}
+          existingFlashcards={(flashcards ?? []).map(f => ({
+            ...f,
+            tags: f.tags ?? [],
+          }))}
+          existingQuizQuestions={(quizQuestions ?? []).map(q => ({
+            ...q,
+            tags: q.tags ?? [],
+          }))}
           existingPYQs={(pyqs ?? []).map(q => ({
             ...q,
             options: Array.isArray(q.options) ? q.options : [],
             exam_year: q.exam_year ?? '',
           }))}
-          existingVideos={videos ?? []}
+          existingVideos={(videos ?? []).map(v => ({
+            ...v,
+            is_preview: v.is_preview ?? false,
+            display_order: v.display_order ?? 0,
+          }))}
           isClinic={isClinic}
           existingModules={clinicalModules ?? []}
         />

@@ -30,13 +30,11 @@ export default async function NotificationsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Send Notification Form */}
         <NotificationsForm
           universities={universities ?? []}
           subjects={subjects ?? []}
         />
 
-        {/* Recent Notifications */}
         <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-6">
           <h2 className="font-semibold text-[#0F172A] mb-4">Recent Notifications</h2>
           {!recentNotifications || recentNotifications.length === 0 ? (
@@ -56,7 +54,9 @@ export default async function NotificationsPage() {
                   <p className="text-xs text-[#64748B] mb-1">{n.message}</p>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-[#64748B]">To: {n.target_type}</span>
-                    <span className="text-xs text-[#64748B]">{new Date(n.created_at).toLocaleDateString()}</span>
+                    <span className="text-xs text-[#64748B]">
+                      {n.created_at ? new Date(n.created_at).toLocaleDateString() : ''}
+                    </span>
                   </div>
                 </div>
               ))}

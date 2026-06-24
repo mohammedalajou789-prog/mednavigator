@@ -123,7 +123,7 @@ export default async function AdminHomePage() {
                       {sheet.status}
                     </span>
                     <span className="text-xs text-gray-500">
-                      {new Date(sheet.updated_at).toLocaleDateString()}
+                      {sheet.updated_at ? new Date(sheet.updated_at).toLocaleDateString() : ''}
                     </span>
                   </div>
                 </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useUserStore } from '@/stores/userStore'
+import { useUser } from '@/hooks/useUser'
 import { useUIStore } from '@/stores/uiStore'
 import { createClient } from '@/lib/supabase/client'
 
@@ -30,6 +31,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, clearUser } = useUserStore()
+useUser()
   const { theme, sidebarOpen, setSidebarOpen } = useUIStore()
   const [mobileOpen, setMobileOpen] = useState(false)
 

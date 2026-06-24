@@ -27,7 +27,7 @@ export default async function AdminSubscribersPage() {
   const { data: subscriptions } = assignedSubjectIds.length > 0
     ? await supabase
         .from('subject_subscriptions')
-        .select('id, status, start_date, end_date, user_id, subject_id, users(id, full_name, email), subjects(id, name)')
+        .select('id, status, start_date, end_date, user_id, subject_id, subjects(id, name)')
         .in('subject_id', assignedSubjectIds)
         .order('created_at', { ascending: false })
     : { data: [] }
@@ -86,7 +86,7 @@ export default async function AdminSubscribersPage() {
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Student</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User ID</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Subject</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Expiry</th>
@@ -97,13 +97,11 @@ export default async function AdminSubscribersPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {subscriptions.map((sub) => {
                 const daysLeft = getDaysRemaining(sub.end_date)
-                const subUser = sub.users as { id: string; full_name: string; email: string } | null
                 const subSubject = sub.subjects as { id: string; name: string } | null
                 return (
                   <tr key={sub.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <td className="px-6 py-4">
-                      <p className="font-medium text-gray-900 dark:text-white text-sm">{subUser?.full_name ?? '—'}</p>
-                      <p className="text-xs text-gray-500">{subUser?.email ?? '—'}</p>
+                      <p className="font-medium text-gray-900 dark:text-white text-sm">{sub.user_id}</p>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{subSubject?.name ?? '—'}</td>
                     <td className="px-6 py-4">

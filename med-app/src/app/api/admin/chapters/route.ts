@@ -40,8 +40,10 @@ export async function POST(request: NextRequest) {
 
   const parsed = createChapterSchema.safeParse({ title, description })
   if (!parsed.success) {
-    const message = parsed.error?.errors?.[0]?.message ?? 'Validation failed'
-    return NextResponse.json({ error: message }, { status: 400 })
+    return NextResponse.json(
+      { error: parsed.error.errors[0]?.message ?? 'Validation failed' },
+      { status: 400 }
+    )
   }
 
   if (profile.role === 'admin') {

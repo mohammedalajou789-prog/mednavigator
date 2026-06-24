@@ -23,7 +23,6 @@ export default async function AdminsPage() {
 
   return (
     <div className="p-8">
-      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-semibold text-[#0F172A]">Admins</h1>
@@ -37,7 +36,6 @@ export default async function AdminsPage() {
         </Link>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-xl border border-[#E2E8F0] p-5 shadow-sm">
           <p className="text-sm text-[#64748B]">Total Admins</p>
@@ -53,7 +51,6 @@ export default async function AdminsPage() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-[#E2E8F0]">
           <h2 className="font-semibold text-[#0F172A]">All Admins</h2>
@@ -121,7 +118,7 @@ export default async function AdminsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-[#64748B]">
-                      {new Date(admin.created_at).toLocaleDateString()}
+                      {admin.created_at ? new Date(admin.created_at).toLocaleDateString() : '—'}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <Link

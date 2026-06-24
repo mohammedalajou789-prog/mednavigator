@@ -45,7 +45,11 @@ export default function NewSubscriptionPage() {
         .select('id, name, university_id, universities(name)')
         .eq('is_published', true)
         .order('name')
-      setUsers(usersData ?? [])
+      setUsers((usersData ?? []).map(u => ({
+        ...u,
+        full_name: u.full_name ?? '',
+        email: u.email ?? '',
+      })))
       setSubjects(subjectsData as Subject[] ?? [])
     }
     load()
@@ -107,8 +111,6 @@ export default function NewSubscriptionPage() {
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-5">
-
-          {/* Student Search */}
           <div>
             <label className="block text-sm font-medium text-[#0F172A] mb-1.5">
               Student <span className="text-red-500">*</span>
@@ -158,7 +160,6 @@ export default function NewSubscriptionPage() {
             )}
           </div>
 
-          {/* Subject */}
           <div>
             <label className="block text-sm font-medium text-[#0F172A] mb-1.5">
               Subject <span className="text-red-500">*</span>
@@ -177,7 +178,6 @@ export default function NewSubscriptionPage() {
             </select>
           </div>
 
-          {/* Duration */}
           <div>
             <label className="block text-sm font-medium text-[#0F172A] mb-1.5">
               Duration (days) <span className="text-red-500">*</span>
@@ -208,7 +208,6 @@ export default function NewSubscriptionPage() {
             />
           </div>
 
-          {/* Summary */}
           {form.userId && form.subjectId && form.durationDays && (
             <div className="p-4 bg-[#F8FAFC] rounded-lg border border-[#E2E8F0]">
               <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider mb-2">Summary</p>

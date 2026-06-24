@@ -16,7 +16,7 @@ export default async function BookmarksPage() {
   const { data: bookmarks } = await supabase
     .from('bookmarks')
     .select('id, bookmark_type, created_at, subjects(id, name, university_id), lectures(id, title, subject_id)')
-    .eq('user_id', profile?.id)
+    .eq('user_id', profile?.id ?? '')
     .order('created_at', { ascending: false })
 
   const TYPE_ICON: Record<string, string> = {
@@ -66,7 +66,9 @@ export default async function BookmarksPage() {
                   <p className="font-medium text-[#0F172A] group-hover:text-[#2563EB] transition-colors truncate">{label}</p>
                   <p className="text-xs text-[#64748B] mt-0.5 capitalize">{bm.bookmark_type}</p>
                 </div>
-                <p className="text-xs text-[#64748B] flex-shrink-0">{new Date(bm.created_at).toLocaleDateString()}</p>
+                <p className="text-xs text-[#64748B] flex-shrink-0">
+                  {bm.created_at ? new Date(bm.created_at).toLocaleDateString() : ''}
+                </p>
                 <svg className="w-4 h-4 text-[#64748B] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>

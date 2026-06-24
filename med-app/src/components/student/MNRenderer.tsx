@@ -16,7 +16,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
   return (
     <div className="relative font-sans">
       {showWatermark && userName && (
-        <div className="pointer-events-none select-none fixed inset-0 z-10 overflow-hidden opacity-[0.04]" aria-hidden="true">
+        <div className="pointer-events-none select-none absolute inset-0 z-10 overflow-hidden opacity-[0.04]" aria-hidden="true">
           {Array.from({ length: 20 }).map((_, i) => (
             <div key={i} className="absolute text-gray-900 dark:text-white text-sm font-medium whitespace-nowrap"
               style={{ top: `${(i % 5) * 22 + 5}%`, left: `${Math.floor(i / 5) * 26 - 5}%`, transform: 'rotate(-30deg)' }}>
@@ -205,7 +205,7 @@ function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: R
 
     case 'h1':
       return (
-        <h1 key={key} className="text-[2rem] font-extrabold text-gray-950 dark:text-white mt-10 mb-2 first:mt-0 tracking-tight leading-tight">
+        <h1 key={key} className="text-[2.4rem] font-black text-gray-950 dark:text-white mt-12 mb-6 first:mt-0 tracking-tight leading-[1.15]">
           {block.content}
         </h1>
       )
@@ -213,24 +213,24 @@ function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: R
     case 'h2': {
       const sectionId = `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
       return (
-        <div key={key} id={sectionId} className="mt-10 mb-4 first:mt-0 scroll-mt-6">
-          <div className="flex items-center gap-3">
-            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">
+        <div key={key} id={sectionId} className="mt-16 mb-6 first:mt-0 scroll-mt-24">
+          <div className="flex items-center gap-4">
+            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center shadow-sm">
               {h2Number}
             </span>
-            <h2 className="text-[1.1rem] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+            <h2 className="text-[1rem] font-black text-slate-900 dark:text-white uppercase tracking-[0.08em]">
               {block.content}
             </h2>
           </div>
-          <div className="mt-2 h-[2px] bg-gradient-to-r from-blue-100 to-transparent dark:from-blue-900" />
+          <div className="mt-3 ml-12 h-[1px] bg-slate-200 dark:bg-slate-700" />
         </div>
       )
     }
 
     case 'h3':
       return (
-        <h3 key={key} className="text-[1rem] font-bold text-gray-800 dark:text-gray-200 mt-6 mb-2 flex items-center gap-2">
-          <span className="text-blue-400">•</span>
+        <h3 key={key} className="text-[1.05rem] font-bold text-slate-800 dark:text-slate-200 mt-8 mb-3 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
           {block.content}
         </h3>
       )
@@ -333,11 +333,11 @@ function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: R
       )
 
     case 'empty':
-      return <div key={key} className="h-2" />
+      return <div key={key} className="h-1" />
 
     default:
       return (
-        <p key={key} className="text-[0.97rem] text-gray-700 dark:text-gray-300 leading-[1.9] my-2.5">
+        <p key={key} className="text-[1rem] text-slate-700 dark:text-slate-300 leading-[1.85] my-3">
           {renderInline(block.content)}
         </p>
       )

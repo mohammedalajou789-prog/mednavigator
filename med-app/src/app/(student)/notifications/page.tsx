@@ -34,25 +34,39 @@ export default async function NotificationsPage() {
     .eq('user_id', profile.id)
     .eq('status', 'active')
 
-  if (activeSubs) {
-    for (const sub of activeSubs) {
-      const endDate = new Date(sub.end_date)
-      const now = new Date()
-      const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      const subjectName = (sub.subjects as any)?.name ?? 'Subject'
+  if (activeSubs && activeSubs.length > 0) {
+    // Step 1: compute days left and build all potential sources
+    const allSources: string[] = []
+    const subsWithMeta = activeSubs.map(sub => {
+      const daysLeft = Math.ceil(
+        (new Date(sub.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      )
+      const subjectName = (sub.subjects as { name: string } | null)?.name ?? 'Subject'
+      for (const days of [7, 3, 1]) {
+        if (daysLeft === days) allSources.push(`sub_expiry_${sub.id}_${days}d`)
+      }
+      if (daysLeft <= 0) allSources.push(`sub_expired_${sub.id}`)
+      return { sub, daysLeft, subjectName }
+    })
 
-      const thresholds = [7, 3, 1]
-      for (const days of thresholds) {
+    // Step 2: ONE query to find all already-sent notifications
+    const existingSet = new Set<string>()
+    if (allSources.length > 0) {
+      const { data: found } = await supabase
+        .from('notifications')
+        .select('notification_source')
+        .in('notification_source', allSources)
+      for (const n of found ?? []) {
+        if (n.notification_source) existingSet.add(n.notification_source)
+      }
+    }
+
+    // Step 3: insert only missing notifications
+    for (const { sub, daysLeft, subjectName } of subsWithMeta) {
+      for (const days of [7, 3, 1]) {
         if (daysLeft === days) {
           const source = `sub_expiry_${sub.id}_${days}d`
-          // Check if already sent
-          const { data: existing } = await supabase
-            .from('notifications')
-            .select('id')
-            .eq('notification_source', source)
-            .maybeSingle()
-
-          if (!existing) {
+          if (!existingSet.has(source)) {
             const { data: notif } = await supabase
               .from('notifications')
               .insert({
@@ -65,27 +79,18 @@ export default async function NotificationsPage() {
               })
               .select('id')
               .single()
-
             if (notif) {
               await supabase.from('notification_reads').insert({
                 notification_id: notif.id,
                 user_id: profile.id,
-              }).then(() => {})
+              })
             }
           }
         }
       }
-
-      // Expired notification
       if (daysLeft <= 0) {
         const source = `sub_expired_${sub.id}`
-        const { data: existing } = await supabase
-          .from('notifications')
-          .select('id')
-          .eq('notification_source', source)
-          .maybeSingle()
-
-        if (!existing) {
+        if (!existingSet.has(source)) {
           await supabase.from('notifications').insert({
             title: 'Subscription expired',
             message: `Your subscription to ${subjectName} has expired. Contact support to renew.`,
@@ -94,7 +99,6 @@ export default async function NotificationsPage() {
             priority: 'critical',
             user_id: profile.id,
           })
-          // Update subscription status
           await supabase
             .from('subject_subscriptions')
             .update({ status: 'expired' })
@@ -114,7 +118,6 @@ export default async function NotificationsPage() {
     .order('created_at', { ascending: false })
     .limit(50)
 
-  // Build OR filter for all target types
   let orFilter = `target_type.eq.all`
   orFilter += `,and(target_type.eq.user,user_id.eq.${profile.id})`
   if (universityId) {
@@ -123,34 +126,15 @@ export default async function NotificationsPage() {
 
   const { data: notifications } = await query.or(orFilter)
 
-  // Count unread
   const unreadCount = notifications?.filter(n => {
-    const reads = n.notification_reads as any[] ?? []
-    return !reads.some((r: any) => r.user_id === profile.id)
+    const reads = n.notification_reads as { user_id: string }[] ?? []
+    return !reads.some(r => r.user_id === profile.id)
   }).length ?? 0
 
   const PRIORITY_CONFIG: Record<string, { bg: string; border: string; icon: string; badge: string; badgeText: string }> = {
-    normal: {
-      bg: '#fff',
-      border: '#E2E8F0',
-      icon: '🔔',
-      badge: '#EFF6FF',
-      badgeText: '#2563EB',
-    },
-    important: {
-      bg: '#FFFBEB',
-      border: '#FDE68A',
-      icon: '⚠️',
-      badge: '#FEF3C7',
-      badgeText: '#D97706',
-    },
-    critical: {
-      bg: '#FEF2F2',
-      border: '#FECACA',
-      icon: '🚨',
-      badge: '#FEE2E2',
-      badgeText: '#DC2626',
-    },
+    normal:    { bg: '#fff',     border: '#E2E8F0', icon: '🔔', badge: '#EFF6FF', badgeText: '#2563EB' },
+    important: { bg: '#FFFBEB', border: '#FDE68A', icon: '⚠️', badge: '#FEF3C7', badgeText: '#D97706' },
+    critical:  { bg: '#FEF2F2', border: '#FECACA', icon: '🚨', badge: '#FEE2E2', badgeText: '#DC2626' },
   }
 
   function formatDate(dateStr: string | null) {
@@ -166,10 +150,7 @@ export default async function NotificationsPage() {
   }
 
   const TARGET_LABELS: Record<string, string> = {
-    all: 'Platform',
-    university: 'University',
-    subject: 'Subject',
-    user: 'Personal',
+    all: 'Platform', university: 'University', subject: 'Subject', user: 'Personal',
   }
 
   return (
@@ -205,8 +186,8 @@ export default async function NotificationsPage() {
       {notifications && notifications.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '720px' }}>
           {notifications.map(notif => {
-            const reads = notif.notification_reads as any[] ?? []
-            const isRead = reads.some((r: any) => r.user_id === profile.id)
+            const reads = notif.notification_reads as { user_id: string }[] ?? []
+            const isRead = reads.some(r => r.user_id === profile.id)
             const cfg = PRIORITY_CONFIG[notif.priority] ?? PRIORITY_CONFIG.normal
 
             return (
@@ -216,7 +197,7 @@ export default async function NotificationsPage() {
                   background: isRead ? '#fff' : cfg.bg,
                   borderRadius: '16px',
                   border: `1px solid ${isRead ? '#E2E8F0' : cfg.border}`,
-                  borderLeft: !isRead ? `4px solid ${cfg.badgeText}` : `1px solid ${isRead ? '#E2E8F0' : cfg.border}`,
+                  borderLeft: !isRead ? `4px solid ${cfg.badgeText}` : `1px solid #E2E8F0`,
                   padding: '16px 20px',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
                   display: 'flex',
@@ -224,12 +205,7 @@ export default async function NotificationsPage() {
                   gap: '14px',
                 }}
               >
-                {/* Icon */}
-                <div style={{ fontSize: '22px', flexShrink: 0, marginTop: '2px' }}>
-                  {cfg.icon}
-                </div>
-
-                {/* Content */}
+                <div style={{ fontSize: '22px', flexShrink: 0, marginTop: '2px' }}>{cfg.icon}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
                     <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>{notif.title}</p>

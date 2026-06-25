@@ -259,7 +259,7 @@ export default function LectureHub({
     (activeTab === 'previous_years' && pyqLocked)
 
   const { data: progressData } = useQuery({
-    queryKey: ['progress', user?.id, lecture.id, activeTab],
+    queryKey: ['progress', user?.id, lecture.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('user_progress')
@@ -895,6 +895,7 @@ export default function LectureHub({
             </button>
             <Link
               href={`/${universityId}/${subject.id}`}
+              prefetch={false}
               style={{
                 width: '100%',
                 display: 'flex',

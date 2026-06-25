@@ -20,6 +20,7 @@ export default async function LecturePage({ params }: PageProps) {
   const { universityId, subjectId, lectureId } = await params
   const supabase = await createServerClient()
 
+  // Step 1: auth — must happen first to get userId
   const { data: { user } } = await supabase.auth.getUser()
 
   let userId: string | null = null
@@ -34,31 +35,32 @@ export default async function LecturePage({ params }: PageProps) {
     userName = profile?.full_name ?? null
   }
 
-  const { data: lecture } = await supabase
-    .from('lectures')
-    .select('id, title, description, status')
-    .eq('id', lectureId)
-    .eq('status', 'published')
-    .single()
+  // Step 2: fetch lecture, subject, and access check all in parallel
+  const [
+    { data: lecture },
+    { data: subject },
+    accessResult,
+  ] = await Promise.all([
+    supabase
+      .from('lectures')
+      .select('id, title, description, status')
+      .eq('id', lectureId)
+      .eq('status', 'published')
+      .single(),
+    supabase
+      .from('subjects')
+      .select('id, name, access_mode, is_free')
+      .eq('id', subjectId)
+      .single(),
+    checkUserAccess(subjectId, userId),
+  ])
 
-  if (!lecture) {
-    redirect(`/${universityId}/${subjectId}`)
-  }
+  if (!lecture) redirect(`/${universityId}/${subjectId}`)
+  if (!subject) redirect(`/${universityId}`)
 
-  const { data: subject } = await supabase
-    .from('subjects')
-    .select('id, name, access_mode, is_free')
-    .eq('id', subjectId)
-    .single()
-
-  if (!subject) {
-    redirect(`/${universityId}`)
-  }
-
-  // Access check runs ONCE — result passed to all 5 service functions
-  const accessResult = await checkUserAccess(subjectId, userId)
   const accessAllowed = accessResult.allowed
 
+  // Step 3: fetch all content in parallel
   const [
     sheetResult,
     summaryResult,

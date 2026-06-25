@@ -61,6 +61,7 @@ export default function StudentSidebar({ fullName, universityName }: StudentSide
                     <Link
                       key={item.label}
                       href={item.href}
+                      prefetch={false}
                       className={cn(
                         'flex items-center px-3 py-1.5 rounded-lg text-sm transition-colors',
                         active

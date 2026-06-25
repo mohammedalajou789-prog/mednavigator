@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { cache } from 'react'
 import type { Lecture } from '@/types/database'
 
 export interface LectureWithContent extends Lecture {
@@ -57,7 +58,7 @@ export async function getLecturesBySubject(subjectId: string): Promise<{ data: L
   return { data, error }
 }
 
-export async function getLectureById(lectureId: string): Promise<{ data: Lecture | null; error: unknown }> {
+export const getLectureById = cache(async (lectureId: string): Promise<{ data: Lecture | null; error: unknown }> => {
   const supabase = await createServerClient()
   const { data, error } = await supabase
     .from('lectures')
@@ -65,7 +66,7 @@ export async function getLectureById(lectureId: string): Promise<{ data: Lecture
     .eq('id', lectureId)
     .single()
   return { data, error }
-}
+})
 
 export async function getNextLectureOrder(
   chapterId?: string,

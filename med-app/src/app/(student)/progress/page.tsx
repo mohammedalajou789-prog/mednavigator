@@ -16,44 +16,45 @@ export default async function ProgressPage() {
 
   if (!profile) redirect('/login')
 
-  // Get all user progress
-  const { data: progressData } = await supabase
-    .from('user_progress')
-    .select(`
-      id,
-      lecture_id,
-      content_type,
-      progress_percentage,
-      completed,
-      last_accessed_at,
-      lectures (
+ const [
+    { data: progressData },
+    { data: subscriptions },
+    { count: bookmarksCount },
+  ] = await Promise.all([
+    supabase
+      .from('user_progress')
+      .select(`
         id,
-        title,
-        subject_id,
-        chapter_id,
-        subjects (
+        lecture_id,
+        content_type,
+        progress_percentage,
+        completed,
+        last_accessed_at,
+        lectures (
           id,
-          name,
-          university_id,
-          universities ( id, name )
+          title,
+          subject_id,
+          chapter_id,
+          subjects (
+            id,
+            name,
+            university_id,
+            universities ( id, name )
+          )
         )
-      )
-    `)
-    .eq('user_id', profile.id)
-    .order('last_accessed_at', { ascending: false })
-
-  // Get active subscriptions
-  const { data: subscriptions } = await supabase
-    .from('subject_subscriptions')
-    .select('subject_id, status, end_date')
-    .eq('user_id', profile.id)
-    .eq('status', 'active')
-
-  // Get bookmarks count
-  const { count: bookmarksCount } = await supabase
-    .from('bookmarks')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', profile.id)
+      `)
+      .eq('user_id', profile.id)
+      .order('last_accessed_at', { ascending: false }),
+    supabase
+      .from('subject_subscriptions')
+      .select('subject_id, status, end_date')
+      .eq('user_id', profile.id)
+      .eq('status', 'active'),
+    supabase
+      .from('bookmarks')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', profile.id),
+  ])
 
   // Process data
   const totalLectures = progressData?.length ?? 0

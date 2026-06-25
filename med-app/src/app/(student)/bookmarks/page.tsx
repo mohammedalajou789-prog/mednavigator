@@ -13,10 +13,12 @@ export default async function BookmarksPage() {
     .eq('auth_user_id', user.id)
     .single()
 
+  if (!profile) redirect('/login')
+
   const { data: bookmarks } = await supabase
     .from('bookmarks')
     .select('id, bookmark_type, created_at, subjects(id, name, university_id), lectures(id, title, subject_id)')
-    .eq('user_id', profile?.id ?? '')
+    .eq('user_id', profile.id)
     .order('created_at', { ascending: false })
 
   const TYPE_ICON: Record<string, string> = {
@@ -57,6 +59,7 @@ export default async function BookmarksPage() {
               <Link
                 key={bm.id}
                 href={href}
+                prefetch={false}
                 className="flex items-center gap-4 bg-white rounded-xl border border-[#E2E8F0] p-4 shadow-sm hover:border-[#2563EB] hover:shadow-md transition-all group"
               >
                 <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-xl flex-shrink-0">

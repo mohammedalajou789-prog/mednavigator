@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Flashcard } from '@/types/database'
 import MNRenderer from '@/components/student/MNRenderer'
 import { createClient } from '@/lib/supabase/client'
@@ -36,20 +37,28 @@ export default function FlashcardsViewer({ flashcards, userName, onStatsChange }
   const importantCount = importantIds.size
   const progress = total > 0 ? Math.round(((currentIndex + 1) / total) * 100) : 0
 
-  useEffect(() => {
-    if (!user) { setLoading(false); return }
-    async function load() {
+  const { data: bookmarkData, isLoading: bookmarkLoading } = useQuery({
+    queryKey: ['bookmarks', 'flashcard', user?.id],
+    queryFn: async () => {
       const { data } = await supabase
         .from('bookmarks')
         .select('flashcard_id')
         .eq('user_id', user!.id)
         .eq('bookmark_type', 'flashcard')
         .not('flashcard_id', 'is', null)
-      if (data) setImportantIds(new Set(data.map((b: { flashcard_id: string }) => b.flashcard_id)))
-      setLoading(false)
+      return data ?? []
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5,
+  })
+
+  useEffect(() => {
+    if (bookmarkLoading) return
+    if (bookmarkData) {
+      setImportantIds(new Set(bookmarkData.map((b: { flashcard_id: string }) => b.flashcard_id)))
     }
-    load()
-  }, [user])
+    setLoading(false)
+  }, [bookmarkData, bookmarkLoading])
 
   useEffect(() => {
     onStatsChange?.({ total, important: importantCount, current: currentIndex + 1, easy: 0, medium: 0, hard: 0 })

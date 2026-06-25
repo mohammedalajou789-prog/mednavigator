@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { QuizQuestion } from '@/types/database'
 import { createClient } from '@/lib/supabase/client'
 import { useUserStore } from '@/stores/userStore'
@@ -33,15 +34,28 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
   const correctCount = questions.filter(q => answers[q.id] === q.correct_answer).length
   const score = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0
 
+  const { data: bookmarkData, isLoading: bookmarkLoading } = useQuery({
+    queryKey: ['bookmarks', 'question', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('bookmarks')
+        .select('question_id')
+        .eq('user_id', user!.id)
+        .eq('bookmark_type', 'question')
+        .not('question_id', 'is', null)
+      return data ?? []
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5,
+  })
+
   useEffect(() => {
-    if (!user) { setLoading(false); return }
-    async function load() {
-      const { data } = await supabase.from('bookmarks').select('question_id').eq('user_id', user!.id).eq('bookmark_type', 'question').not('question_id', 'is', null)
-      if (data) setImportantIds(new Set(data.map((b: { question_id: string }) => b.question_id)))
-      setLoading(false)
+    if (bookmarkLoading) return
+    if (bookmarkData) {
+      setImportantIds(new Set(bookmarkData.map((b: { question_id: string }) => b.question_id)))
     }
-    load()
-  }, [user])
+    setLoading(false)
+  }, [bookmarkData, bookmarkLoading])
 
   useEffect(() => {
     onStatsChange?.({ total: questions.length, answered: answeredCount, correct: correctCount, current: currentIndex + 1, important: importantIds.size })

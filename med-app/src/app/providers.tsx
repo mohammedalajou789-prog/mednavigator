@@ -15,7 +15,6 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
     } else if (theme === 'light') {
       root.classList.remove('dark')
     } else {
-      // system
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
       if (prefersDark) {
         root.classList.add('dark')
@@ -33,7 +32,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     () => new QueryClient({
       defaultOptions: {
         queries: {
-          staleTime: 60 * 1000,
+          staleTime: 1000 * 60 * 5,
+          gcTime: 1000 * 60 * 10,
+          refetchOnMount: false,
+          refetchOnWindowFocus: false,
+          refetchOnReconnect: false,
           retry: 1,
         },
       },

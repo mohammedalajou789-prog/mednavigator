@@ -1,19 +1,11 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { requireAuth } from '@/lib/services/user'
 
 export default async function SubscriptionsPage() {
   const supabase = await createServerClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, full_name')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (!profile) redirect('/login')
+  const profile = await requireAuth()
 
   const { data: subscriptions } = await supabase
     .from('subject_subscriptions')

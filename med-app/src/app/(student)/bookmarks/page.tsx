@@ -1,19 +1,11 @@
+import { requireAuth } from '@/lib/services/user'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 export default async function BookmarksPage() {
   const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (!profile) redirect('/login')
+  const profile = await requireAuth()
 
   const { data: bookmarks } = await supabase
     .from('bookmarks')

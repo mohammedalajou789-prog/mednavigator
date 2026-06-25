@@ -1,20 +1,11 @@
+import { requireAuth } from '@/lib/services/user'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-
 export default async function ProgressPage() {
   const supabase = await createServerClient()
 
-  const { data: { user: authUser } } = await supabase.auth.getUser()
-  if (!authUser) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, full_name, default_university_id')
-    .eq('auth_user_id', authUser.id)
-    .single()
-
-  if (!profile) redirect('/login')
+  const profile = await requireAuth()
 
  const [
     { data: progressData },
@@ -211,7 +202,7 @@ export default async function ProgressPage() {
               <div style={{ fontSize: '40px', marginBottom: '12px' }}>📚</div>
               <p style={{ fontSize: '15px', fontWeight: 600, color: '#374151', margin: '0 0 8px' }}>No progress yet</p>
               <p style={{ fontSize: '13px', color: '#94A3B8', margin: '0 0 20px' }}>Start reading lectures to track your progress</p>
-              <Link href="/home" style={{ padding: '10px 24px', background: '#2563EB', color: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
+              <Link href="/home" prefetch={false} style={{ padding: '10px 24px', background: '#2563EB', color: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
                 Browse Subjects
               </Link>
             </div>
@@ -247,6 +238,7 @@ export default async function ProgressPage() {
                         <Link
                           key={lecture.id}
                           href={`/${subject.universityId}/${subject.id}/${lecture.id}`}
+                          prefetch={false}
                           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '10px', background: '#F8FAFC', textDecoration: 'none', transition: 'background 0.15s' }}
                         >
                           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: lecture.completed ? '#16A34A' : lecture.progress > 0 ? '#2563EB' : '#CBD5E1', flexShrink: 0 }} />

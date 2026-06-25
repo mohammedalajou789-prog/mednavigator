@@ -1,3 +1,4 @@
+import { requireAuth } from '@/lib/services/user'
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
@@ -16,16 +17,7 @@ async function markAsRead(notificationId: string, userId: string) {
 export default async function NotificationsPage() {
   const supabase = await createServerClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, default_university_id')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (!profile) redirect('/login')
+  const profile = await requireAuth()
 
   // ── Auto-generate subscription expiry notifications ──
   const { data: activeSubs } = await supabase

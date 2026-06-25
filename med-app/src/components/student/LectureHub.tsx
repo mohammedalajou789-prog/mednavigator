@@ -501,14 +501,14 @@ export default function LectureHub({
               )}
               {activeTab === 'flashcards' && (
                 <FlashcardsViewer
-                  flashcards={flashcards}
+                  flashcards={flashcards as any}
                   userName={displayName}
                   onStatsChange={setFlashcardStats}
                 />
               )}
               {activeTab === 'quiz' && (
                 <QuizViewer
-                  questions={quizQuestions}
+                  questions={quizQuestions as any}
                   lectureId={lecture.id}
                   userName={displayName}
                   onStatsChange={setQuizStats}
@@ -516,7 +516,7 @@ export default function LectureHub({
               )}
               {activeTab === 'previous_years' && (
                 <PreviousYearsViewer
-                  questions={previousYearQuestions}
+                  questions={previousYearQuestions as any}
                   userName={displayName}
                   onStatsChange={setPyqStats}
                 />

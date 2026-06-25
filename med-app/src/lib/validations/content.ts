@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const createChapterSchema = z.object({
   title: z
-    .string({ required_error: 'Title is required' })
+    .string({ message: 'Title is required' })
     .min(2, 'Title must be at least 2 characters')
     .max(150, 'Title must be less than 150 characters'),
   description: z
@@ -16,7 +16,7 @@ export type CreateChapterFormValues = z.infer<typeof createChapterSchema>
 
 export const createSubSubjectSchema = z.object({
   title: z
-    .string({ required_error: 'Title is required' })
+    .string({ message: 'Title is required' })
     .min(2, 'Title must be at least 2 characters')
     .max(150, 'Title must be less than 150 characters'),
   description: z
@@ -30,7 +30,7 @@ export type CreateSubSubjectFormValues = z.infer<typeof createSubSubjectSchema>
 
 export const createLectureSchema = z.object({
   title: z
-    .string({ required_error: 'Title is required' })
+    .string({ message: 'Title is required' })
     .min(2, 'Title must be at least 2 characters')
     .max(200, 'Title must be less than 200 characters'),
   description: z

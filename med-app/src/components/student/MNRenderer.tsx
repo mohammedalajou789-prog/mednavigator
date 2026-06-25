@@ -30,16 +30,16 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
           if (section.type === 'pre') {
             return section.blocks.map((block, bIdx) => {
               if (block.type === 'h2') h2Counter++
-              return renderBlock(block, `pre-${sIdx}-${bIdx}`, block.type === 'h2' ? h2Counter : undefined, imageSlots)
+              return renderBlock(block, sIdx * 1000 + bIdx, block.type === 'h2' ? h2Counter : undefined, imageSlots)
             })
           }
           h2Counter++
           const currentH2 = h2Counter
           return (
             <div key={`sec-${sIdx}`} style={{ background: '#fff', border: '1px solid #ECEEF3', borderRadius: '18px', padding: '24px 26px', marginBottom: '18px', boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)' }}>
-              {renderBlock(section.heading, `h2-${sIdx}`, currentH2, imageSlots)}
+              {renderBlock(section.heading, sIdx * 1000, currentH2, imageSlots)}
               {section.blocks.map((block, bIdx) =>
-                renderBlock(block, `sec-${sIdx}-${bIdx}`, undefined, imageSlots)
+                renderBlock(block, sIdx * 1000 + bIdx + 1, undefined, imageSlots)
               )}
             </div>
           )

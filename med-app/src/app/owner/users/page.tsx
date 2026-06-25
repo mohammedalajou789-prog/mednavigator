@@ -105,7 +105,7 @@ export default async function UsersPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-[#64748B]">
-                    {new Date(user.created_at).toLocaleDateString()}
+                    {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <Link

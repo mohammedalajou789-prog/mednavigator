@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { checkUserAccess } from '@/lib/services/subscriptions'
 import { redirect } from 'next/navigation'
 import LectureHub from '@/components/student/LectureHub'
 import { getSheetByLectureId } from '@/lib/services/sheets'
@@ -54,6 +55,10 @@ export default async function LecturePage({ params }: PageProps) {
     redirect(`/${universityId}`)
   }
 
+  // Access check runs ONCE — result passed to all 5 service functions
+  const accessResult = await checkUserAccess(subjectId, userId)
+  const accessAllowed = accessResult.allowed
+
   const [
     sheetResult,
     summaryResult,
@@ -64,11 +69,11 @@ export default async function LecturePage({ params }: PageProps) {
     { data: sheetData },
     { data: summaryData },
   ] = await Promise.all([
-    getSheetByLectureId(lectureId, subjectId, userId),
-    getSummaryByLectureId(lectureId, subjectId, userId),
-    getFlashcardsByLectureId(lectureId, subjectId, userId),
-    getQuizQuestionsByLectureId(lectureId, subjectId, userId),
-    getPreviousYearQuestionsByLectureId(lectureId, subjectId, userId),
+    getSheetByLectureId(lectureId, subjectId, userId, accessAllowed),
+    getSummaryByLectureId(lectureId, subjectId, userId, accessAllowed),
+    getFlashcardsByLectureId(lectureId, subjectId, userId, accessAllowed),
+    getQuizQuestionsByLectureId(lectureId, subjectId, userId, accessAllowed),
+    getPreviousYearQuestionsByLectureId(lectureId, subjectId, userId, accessAllowed),
     supabase
       .from('videos')
       .select('id, title, description, video_url, is_preview, display_order')

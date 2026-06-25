@@ -121,19 +121,19 @@ export default async function ContentBuilderPage({ params }: Props) {
           existingQuizQuestions={(quizQuestions ?? []).map(q => ({
             ...q,
             tags: q.tags ?? [],
-          }))}
+          })) as any}
           existingPYQs={(pyqs ?? []).map(q => ({
             ...q,
             options: Array.isArray(q.options) ? q.options : [],
             exam_year: q.exam_year ?? '',
-          }))}
+          })) as any}
           existingVideos={(videos ?? []).map(v => ({
             ...v,
             is_preview: v.is_preview ?? false,
             display_order: v.display_order ?? 0,
           }))}
           isClinic={isClinic}
-          existingModules={clinicalModules ?? []}
+          existingModules={(clinicalModules ?? []) as any}
         />
       </div>
     </div>

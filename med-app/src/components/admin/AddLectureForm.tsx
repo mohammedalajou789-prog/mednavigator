@@ -43,7 +43,7 @@ export default function AddLectureForm({
     handleSubmit,
     formState: { errors },
   } = useForm<CreateLectureFormValues>({
-    resolver: zodResolver(createLectureSchema),
+    resolver: zodResolver(createLectureSchema) as any,
     defaultValues: {
       title: '',
       description: '',

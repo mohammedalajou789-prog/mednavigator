@@ -1,15 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
-
-export interface SubSubject {
-  id: string
-  subject_id: string
-  title: string
-  description: string | null
-  display_order: number
-  created_at: string
-  updated_at: string
-  archived_at: string | null
-}
+import type { SubSubject } from '@/types/database'
 
 export interface CreateSubSubjectInput {
   subject_id: string
@@ -55,7 +45,7 @@ export async function getNextSubSubjectOrder(subjectId: string): Promise<number>
     .order('display_order', { ascending: false })
     .limit(1)
     .single()
-  return data ? data.display_order + 1 : 0
+  return data ? (data.display_order ?? 0) + 1 : 0
 }
 
 export async function createSubSubject(input: CreateSubSubjectInput): Promise<{ data: SubSubject | null; error: unknown }> {

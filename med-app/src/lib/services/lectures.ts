@@ -1,19 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
-
-export interface Lecture {
-  id: string
-  subject_id: string | null
-  chapter_id: string | null
-  sub_subject_id: string | null
-  title: string
-  description: string | null
-  status: 'draft' | 'published' | 'archived'
-  is_preview: boolean
-  display_order: number
-  created_at: string
-  updated_at: string
-  archived_at: string | null
-}
+import type { Lecture } from '@/types/database'
 
 export interface LectureWithContent extends Lecture {
   chapters?: { title: string } | null
@@ -64,11 +50,7 @@ export async function getLecturesBySubject(subjectId: string): Promise<{ data: L
   const supabase = await createServerClient()
   const { data, error } = await supabase
     .from('lectures')
-    .select(`
-      *,
-      chapters ( title ),
-      sub_subjects ( title )
-    `)
+    .select(`*, chapters ( title ), sub_subjects ( title )`)
     .eq('subject_id', subjectId)
     .is('archived_at', null)
     .order('display_order', { ascending: true })
@@ -101,7 +83,7 @@ export async function getNextLectureOrder(
   else if (subSubjectId) query = query.eq('sub_subject_id', subSubjectId)
 
   const { data } = await query.single()
-  return data ? data.display_order + 1 : 0
+  return data ? (data.display_order ?? 0) + 1 : 0
 }
 
 export async function createLecture(input: CreateLectureInput): Promise<{ data: Lecture | null; error: unknown }> {
@@ -158,10 +140,7 @@ export async function archiveLecture(lectureId: string): Promise<{ error: unknow
   const supabase = await createServerClient()
   const { error } = await supabase
     .from('lectures')
-    .update({
-      archived_at: new Date().toISOString(),
-      status: 'archived',
-    })
+    .update({ archived_at: new Date().toISOString(), status: 'archived' })
     .eq('id', lectureId)
   return { error }
 }
@@ -170,10 +149,7 @@ export async function restoreLecture(lectureId: string): Promise<{ error: unknow
   const supabase = await createServerClient()
   const { error } = await supabase
     .from('lectures')
-    .update({
-      archived_at: null,
-      status: 'draft',
-    })
+    .update({ archived_at: null, status: 'draft' })
     .eq('id', lectureId)
   return { error }
 }

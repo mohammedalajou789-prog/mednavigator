@@ -100,7 +100,7 @@ export default async function UserDetailPage({ params }: PageProps) {
               <div>
                 <p className="text-[#64748B]">Joined</p>
                 <p className="text-[#0F172A] font-medium mt-0.5">
-                  {new Date(user.created_at).toLocaleDateString()}
+                  {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
                 </p>
               </div>
             </div>

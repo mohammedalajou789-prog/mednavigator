@@ -20,7 +20,7 @@ const ACCESS_BADGES = {
 } as const
 
 export default function SubjectCard({ subject, universityId }: SubjectCardProps) {
-  const typeColor = TYPE_COLORS[subject.subject_type] ?? TYPE_COLORS.standard
+  const typeColor = TYPE_COLORS[subject.subject_type as keyof typeof TYPE_COLORS] ?? TYPE_COLORS.standard
   const typeLabel = subject.subject_type.charAt(0).toUpperCase() + subject.subject_type.slice(1)
   const accessBadge = ACCESS_BADGES[subject.access_mode as keyof typeof ACCESS_BADGES] ?? ACCESS_BADGES.free
   const isPremium = subject.access_mode === 'premium'
@@ -58,7 +58,7 @@ export default function SubjectCard({ subject, universityId }: SubjectCardProps)
 
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
         <span className="text-xs text-slate-400 dark:text-slate-500">
-          {subject.price > 0 ? `${subject.price} JOD` : 'Free access'}
+          {(subject.price ?? 0) > 0 ? `${subject.price} JOD` : 'Free access'}
         </span>
         <svg className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />

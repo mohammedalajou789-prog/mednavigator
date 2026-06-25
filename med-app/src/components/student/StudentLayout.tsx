@@ -80,7 +80,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       >
         {/* Logo */}
         <div style={{ padding: '0 6px 18px', display: 'flex', alignItems: 'center' }}>
-          <Link href="/home">
+          <Link href="/home" prefetch={false}>
             <span style={{ fontSize: '19px', fontWeight: 800, letterSpacing: '-0.01em', color: '#fff' }}>
               Med<span style={{ color: '#9FB8F2' }}>Navigator</span>
             </span>
@@ -192,7 +192,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
           </Link>
 
           {/* Avatar */}
-          <Link href="/profile" style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '40px', padding: '0 8px 0 6px', borderRadius: '24px', background: '#F4F5F8', border: '1px solid #EBEDF3', cursor: 'pointer', textDecoration: 'none' }}>
+          <Link href="/profile" prefetch={false} style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '40px', padding: '0 8px 0 6px', borderRadius: '24px', background: '#F4F5F8', border: '1px solid #EBEDF3', cursor: 'pointer', textDecoration: 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(140deg,#5B8CFF,#2F6BFF)', color: '#fff', fontSize: '12px', fontWeight: 700 }}>
               {initials}
             </div>

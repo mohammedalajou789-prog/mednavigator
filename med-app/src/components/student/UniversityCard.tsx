@@ -16,6 +16,7 @@ export default function UniversityCard({ university }: UniversityCardProps) {
   return (
     <Link
       href={`/${university.id}`}
+      prefetch={false}
       className="group bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 text-center hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm transition-all"
     >
       <div className="flex justify-center mb-3">

@@ -1,0 +1,108 @@
+﻿import { NextResponse, type NextRequest } from 'next/server'
+import { updateSession } from '@/lib/supabase/middleware'
+import { createServerClient } from '@supabase/ssr'
+import type { Database } from '@/types/database'
+
+// These routes require the user to be logged in as a student
+const STUDENT_ONLY_ROUTES = [
+  '/home',
+  '/bookmarks',
+  '/notifications',
+  '/profile',
+  '/search',
+  '/subscriptions',
+]
+
+// These routes are only for unauthenticated users
+const AUTH_ONLY_ROUTES = ['/login', '/register']
+
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  const { supabaseResponse, user: authUser } = await updateSession(request)
+
+  // If logged in and trying to access login/register, redirect to correct dashboard
+  if (authUser && AUTH_ONLY_ROUTES.some(r => pathname.startsWith(r))) {
+    const role = await getUserRole(request, authUser.id)
+    return NextResponse.redirect(new URL(getRoleRedirect(role), request.url))
+  }
+
+  // Owner routes â€” owner only
+  if (pathname.startsWith('/owner')) {
+    if (!authUser) {
+      const url = new URL('/login', request.url)
+      url.searchParams.set('redirectTo', pathname)
+      return NextResponse.redirect(url)
+    }
+    const role = await getUserRole(request, authUser.id)
+    if (role !== 'owner') {
+      return NextResponse.redirect(new URL(getRoleRedirect(role), request.url))
+    }
+    return supabaseResponse
+  }
+
+  // Admin routes â€” admin and owner allowed
+  if (pathname.startsWith('/admin')) {
+    if (!authUser) {
+      const url = new URL('/login', request.url)
+      url.searchParams.set('redirectTo', pathname)
+      return NextResponse.redirect(url)
+    }
+    const role = await getUserRole(request, authUser.id)
+    if (role !== 'admin' && role !== 'owner') {
+      return NextResponse.redirect(new URL(getRoleRedirect(role), request.url))
+    }
+    return supabaseResponse
+  }
+
+  // Student-only routes â€” require login
+  if (STUDENT_ONLY_ROUTES.some(r => pathname.startsWith(r))) {
+    if (!authUser) {
+      const url = new URL('/login', request.url)
+      url.searchParams.set('redirectTo', pathname)
+      return NextResponse.redirect(url)
+    }
+    return supabaseResponse
+  }
+
+  // Everything else is public:
+  // / (landing page), /[universityId], /[universityId]/[subjectId], /[universityId]/[subjectId]/[lectureId]
+  return supabaseResponse
+}
+
+async function getUserRole(
+  request: NextRequest,
+  authUserId: string
+): Promise<'owner' | 'admin' | 'student'> {
+  try {
+    const supabase = createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return request.cookies.getAll() },
+          setAll() {},
+        },
+      }
+    )
+    const { data } = await supabase
+      .from('users')
+      .select('role')
+      .eq('auth_user_id', authUserId)
+      .single()
+    return (data?.role as 'owner' | 'admin' | 'student') ?? 'student'
+  } catch {
+    return 'student'
+  }
+}
+
+function getRoleRedirect(role: string): string {
+  if (role === 'owner') return '/owner'
+  if (role === 'admin') return '/admin'
+  return '/home'
+}
+
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+}

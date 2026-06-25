@@ -9,6 +9,7 @@ import FlashcardsViewer from '@/components/student/FlashcardsViewer'
 import QuizViewer from '@/components/student/QuizViewer'
 import PreviousYearsViewer from '@/components/student/PreviousYearsViewer'
 import LockedContentCard from '@/components/student/LockedContentCard'
+import { useQuery } from '@tanstack/react-query'
 
 interface Lecture {
   id: string
@@ -257,34 +258,46 @@ export default function LectureHub({
     (activeTab === 'quiz'           && quizLocked)       ||
     (activeTab === 'previous_years' && pyqLocked)
 
-  useEffect(() => {
-    if (!user) return
-    async function load() {
-      const { data: prog } = await supabase
+  const { data: progressData } = useQuery({
+    queryKey: ['progress', user?.id, lecture.id, activeTab],
+    queryFn: async () => {
+      const { data } = await supabase
         .from('user_progress')
         .select('progress_percentage, completed')
         .eq('user_id', user!.id)
         .eq('lecture_id', lecture.id)
         .eq('content_type', activeTab)
         .maybeSingle()
-      if (prog) {
-        setProgressPercent(prog.progress_percentage ?? 0)
-        setIsCompleted(prog.completed ?? false)
-      } else {
-        setProgressPercent(0)
-        setIsCompleted(false)
-      }
-      const { data: bm } = await supabase
+      return data ?? null
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5,
+  })
+
+  const { data: bookmarkData } = useQuery({
+    queryKey: ['bookmark', 'lecture', user?.id, lecture.id],
+    queryFn: async () => {
+      const { data } = await supabase
         .from('bookmarks')
         .select('id')
         .eq('user_id', user!.id)
         .eq('lecture_id', lecture.id)
         .eq('bookmark_type', 'lecture')
         .maybeSingle()
-      setIsBookmarked(!!bm)
-    }
-    load()
-  }, [user, lecture.id, activeTab])
+      return data ?? null
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5,
+  })
+
+  useEffect(() => {
+    setProgressPercent(progressData?.progress_percentage ?? 0)
+    setIsCompleted(progressData?.completed ?? false)
+  }, [progressData])
+
+  useEffect(() => {
+    setIsBookmarked(!!bookmarkData)
+  }, [bookmarkData])
 
   function handleTocClick(id: string) {
     const el = document.getElementById(id)

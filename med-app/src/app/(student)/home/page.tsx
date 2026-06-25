@@ -1,16 +1,8 @@
-'use client'
-
-import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createBrowserClient } from '@supabase/ssr'
 
-interface UserProfile {
-  id: string
-  full_name: string | null
-  email: string | null
-  default_university_id: string | null
-  role: string
-}
+// ── Types ──────────────────────────────────────────────────────────────────
 
 interface University {
   id: string
@@ -21,15 +13,15 @@ interface University {
 interface Subject {
   id: string
   name: string
-  subject_type: 'standard' | 'system' | 'clinical'
-  access_mode: 'free' | 'premium' | 'mixed'
+  subject_type: string
+  access_mode: string
   university_id: string
 }
 
 interface Subscription {
   id: string
   subject_id: string
-  status: 'active' | 'expired' | 'revoked'
+  status: string
   end_date: string
   subject: Subject
 }
@@ -45,7 +37,7 @@ interface Progress {
     title: string
     subject_id: string | null
     chapter_id: string | null
-  }
+  } | null
 }
 
 interface PinnedSubject {
@@ -59,23 +51,11 @@ interface Notification {
   id: string
   title: string
   message: string
-  priority: 'normal' | 'important' | 'critical'
+  priority: string
   created_at: string
 }
 
-function getTypeLabel(type: string) {
-  if (type === 'standard') return 'Standard'
-  if (type === 'system') return 'System'
-  if (type === 'clinical') return 'Clinical'
-  return type
-}
-
-function getAccessLabel(mode: string) {
-  if (mode === 'free') return 'Free'
-  if (mode === 'premium') return 'Premium'
-  if (mode === 'mixed') return 'Mixed'
-  return mode
-}
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 function getDaysRemaining(endDate: string): number {
   const end = new Date(endDate)
@@ -101,19 +81,23 @@ function getInitials(name: string | null): string {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
-function Skeleton({ className }: { className?: string }) {
-  return (
-    <div className={`animate-pulse rounded-lg bg-gray-200 dark:bg-slate-700 ${className ?? ''}`} />
-  )
+function getTypeLabel(type: string) {
+  if (type === 'standard') return 'Standard'
+  if (type === 'system') return 'System'
+  if (type === 'clinical') return 'Clinical'
+  return type
 }
 
-function KpiCard({
-  icon,
-  label,
-  value,
-  sub,
-  color,
-}: {
+function getAccessLabel(mode: string) {
+  if (mode === 'free') return 'Free'
+  if (mode === 'premium') return 'Premium'
+  if (mode === 'mixed') return 'Mixed'
+  return mode
+}
+
+// ── UI Components (Server) ─────────────────────────────────────────────────
+
+function KpiCard({ icon, label, value, sub, color }: {
   icon: string
   label: string
   value: string | number
@@ -121,42 +105,21 @@ function KpiCard({
   color: 'blue' | 'purple' | 'green' | 'amber'
 }) {
   const colorMap = {
-    blue: {
-      bg: 'bg-blue-50 dark:bg-blue-950/40',
-      icon: 'text-blue-600 dark:text-blue-400',
-      value: 'text-blue-700 dark:text-blue-300',
-    },
-    purple: {
-      bg: 'bg-purple-50 dark:bg-purple-950/40',
-      icon: 'text-purple-600 dark:text-purple-400',
-      value: 'text-purple-700 dark:text-purple-300',
-    },
-    green: {
-      bg: 'bg-green-50 dark:bg-green-950/40',
-      icon: 'text-green-600 dark:text-green-400',
-      value: 'text-green-700 dark:text-green-300',
-    },
-    amber: {
-      bg: 'bg-amber-50 dark:bg-amber-950/40',
-      icon: 'text-amber-600 dark:text-amber-400',
-      value: 'text-amber-700 dark:text-amber-300',
-    },
+    blue:   { bg: 'bg-blue-50 dark:bg-blue-950/40',   icon: 'text-blue-600 dark:text-blue-400',   value: 'text-blue-700 dark:text-blue-300' },
+    purple: { bg: 'bg-purple-50 dark:bg-purple-950/40', icon: 'text-purple-600 dark:text-purple-400', value: 'text-purple-700 dark:text-purple-300' },
+    green:  { bg: 'bg-green-50 dark:bg-green-950/40',  icon: 'text-green-600 dark:text-green-400',  value: 'text-green-700 dark:text-green-300' },
+    amber:  { bg: 'bg-amber-50 dark:bg-amber-950/40',  icon: 'text-amber-600 dark:text-amber-400',  value: 'text-amber-700 dark:text-amber-300' },
   }
   const c = colorMap[color]
-
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 flex items-start gap-4 shadow-sm">
       <div className={`rounded-xl p-3 ${c.bg}`}>
         <span className={`text-xl ${c.icon}`}>{icon}</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
-          {label}
-        </p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">{label}</p>
         <p className={`text-2xl font-semibold ${c.value}`}>{value}</p>
-        {sub && (
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{sub}</p>
-        )}
+        {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{sub}</p>}
       </div>
     </div>
   )
@@ -188,159 +151,90 @@ function AccessBadge({ mode }: { mode: string }) {
   )
 }
 
-export default function StudentDashboard() {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+// ── Page (Server Component) ────────────────────────────────────────────────
 
-  const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<UserProfile | null>(null)
-  const [university, setUniversity] = useState<University | null>(null)
-  const [pinnedSubjects, setPinnedSubjects] = useState<PinnedSubject[]>([])
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
-  const [recentProgress, setRecentProgress] = useState<Progress[]>([])
-  const [bookmarkCount, setBookmarkCount] = useState(0)
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [activeSubjectCount, setActiveSubjectCount] = useState(0)
-  const [notifications, setNotifications] = useState<Notification[]>([])
+export default async function StudentDashboard() {
+  const supabase = await createClient()
 
-  useEffect(() => {
-    async function load() {
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-      if (!authUser) return
+  // Auth check
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  if (!authUser) redirect('/login')
 
-      const { data: profile } = await supabase
-        .from('users')
-        .select('id, full_name, email, default_university_id, role')
-        .eq('auth_user_id', authUser.id)
-        .single()
+  // User profile
+  const { data: profile } = await supabase
+    .from('users')
+    .select('id, full_name, email, default_university_id, role')
+    .eq('auth_user_id', authUser.id)
+    .single()
 
-      if (!profile) return
-      setUser(profile)
+  if (!profile) redirect('/login')
 
-      const [
-        uniResult,
-        pinnedResult,
-        subsResult,
-        progressResult,
-        bookmarkResult,
-        notifResult,
-        activeSubsResult,
-      ] = await Promise.all([
-        profile.default_university_id
-          ? supabase
-              .from('universities')
-              .select('id, name, logo_url')
-              .eq('id', profile.default_university_id)
-              .single()
-          : Promise.resolve({ data: null }),
+  // All dashboard data in parallel
+  const [
+    uniResult,
+    pinnedResult,
+    subsResult,
+    progressResult,
+    bookmarkResult,
+    notifResult,
+    activeSubsResult,
+  ] = await Promise.all([
+    profile.default_university_id
+      ? supabase.from('universities').select('id, name, logo_url').eq('id', profile.default_university_id).single()
+      : Promise.resolve({ data: null }),
 
-        supabase
-          .from('pinned_subjects')
-          .select(`
-            subject_id,
-            subject:subjects (
-              id, name, subject_type, access_mode, university_id,
-              university:universities ( id, name )
-            )
-          `)
-          .eq('user_id', profile.id)
-          .limit(6),
+    supabase.from('pinned_subjects').select(`
+      subject_id,
+      subject:subjects ( id, name, subject_type, access_mode, university_id,
+        university:universities ( id, name )
+      )
+    `).eq('user_id', profile.id).limit(6),
 
-        supabase
-          .from('subject_subscriptions')
-          .select(`
-            id, subject_id, status, end_date,
-            subject:subjects ( id, name, subject_type, access_mode, university_id )
-          `)
-          .eq('user_id', profile.id)
-          .eq('status', 'active')
-          .order('end_date', { ascending: true })
-          .limit(5),
+    supabase.from('subject_subscriptions').select(`
+      id, subject_id, status, end_date,
+      subject:subjects ( id, name, subject_type, access_mode, university_id )
+    `).eq('user_id', profile.id).eq('status', 'active').order('end_date', { ascending: true }).limit(5),
 
-        supabase
-          .from('user_progress')
-          .select(`
-            lecture_id, content_type, progress_percentage, completed, last_accessed_at,
-            lecture:lectures ( id, title, subject_id, chapter_id )
-          `)
-          .eq('user_id', profile.id)
-          .order('last_accessed_at', { ascending: false })
-          .limit(5),
+    supabase.from('user_progress').select(`
+      lecture_id, content_type, progress_percentage, completed, last_accessed_at,
+      lecture:lectures ( id, title, subject_id, chapter_id )
+    `).eq('user_id', profile.id).order('last_accessed_at', { ascending: false }).limit(5),
 
-        supabase
-          .from('bookmarks')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', profile.id),
+    supabase.from('bookmarks').select('id', { count: 'exact', head: true }).eq('user_id', profile.id),
 
-        supabase
-          .from('notifications')
-          .select('id, title, message, priority, created_at')
-          .or(`target_type.eq.all,and(target_type.eq.user,user_id.eq.${profile.id})`)
-          .order('created_at', { ascending: false })
-          .limit(5),
+    supabase.from('notifications').select('id, title, message, priority, created_at')
+      .or(`target_type.eq.all,and(target_type.eq.user,user_id.eq.${profile.id})`)
+      .order('created_at', { ascending: false }).limit(5),
 
-        supabase
-          .from('subject_subscriptions')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', profile.id)
-          .eq('status', 'active'),
-      ])
+    supabase.from('subject_subscriptions').select('id', { count: 'exact', head: true })
+      .eq('user_id', profile.id).eq('status', 'active'),
+  ])
 
-      if (uniResult.data) setUniversity(uniResult.data as University)
-      if (pinnedResult.data) setPinnedSubjects(pinnedResult.data as unknown as PinnedSubject[])
-      if (subsResult.data) setSubscriptions(subsResult.data as unknown as Subscription[])
-      if (progressResult.data) setRecentProgress(progressResult.data as unknown as Progress[])
-      if (bookmarkResult.count !== null) setBookmarkCount(bookmarkResult.count)
-      if (notifResult.data) setNotifications(notifResult.data as Notification[])
-      if (activeSubsResult.count !== null) setActiveSubjectCount(activeSubsResult.count)
+  // Unread notifications count
+  const { data: readIds } = await supabase
+    .from('notification_reads')
+    .select('notification_id')
+    .eq('user_id', profile.id)
 
-      const { data: readIds } = await supabase
-        .from('notification_reads')
-        .select('notification_id')
-        .eq('user_id', profile.id)
+  const readSet = new Set((readIds ?? []).map((r: { notification_id: string }) => r.notification_id))
+  const notifications = (notifResult.data ?? []) as Notification[]
+  const unreadCount = notifications.filter(n => !readSet.has(n.id)).length
 
-      const readSet = new Set((readIds ?? []).map((r: { notification_id: string }) => r.notification_id))
-      const unread = (notifResult.data ?? []).filter((n: Notification) => !readSet.has(n.id)).length
-      setUnreadCount(unread)
-
-      setLoading(false)
-    }
-
-    load()
-  }, [])
+  const university = uniResult.data as University | null
+  const pinnedSubjects = (pinnedResult.data ?? []) as unknown as PinnedSubject[]
+  const subscriptions = (subsResult.data ?? []) as unknown as Subscription[]
+  const recentProgress = (progressResult.data ?? []) as unknown as Progress[]
+  const bookmarkCount = bookmarkResult.count ?? 0
+  const activeSubjectCount = activeSubsResult.count ?? 0
 
   const lastProgress = recentProgress.find(p => !p.completed && p.progress_percentage > 0)
-    ?? recentProgress[0]
-    ?? null
+    ?? recentProgress[0] ?? null
 
   const overallProgress = recentProgress.length > 0
     ? Math.round(recentProgress.reduce((acc, p) => acc + p.progress_percentage, 0) / recentProgress.length)
     : 0
 
-  if (loading) {
-    return (
-      <div className="p-6 space-y-6">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-12 w-12 rounded-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-5 w-48" />
-            <Skeleton className="h-3 w-32" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
-        </div>
-        <Skeleton className="h-40 w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-36 w-full" />)}
-        </div>
-      </div>
-    )
-  }
-
-  const firstName = user?.full_name?.split(' ')[0] ?? 'Student'
+  const firstName = profile.full_name?.split(' ')[0] ?? 'Student'
 
   return (
     <div className="p-6 space-y-8 max-w-7xl">
@@ -349,7 +243,7 @@ export default function StudentDashboard() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-            {getInitials(user?.full_name ?? null)}
+            {getInitials(profile.full_name ?? null)}
           </div>
           <div>
             <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
@@ -357,19 +251,12 @@ export default function StudentDashboard() {
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {university?.name ?? 'No university selected'} &middot;{' '}
-              {new Date().toLocaleDateString('en-GB', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-              })}
+              {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
           </div>
         </div>
         {university && (
-          <Link
-            href={`/${university.id}`}
-            className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-          >
+          <Link href={`/${university.id}`} className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
             Browse subjects →
           </Link>
         )}
@@ -386,22 +273,16 @@ export default function StudentDashboard() {
       {/* Continue Learning */}
       {lastProgress && lastProgress.lecture && (
         <section>
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-3">
-            Continue learning
-          </h2>
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-3">Continue learning</h2>
           <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-5">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-start gap-4">
-                <div className="h-11 w-11 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0 text-white text-lg">
-                  ▶
-                </div>
+                <div className="h-11 w-11 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0 text-white text-lg">▶</div>
                 <div>
                   <p className="text-xs font-medium text-blue-500 dark:text-blue-400 uppercase tracking-wide mb-1">
                     {lastProgress.content_type.replace('_', ' ')}
                   </p>
-                  <p className="font-semibold text-slate-900 dark:text-white text-base">
-                    {lastProgress.lecture.title}
-                  </p>
+                  <p className="font-semibold text-slate-900 dark:text-white text-base">{lastProgress.lecture.title}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Last accessed {formatTimeAgo(lastProgress.last_accessed_at)}
                   </p>
@@ -409,17 +290,13 @@ export default function StudentDashboard() {
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-2xl font-semibold text-blue-600 dark:text-blue-400">
-                    {lastProgress.progress_percentage}%
-                  </p>
+                  <p className="text-2xl font-semibold text-blue-600 dark:text-blue-400">{lastProgress.progress_percentage}%</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">completed</p>
                 </div>
                 <Link
-                  href={
-                    lastProgress.lecture.subject_id
-                      ? `/${university?.id ?? ''}/${lastProgress.lecture.subject_id}/${lastProgress.lecture.id}`
-                      : '#'
-                  }
+                  href={lastProgress.lecture.subject_id
+                    ? `/${university?.id ?? ''}/${lastProgress.lecture.subject_id}/${lastProgress.lecture.id}`
+                    : '#'}
                   className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 transition-colors"
                 >
                   Resume →
@@ -427,10 +304,7 @@ export default function StudentDashboard() {
               </div>
             </div>
             <div className="mt-4 h-1.5 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                style={{ width: `${lastProgress.progress_percentage}%` }}
-              />
+              <div className="h-full bg-blue-600 rounded-full transition-all duration-500" style={{ width: `${lastProgress.progress_percentage}%` }} />
             </div>
           </div>
         </section>
@@ -439,23 +313,16 @@ export default function StudentDashboard() {
       {/* Pinned Subjects */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">
-            Pinned subjects
-          </h2>
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Pinned subjects</h2>
           {university && (
-            <Link href={`/${university.id}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-              View all
-            </Link>
+            <Link href={`/${university.id}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">View all</Link>
           )}
         </div>
-
         {pinnedSubjects.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
             <p className="text-2xl mb-2">📌</p>
             <p className="text-sm text-slate-500 dark:text-slate-400">No pinned subjects yet.</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-              Pin a subject from the subject page to see it here.
-            </p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Pin a subject from the subject page to see it here.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -466,20 +333,14 @@ export default function StudentDashboard() {
                 className="block rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all group"
               >
                 <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-lg flex-shrink-0">
-                    📖
-                  </div>
+                  <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-lg flex-shrink-0">📖</div>
                   <div className="flex gap-1.5 flex-wrap justify-end">
                     <TypeBadge type={subject.subject_type} />
                     <AccessBadge mode={subject.access_mode} />
                   </div>
                 </div>
-                <p className="font-semibold text-slate-900 dark:text-white text-sm leading-snug">
-                  {subject.name}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {subject.university?.name ?? ''}
-                </p>
+                <p className="font-semibold text-slate-900 dark:text-white text-sm leading-snug">{subject.name}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subject.university?.name ?? ''}</p>
               </Link>
             ))}
           </div>
@@ -489,21 +350,14 @@ export default function StudentDashboard() {
       {/* Active Subscriptions */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">
-            Active subscriptions
-          </h2>
-          <Link href="/subscriptions" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-            View all
-          </Link>
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Active subscriptions</h2>
+          <Link href="/subscriptions" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">View all</Link>
         </div>
-
         {subscriptions.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
-            <p className="text-2xl mb-2">🔓</p>
+            <p className="text-2xl mb-2">🔔</p>
             <p className="text-sm text-slate-500 dark:text-slate-400">No active subscriptions.</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-              Contact support to activate access to premium subjects.
-            </p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Contact support to activate access to premium subjects.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -511,25 +365,13 @@ export default function StudentDashboard() {
               const days = getDaysRemaining(sub.end_date)
               const isExpiringSoon = days <= 7
               return (
-                <div
-                  key={sub.id}
-                  className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4"
-                >
+                <div key={sub.id} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-9 w-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-base flex-shrink-0">
-                      ✓
-                    </div>
+                    <div className="h-9 w-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-base flex-shrink-0">✓</div>
                     <div className="min-w-0">
-                      <p className="font-medium text-slate-900 dark:text-white text-sm truncate">
-                        {sub.subject?.name ?? 'Unknown subject'}
-                      </p>
+                      <p className="font-medium text-slate-900 dark:text-white text-sm truncate">{sub.subject?.name ?? 'Unknown subject'}</p>
                       <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                        Expires{' '}
-                        {new Date(sub.end_date).toLocaleDateString('en-GB', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
+                        Expires {new Date(sub.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
                     </div>
                   </div>
@@ -537,9 +379,7 @@ export default function StudentDashboard() {
                     <span className={`text-sm font-semibold ${isExpiringSoon ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
                       {days}d left
                     </span>
-                    {isExpiringSoon && (
-                      <p className="text-xs text-amber-500 dark:text-amber-400 mt-0.5">Expiring soon</p>
-                    )}
+                    {isExpiringSoon && <p className="text-xs text-amber-500 dark:text-amber-400 mt-0.5">Expiring soon</p>}
                   </div>
                 </div>
               )
@@ -553,12 +393,10 @@ export default function StudentDashboard() {
 
         {/* Recent Activity */}
         <section>
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-3">
-            Recent activity
-          </h2>
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-3">Recent activity</h2>
           {recentProgress.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
-              <p className="text-2xl mb-2">🕐</p>
+              <p className="text-2xl mb-2">📊</p>
               <p className="text-sm text-slate-500 dark:text-slate-400">No activity yet.</p>
             </div>
           ) : (
@@ -566,26 +404,15 @@ export default function StudentDashboard() {
               {recentProgress.map((p, i) => (
                 <div key={i} className="flex items-center gap-3 px-4 py-3">
                   <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${p.completed ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-700'}`}>
-                    {p.content_type === 'sheet' ? '📄' :
-                     p.content_type === 'flashcards' ? '🃏' :
-                     p.content_type === 'quiz' ? '❓' :
-                     p.content_type === 'previous_years' ? '📅' : '📝'}
+                    {p.content_type === 'sheet' ? '📄' : p.content_type === 'flashcards' ? '🃏' : p.content_type === 'quiz' ? '❓' : p.content_type === 'previous_years' ? '📅' : '📌'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
-                      {p.lecture?.title ?? 'Lecture'}
-                    </p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 capitalize">
-                      {p.content_type.replace('_', ' ')} · {p.progress_percentage}%
-                    </p>
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{p.lecture?.title ?? 'Lecture'}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 capitalize">{p.content_type.replace('_', ' ')} · {p.progress_percentage}%</p>
                   </div>
                   <div className="flex-shrink-0 text-right">
-                    {p.completed && (
-                      <p className="text-xs font-medium text-green-600 dark:text-green-400">Done</p>
-                    )}
-                    <p className="text-xs text-slate-400 dark:text-slate-500">
-                      {formatTimeAgo(p.last_accessed_at)}
-                    </p>
+                    {p.completed && <p className="text-xs font-medium text-green-600 dark:text-green-400">Done</p>}
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{formatTimeAgo(p.last_accessed_at)}</p>
                   </div>
                 </div>
               ))}
@@ -604,13 +431,11 @@ export default function StudentDashboard() {
                 </span>
               )}
             </h2>
-            <Link href="/notifications" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-              View all
-            </Link>
+            <Link href="/notifications" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">View all</Link>
           </div>
           {notifications.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
-              <p className="text-2xl mb-2">🔕</p>
+              <p className="text-2xl mb-2">🔔</p>
               <p className="text-sm text-slate-500 dark:text-slate-400">No notifications.</p>
             </div>
           ) : (
@@ -621,19 +446,11 @@ export default function StudentDashboard() {
                     n.priority === 'critical' ? 'bg-red-100 dark:bg-red-900/30' :
                     n.priority === 'important' ? 'bg-amber-100 dark:bg-amber-900/30' :
                     'bg-slate-100 dark:bg-slate-700'
-                  }`}>
-                    🔔
-                  </div>
+                  }`}>🔔</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug">
-                      {n.title}
-                    </p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate">
-                      {n.message}
-                    </p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                      {formatTimeAgo(n.created_at)}
-                    </p>
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug">{n.title}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate">{n.message}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{formatTimeAgo(n.created_at)}</p>
                   </div>
                 </div>
               ))}

@@ -12,7 +12,7 @@ async function fetchCurrentUser(): Promise<UserProfile | null> {
   if (!authUser) return null
   const { data, error } = await supabase
     .from('users')
-    .select('*')
+    .select('id, full_name, email, phone, role, status, default_university_id, auth_user_id')
     .eq('auth_user_id', authUser.id)
     .single()
   if (error || !data) return null
@@ -24,7 +24,7 @@ export function useUser() {
   const query = useQuery({
     queryKey: ['current-user'],
     queryFn: fetchCurrentUser,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 1000 * 60 * 30,
     retry: 1,
   })
   useEffect(() => {

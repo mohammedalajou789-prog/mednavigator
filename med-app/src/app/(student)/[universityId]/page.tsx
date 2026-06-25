@@ -13,7 +13,7 @@ export default async function UniversityPage({ params }: PageProps) {
 
   const { data: university } = await supabase
     .from('universities')
-    .select('*')
+    .select('id, name, logo_url, is_active')
     .eq('id', universityId)
     .eq('is_active', true)
     .single()

@@ -108,7 +108,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
           {navItems.map((item) => {
             const active = isActive(item.href)
             return (
-              <Link key={item.href} href={item.href} style={{
+              <Link key={item.href} href={item.href} prefetch={false} style={{
                 display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
                 borderRadius: '11px', fontSize: '14px', fontWeight: active ? 600 : 500,
                 color: active ? '#EAF0FF' : '#9AA7C4', cursor: 'pointer', textDecoration: 'none',
@@ -126,7 +126,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
           {otherItems.map((item) => {
             const active = isActive(item.href)
             return (
-              <Link key={item.href} href={item.href} style={{
+              <Link key={item.href} href={item.href} prefetch={false} style={{
                 display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
                 borderRadius: '11px', fontSize: '14px', fontWeight: active ? 600 : 500,
                 color: active ? '#EAF0FF' : '#9AA7C4', cursor: 'pointer', textDecoration: 'none',
@@ -186,7 +186,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
           <ThemeToggle />
 
           {/* Notifications */}
-          <Link href="/notifications" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '11px', background: '#F4F5F8', border: '1px solid #EBEDF3', color: '#5B6678', cursor: 'pointer', flexShrink: 0 }}>
+          <Link href="/notifications" prefetch={false} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '11px', background: '#F4F5F8', border: '1px solid #EBEDF3', color: '#5B6678', cursor: 'pointer', flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
             
           </Link>
@@ -213,7 +213,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             { label: 'Bookmarks', href: '/bookmarks' },
             { label: 'Alerts', href: '/notifications' },
           ].map((item) => (
-            <Link key={item.href} href={item.href} className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all text-[10px] font-medium ${isActive(item.href) ? 'text-blue-600' : 'text-slate-400'}`}>
+            <Link key={item.href} href={item.href} prefetch={false} className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all text-[10px] font-medium ${isActive(item.href) ? 'text-blue-600' : 'text-slate-400'}`}>
               {item.label}
             </Link>
           ))}

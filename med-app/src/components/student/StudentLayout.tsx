@@ -16,6 +16,7 @@ interface University {
 interface StudentLayoutProps {
   children: React.ReactNode
   universities?: University[]
+  myUniSlug?: string | null
 }
 
 const navItems = [
@@ -88,7 +89,7 @@ const firstSectionLabel: React.CSSProperties = {
   color: '#56648A', padding: '8px 12px 6px',
 }
 
-export default function StudentLayout({ children, universities = [] }: StudentLayoutProps) {
+export default function StudentLayout({ children, universities = [], myUniSlug }: StudentLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, clearUser } = useUserStore()
@@ -200,9 +201,10 @@ export default function StudentLayout({ children, universities = [] }: StudentLa
               {exploreOpen && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', paddingLeft: '8px' }}>
                   {universities.map((uni) => {
-                    const active = pathname.startsWith(`/${uni.id}`)
+                    const uniPath = (uni as any).slug ?? uni.id
+                    const active = pathname.startsWith(`/${uniPath}`)
                     return (
-                      <a key={uni.id} href={`/${uni.id}`} style={{
+                      <a key={uni.id} href={`/${uniPath}`} style={{
                         display: 'flex', alignItems: 'center', gap: '10px',
                         padding: '8px 12px', borderRadius: '9px', fontSize: '13px',
                         fontWeight: active ? 600 : 400,
@@ -225,8 +227,8 @@ export default function StudentLayout({ children, universities = [] }: StudentLa
           <div style={sectionLabel}>LEARNING</div>
           {navItems.map((item) => {
             if (item.label === 'My University') {
-              const uniHref = user?.default_university_id ? `/${user.default_university_id}` : '/home'
-              const active = user?.default_university_id ? pathname.startsWith(`/${user.default_university_id}`) : false
+              const uniHref = myUniSlug ? `/${myUniSlug}` : '/home'
+              const active = myUniSlug ? pathname.startsWith(`/${myUniSlug}`) : false
               return (
                 <a key="my-university" href={uniHref} style={navLinkStyle(active)}>
                   <span style={iconStyle(active)}>{item.icon}</span>

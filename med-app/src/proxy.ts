@@ -22,6 +22,7 @@ export async function proxy(request: NextRequest) {
 
   if (authUser && AUTH_ONLY_ROUTES.some(r => pathname.startsWith(r))) {
     const role = await getUserRole(request, authUser.id)
+    console.log('[proxy] authUser:', authUser.id, 'role:', role, 'pathname:', pathname)
     return NextResponse.redirect(new URL(getRoleRedirect(role), request.url))
   }
 
@@ -90,6 +91,7 @@ async function getUserRole(
 }
 
 function getRoleRedirect(role: string): string {
+  console.log('[proxy] getRoleRedirect called with role:', role)
   if (role === 'owner') return '/owner'
   if (role === 'admin') return '/admin'
   return '/home'

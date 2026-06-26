@@ -29,3 +29,12 @@ export async function createClient() {
 
 // Alias for compatibility
 export const createServerClient = createClient
+import { headers } from 'next/headers'
+
+export async function getAuthUserFromHeader(): Promise<{ id: string; email: string } | null> {
+  const headersList = await headers()
+  const userId = headersList.get('x-auth-user-id')
+  const email = headersList.get('x-auth-email') ?? ''
+  if (!userId) return null
+  return { id: userId, email }
+}

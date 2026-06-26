@@ -24,7 +24,7 @@ const navItems = [
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>,
   },
   {
-    label: 'My University', href: '/home',
+    label: 'My University', href: '/__my_university__',
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
   },
   {
@@ -224,6 +224,16 @@ export default function StudentLayout({ children, universities = [] }: StudentLa
           {/* LEARNING */}
           <div style={sectionLabel}>LEARNING</div>
           {navItems.map((item) => {
+            if (item.label === 'My University') {
+              const uniHref = user?.default_university_id ? `/${user.default_university_id}` : '/home'
+              const active = user?.default_university_id ? pathname.startsWith(`/${user.default_university_id}`) : false
+              return (
+                <Link key="my-university" href={uniHref} prefetch={false} style={navLinkStyle(active)}>
+                  <span style={iconStyle(active)}>{item.icon}</span>
+                  {item.label}
+                </Link>
+              )
+            }
             const active = isActive(item.href)
             return (
               <Link key={item.label} href={item.href} prefetch={false} style={navLinkStyle(active)}>

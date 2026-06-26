@@ -18,6 +18,8 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const { supabaseResponse, user: authUser } = await updateSession(request)
 
+  
+
   if (authUser && AUTH_ONLY_ROUTES.some(r => pathname.startsWith(r))) {
     const role = await getUserRole(request, authUser.id)
     return NextResponse.redirect(new URL(getRoleRedirect(role), request.url))

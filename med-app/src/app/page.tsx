@@ -1,27 +1,19 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { unstable_cache } from 'next/cache'
 import type { University } from '@/types/database'
 import LandingNavbar from '@/components/student/LandingNavbar'
 import UniversityCard from '@/components/student/UniversityCard'
 
-const getActiveUniversities = unstable_cache(
-  async (): Promise<University[]> => {
-    const supabase = await createClient()
-    const { data, error } = await supabase
-      .from('universities')
-      .select('id, name, logo_url, description, is_active, created_at, updated_at, archived_at, country, logo_media_id, cover_media_id')
-      .eq('is_active', true)
-      .order('name')
-    if (error || !data) return []
-    return data as University[]
-  },
-  ['landing-universities'],
-  {
-    revalidate: 3600,
-    tags: ['universities'],
-  }
-)
+async function getActiveUniversities(): Promise<University[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('universities')
+    .select('id, name, logo_url, description, is_active, created_at, updated_at, archived_at, country, logo_media_id, cover_media_id')
+    .eq('is_active', true)
+    .order('name')
+  if (error || !data) return []
+  return data as University[]
+}
 
 const FEATURES = [
   { title: 'Organized by subject', desc: 'Content grouped into structured academic subjects per university.', icon: '☰', iconBg: '#EEF2FF', iconColor: '#4F46E5' },
@@ -94,7 +86,7 @@ export default async function LandingPage() {
             <div className="grid grid-cols-[80px_1fr]">
               <div className="bg-slate-800 p-3 flex flex-col gap-1.5">
                 {['Dashboard', 'Subjects', 'Bookmarks', 'Flashcards', 'Quizzes', 'Progress'].map((item, i) => (
-                  <div key={item} className={`text-[9px] px-2 py-1 rounded ${i === 0 ? 'bg-blue-600/20 text-blue-400' : 'text-slate-400'}`}>
+                  <div key={item} className={`text-[9px] px-2 py-1 rounded ${i === 0 ? 'bg-blue-600/20 text-blue-400' : 'text-slateate-400'}`}>
                     {item}
                   </div>
                 ))}
@@ -145,7 +137,7 @@ export default async function LandingPage() {
         </p>
         {universities.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
-            <p className="text-sm">Universities will appear here once appear here once added.</p>
+            <p className="text-sm">Universities will appear here once added.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

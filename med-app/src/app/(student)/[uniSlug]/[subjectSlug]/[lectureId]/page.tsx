@@ -21,11 +21,8 @@ export default async function LecturePage({ params }: PageProps) {
 
   // resolve slugs → ids
   const supabaseSlug = await createServerClient()
-  const { data: uniRow } = await supabaseSlug.from('universities').select('id').eq('slug', uniSlug).single()
-  const { data: subRow } = await supabaseSlug.from('subjects').select('id').eq('slug', subjectSlug).single()
-  const universityId = uniRow?.id ?? ''
-  const subjectId    = subRow?.id ?? ''
-  if (!universityId || !subjectId) redirect('/')
+  const { data: uniRow } = await supabaseSlug.from('universities').select('id').eq('slug' as any, uniSlug).single()
+  const { data: subRow } = await supabaseSlug.from('subjects').select('id').eq('slug' as any, subjectSlug).single()
   const universityId = uniRow?.id ?? ''
   const subjectId    = subRow?.id ?? ''
   if (!universityId || !subjectId) redirect('/')

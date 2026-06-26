@@ -27,7 +27,7 @@ export default function SubjectCard({ subject, universityId }: SubjectCardProps)
 
   return (
     <Link
-      href={`/${universityId}/${subject.id}`}
+      href={`/${universityId}/${(subject as any).slug ?? subject.id}`}
       prefetch={false}
       className="group relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all flex flex-col"
     >

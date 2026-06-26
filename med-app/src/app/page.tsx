@@ -1,19 +1,27 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { unstable_cache } from 'next/cache'
 import type { University } from '@/types/database'
 import LandingNavbar from '@/components/student/LandingNavbar'
 import UniversityCard from '@/components/student/UniversityCard'
 
-async function getActiveUniversities(): Promise<University[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('universities')
-    .select('id, name, logo_url, description, is_active, created_at, updated_at, archived_at, country, logo_media_id, cover_media_id')
-    .eq('is_active', true)
-    .order('name')
-  if (error || !data) return []
-  return data as University[]
-}
+const getActiveUniversities = unstable_cache(
+  async (): Promise<University[]> => {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('universities')
+      .select('id, name, logo_url, description, is_active, created_at, updated_at, archived_at, country, logo_media_id, cover_media_id')
+      .eq('is_active', true)
+      .order('name')
+    if (error || !data) return []
+    return data as University[]
+  },
+  ['landing-universities'],
+  {
+    revalidate: 3600,
+    tags: ['universities'],
+  }
+)
 
 const FEATURES = [
   { title: 'Organized by subject', desc: 'Content grouped into structured academic subjects per university.', icon: '☰', iconBg: '#EEF2FF', iconColor: '#4F46E5' },
@@ -137,7 +145,7 @@ export default async function LandingPage() {
         </p>
         {universities.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
-            <p className="text-sm">Universities will appear here once added.</p>
+            <p className="text-sm">Universities will appear here once appear here once added.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

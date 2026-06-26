@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import MNRenderer from './MNRenderer'
 
 interface SheetReaderProps {
@@ -22,6 +22,9 @@ export default function SheetReader({
   onProgressUpdate,
 }: SheetReaderProps) {
 
+  const lastSavedPct = useRef<number>(-1)
+  const throttleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
     const scrollContainer = document.getElementById('lecture-content-scroll')
     if (!scrollContainer || !onProgressUpdate) return
@@ -29,16 +32,31 @@ export default function SheetReader({
     function handleScroll() {
       const el = document.getElementById('lecture-content-scroll')
       if (!el) return
+
       const scrollTop = el.scrollTop
       const scrollHeight = el.scrollHeight - el.clientHeight
-      if (scrollHeight > 0) {
-        const pct = Math.round((scrollTop / scrollHeight) * 100)
+      if (scrollHeight <= 0) return
+
+      const pct = Math.round((scrollTop / scrollHeight) * 100)
+
+      // Only save if percentage changed by at least 5%
+      if (Math.abs(pct - lastSavedPct.current) < 5) return
+
+      // Throttle: only fire once every 2 seconds
+      if (throttleTimer.current) return
+
+      throttleTimer.current = setTimeout(() => {
+        throttleTimer.current = null
+        lastSavedPct.current = pct
         onProgressUpdate!(pct)
-      }
+      }, 2000)
     }
 
-    scrollContainer.addEventListener('scroll', handleScroll)
-    return () => scrollContainer.removeEventListener('scroll', handleScroll)
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      scrollContainer.removeEventListener('scroll', handleScroll)
+      if (throttleTimer.current) clearTimeout(throttleTimer.current)
+    }
   }, [onProgressUpdate])
 
   return (

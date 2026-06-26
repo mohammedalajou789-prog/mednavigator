@@ -4,17 +4,17 @@ import Link from 'next/link'
 import SubjectCard from '@/components/student/SubjectCard'
 
 interface PageProps {
-  params: Promise<{ universityId: string }>
+  params: Promise<{ uniSlug: string }>
 }
 
 export default async function UniversityPage({ params }: PageProps) {
-  const { universityId } = await params
+  const { uniSlug } = await params
   const supabase = await createServerClient()
 
   const { data: university } = await supabase
     .from('universities')
-    .select('id, name, logo_url, is_active')
-    .eq('id', universityId)
+    .select('id, name, logo_url, is_active, slug')
+    .eq('slug' as any, uniSlug)
     .eq('is_active', true)
     .single()
 
@@ -23,12 +23,12 @@ export default async function UniversityPage({ params }: PageProps) {
   const { data: subjects } = await supabase
     .from('subjects')
     .select('*')
-    .eq('university_id', universityId)
+    .eq('university_id', university.id)
     .eq('is_published', true)
     .eq('is_active', true)
     .order('name')
 
-  const preclinical = subjects?.filter(s => s.category === 'preclinical') ?? []
+  const preclinical   = subjects?.filter(s => s.category === 'preclinical')    ?? []
   const clinicalMajor = subjects?.filter(s => s.category === 'clinical_major') ?? []
   const clinicalMinor = subjects?.filter(s => s.category === 'clinical_minor') ?? []
 
@@ -68,7 +68,7 @@ export default async function UniversityPage({ params }: PageProps) {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {preclinical.map(subject => (
-                  <SubjectCard key={subject.id} subject={subject} universityId={universityId} />
+                  <SubjectCard key={subject.id} subject={subject} universityId={uniSlug} />
                 ))}
               </div>
             </section>
@@ -83,7 +83,7 @@ export default async function UniversityPage({ params }: PageProps) {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {clinicalMajor.map(subject => (
-                  <SubjectCard key={subject.id} subject={subject} universityId={universityId} />
+                  <SubjectCard key={subject.id} subject={subject} universityId={uniSlug} />
                 ))}
               </div>
             </section>
@@ -98,7 +98,7 @@ export default async function UniversityPage({ params }: PageProps) {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {clinicalMinor.map(subject => (
-                  <SubjectCard key={subject.id} subject={subject} universityId={universityId} />
+                  <SubjectCard key={subject.id} subject={subject} universityId={uniSlug} />
                 ))}
               </div>
             </section>

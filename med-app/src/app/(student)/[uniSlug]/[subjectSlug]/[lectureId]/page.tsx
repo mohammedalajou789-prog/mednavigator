@@ -10,14 +10,25 @@ import { getPreviousYearQuestionsByLectureId } from '@/lib/services/previous-yea
 
 interface PageProps {
   params: Promise<{
-    universityId: string
-    subjectId: string
+    uniSlug: string
+    subjectSlug: string
     lectureId: string
   }>
 }
 
 export default async function LecturePage({ params }: PageProps) {
-  const { universityId, subjectId, lectureId } = await params
+  const { uniSlug, subjectSlug, lectureId } = await params
+
+  // resolve slugs → ids
+  const supabaseSlug = await createServerClient()
+  const { data: uniRow } = await supabaseSlug.from('universities').select('id').eq('slug', uniSlug).single()
+  const { data: subRow } = await supabaseSlug.from('subjects').select('id').eq('slug', subjectSlug).single()
+  const universityId = uniRow?.id ?? ''
+  const subjectId    = subRow?.id ?? ''
+  if (!universityId || !subjectId) redirect('/')
+  const universityId = uniRow?.id ?? ''
+  const subjectId    = subRow?.id ?? ''
+  if (!universityId || !subjectId) redirect('/')
   const supabase = await createServerClient()
 
   // Step 1: auth — must happen first to get userId

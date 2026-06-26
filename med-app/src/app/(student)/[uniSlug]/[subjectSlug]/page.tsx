@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
 interface PageProps {
-  params: Promise<{ universityId: string; subjectId: string }>
+  params: Promise<{ uniSlug: string; subjectSlug: string }>
 }
 
 // ─── accent constants ───────────────────────────────────────────────
@@ -13,7 +13,15 @@ const ACCENT_SOFT  = '#eef3ff'
 const ACCENT_BDR   = '#d5e2ff'
 
 export default async function SubjectPage({ params }: PageProps) {
-  const { universityId, subjectId } = await params
+  const { uniSlug, subjectSlug } = await params
+  
+  // resolve slug → id
+  const supabase0 = await createServerClient()
+  const { data: uniRow } = await supabase0.from('universities').select('id').eq('slug' as any, uniSlug).single()
+  const { data: subRow } = await supabase0.from('subjects').select('id').eq('slug' as any, subjectSlug).single()
+  const universityId = uniRow?.id ?? ''
+  const subjectId    = subRow?.id ?? ''
+  if (!universityId || !subjectId) notFound()
   const supabase = await createServerClient()
 
   const authUser = await getAuthUser()

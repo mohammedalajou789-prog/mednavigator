@@ -8,6 +8,7 @@ interface University {
   id: string
   name: string
   logo_url: string | null
+  slug: string | null
 }
 
 interface Subject {
@@ -16,6 +17,7 @@ interface Subject {
   subject_type: string
   access_mode: string
   university_id: string
+  slug: string | null
 }
 
 interface Subscription {
@@ -169,13 +171,13 @@ export default async function StudentDashboard() {
     activeSubsResult,
   ] = await Promise.all([
     profile.default_university_id
-      ? supabase.from('universities').select('id, name, logo_url').eq('id', profile.default_university_id).single()
+      ? supabase.from('universities').select('id, name, logo_url, slug').eq('id', profile.default_university_id).single()
       : Promise.resolve({ data: null }),
 
     supabase.from('pinned_subjects').select(`
       subject_id,
-      subject:subjects ( id, name, subject_type, access_mode, university_id,
-        university:universities ( id, name )
+      subject:subjects ( id, name, subject_type, access_mode, university_id, slug,
+        university:universities ( id, name, slug )
       )
     `).eq('user_id', profile.id).limit(6),
 
@@ -245,7 +247,7 @@ export default async function StudentDashboard() {
           </div>
         </div>
         {university && (
-          <Link href={`/${university.id}`} className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+          <Link href={`/${university.slug ?? university.id}`} className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
             Browse subjects →
           </Link>
         )}
@@ -284,7 +286,7 @@ export default async function StudentDashboard() {
                 </div>
                 <Link
                   href={lastProgress.lecture.subject_id
-                    ? `/${university?.id ?? ''}/${lastProgress.lecture.subject_id}/${lastProgress.lecture.id}`
+                    ? `/${university?.slug ?? university?.id ?? ''}/${lastProgress.lecture.subject_id}/${lastProgress.lecture.id}`
                     : '#'}
                   className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 transition-colors"
                 >
@@ -304,7 +306,7 @@ export default async function StudentDashboard() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Pinned subjects</h2>
           {university && (
-            <Link href={`/${university.id}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">View all</Link>
+            <Link href={`/${university.slug ?? university.id}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">View all</Link>
           )}
         </div>
         {pinnedSubjects.length === 0 ? (
@@ -318,7 +320,7 @@ export default async function StudentDashboard() {
             {pinnedSubjects.map(({ subject_id, subject }) => (
               <Link
                 key={subject_id}
-                href={`/${subject.university_id}/${subject_id}`}
+                href={`/${(subject.university as any)?.slug ?? subject.university_id}/${subject.slug ?? subject_id}`}
                 className="block rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all group"
               >
                 <div className="flex items-start justify-between gap-2 mb-3">

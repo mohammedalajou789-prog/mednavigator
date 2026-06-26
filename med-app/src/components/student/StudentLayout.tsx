@@ -145,11 +145,11 @@ export default function StudentLayout({ children, universities = [] }: StudentLa
       >
         {/* Logo */}
         <div style={{ padding: '0 6px 18px', display: 'flex', alignItems: 'center' }}>
-          <Link href="/home" prefetch={false}>
+          <a href="/home">
             <span style={{ fontSize: '19px', fontWeight: 800, letterSpacing: '-0.01em', color: '#fff' }}>
               Med<span style={{ color: '#9FB8F2' }}>Navigator</span>
             </span>
-          </Link>
+          </a>
         </div>
 
         {/* User card */}
@@ -173,10 +173,10 @@ export default function StudentLayout({ children, universities = [] }: StudentLa
           {/* EXPLORE */}
           <div style={firstSectionLabel}>EXPLORE</div>
 
-          <Link href="/explore" prefetch={false} style={navLinkStyle(pathname === '/explore')}>
+          <a href="/explore" style={navLinkStyle(pathname === '/explore')}>
             <span style={iconStyle(pathname === '/explore')}><ExploreIcon /></span>
             All Universities
-          </Link>
+          </a>
 
           {universities.length > 0 && (
             <>
@@ -202,7 +202,7 @@ export default function StudentLayout({ children, universities = [] }: StudentLa
                   {universities.map((uni) => {
                     const active = pathname.startsWith(`/${uni.id}`)
                     return (
-                      <Link key={uni.id} href={`/${uni.id}`} prefetch={false} style={{
+                      <a key={uni.id} href={`/${uni.id}`} style={{
                         display: 'flex', alignItems: 'center', gap: '10px',
                         padding: '8px 12px', borderRadius: '9px', fontSize: '13px',
                         fontWeight: active ? 600 : 400,
@@ -213,7 +213,7 @@ export default function StudentLayout({ children, universities = [] }: StudentLa
                       }}>
                         <span style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, background: active ? '#6E9BFF' : '#3D4E6B' }} />
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{uni.name}</span>
-                      </Link>
+                                            </a>
                     )
                   })}
                 </div>
@@ -228,18 +228,18 @@ export default function StudentLayout({ children, universities = [] }: StudentLa
               const uniHref = user?.default_university_id ? `/${user.default_university_id}` : '/home'
               const active = user?.default_university_id ? pathname.startsWith(`/${user.default_university_id}`) : false
               return (
-                <Link key="my-university" href={uniHref} prefetch={false} style={navLinkStyle(active)}>
+                <a key="my-university" href={uniHref} style={navLinkStyle(active)}>
                   <span style={iconStyle(active)}>{item.icon}</span>
                   {item.label}
-                </Link>
+                </a>
               )
             }
             const active = isActive(item.href)
             return (
-              <Link key={item.label} href={item.href} prefetch={false} style={navLinkStyle(active)}>
+              <a key={item.label} href={item.href} style={navLinkStyle(active)}>
                 <span style={iconStyle(active)}>{item.icon}</span>
                 {item.label}
-              </Link>
+              </a>
             )
           })}
 
@@ -248,10 +248,10 @@ export default function StudentLayout({ children, universities = [] }: StudentLa
           {otherItems.map((item) => {
             const active = isActive(item.href)
             return (
-              <Link key={item.href} href={item.href} prefetch={false} style={navLinkStyle(active)}>
+              <a key={item.href} href={item.href} style={navLinkStyle(active)}>
                 <span style={iconStyle(active)}>{item.icon}</span>
                 {item.label}
-              </Link>
+              </a>
             )
           })}
 

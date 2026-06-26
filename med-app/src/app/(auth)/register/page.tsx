@@ -57,12 +57,16 @@ export default function RegisterPage() {
     setIsSubmitting(true)
     try {
       const supabase = createClient()
+
+      // Step 1 — Create the auth account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
       })
       if (authError) { setServerError(authError.message); return }
       if (!authData.user) { setServerError('Registration failed.'); return }
+
+      // Step 2 — Create the user profile in the users table
       const { error: profileError } = await supabase.from('users').insert({
         auth_user_id: authData.user.id,
         full_name: formData.full_name,
@@ -73,6 +77,8 @@ export default function RegisterPage() {
         default_university_id: formData.university_id && formData.university_id !== 'request' ? formData.university_id : null,
       })
       if (profileError) { setServerError('Failed to create profile.'); return }
+
+      // Step 3 — Create user preferences and university request if needed
       const { data: userProfile } = await supabase
         .from('users').select('id').eq('auth_user_id', authData.user.id).single()
       if (userProfile) {
@@ -89,8 +95,17 @@ export default function RegisterPage() {
           })
         }
       }
-      router.push('/')
-      router.refresh()
+
+      // Step 4 — Immediately sign in with the same credentials (auto-login)
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      })
+      if (signInError) { setServerError('Account created but login failed. Please sign in manually.'); return }
+
+      // Step 5 — Redirect to student dashboard
+      window.location.href = '/home'
+
     } finally {
       setIsSubmitting(false)
     }

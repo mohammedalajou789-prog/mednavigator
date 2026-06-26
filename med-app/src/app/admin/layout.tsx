@@ -1,21 +1,12 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/services/user'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import OwnerTopBar from '@/components/owner/OwnerTopBar'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createServerClient()
+  const profile = await requireAuth()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, full_name, role')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (!profile || (profile.role !== 'admin' && profile.role !== 'owner')) {
+  if (profile.role !== 'admin' && profile.role !== 'owner') {
     redirect('/login')
   }
 

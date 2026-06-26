@@ -1,5 +1,5 @@
+import { requireAuth } from '@/lib/services/user'
 import { createServerClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import SearchClient from '@/components/student/SearchClient'
 
 export default async function SearchPage({
@@ -7,24 +7,20 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<{ q?: string }>
 }) {
+  const profile = await requireAuth()
+
   const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, default_university_id')
-    .eq('auth_user_id', user.id)
-    .single()
+  const [{ data: recentSearches }, params] = await Promise.all([
+    supabase
+      .from('search_history')
+      .select('id, search_query, created_at')
+      .eq('user_id', profile.id)
+      .order('created_at', { ascending: false })
+      .limit(10),
+    searchParams,
+  ])
 
-  const { data: recentSearches } = await supabase
-    .from('search_history')
-    .select('id, search_query, created_at')
-    .eq('user_id', profile?.id ?? '')
-    .order('created_at', { ascending: false })
-    .limit(10)
-
-  const params = await searchParams
   const initialQuery = params.q ?? ''
 
   return (
@@ -34,7 +30,7 @@ export default async function SearchPage({
         <p className="text-[#64748B] mt-1">Find lectures, subjects, flashcards and more</p>
       </div>
       <SearchClient
-        userId={profile?.id ?? ''}
+        userId={profile.id}
         recentSearches={(recentSearches ?? []).map(s => ({
           ...s,
           created_at: s.created_at ?? '',

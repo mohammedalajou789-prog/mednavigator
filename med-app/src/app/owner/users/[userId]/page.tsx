@@ -11,32 +11,36 @@ export default async function UserDetailPage({ params }: PageProps) {
   const { userId } = await params
   const supabase = await createClient()
 
-  const { data: user } = await supabase
-    .from('users')
-    .select('id, full_name, email, phone, role, status, created_at, default_university_id, universities(name)')
-    .eq('id', userId)
-    .single()
+  const [
+    { data: user },
+    { data: subscriptions },
+    { data: devices },
+    { data: resetRequests },
+  ] = await Promise.all([
+    supabase
+      .from('users')
+      .select('id, full_name, email, phone, role, status, created_at, default_university_id, universities(name)')
+      .eq('id', userId)
+      .single(),
+    supabase
+      .from('subject_subscriptions')
+      .select('id, status, start_date, end_date, subjects(name)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('devices')
+      .select('id, device_name, device_fingerprint, is_active, last_login_at, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('device_reset_requests')
+      .select('id, reason, status, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(5),
+  ])
 
   if (!user) redirect('/owner/users')
-
-  const { data: subscriptions } = await supabase
-    .from('subject_subscriptions')
-    .select('id, status, start_date, end_date, subjects(name)')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-
-  const { data: devices } = await supabase
-    .from('devices')
-    .select('id, device_name, device_fingerprint, is_active, last_login_at, created_at')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-
-  const { data: resetRequests } = await supabase
-    .from('device_reset_requests')
-    .select('id, reason, status, created_at')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(5)
 
   return (
     <div className="p-8 max-w-4xl">

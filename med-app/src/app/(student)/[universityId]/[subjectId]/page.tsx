@@ -1,3 +1,4 @@
+import { getAuthUser } from '@/lib/services/user'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -15,12 +16,12 @@ export default async function SubjectPage({ params }: PageProps) {
   const { universityId, subjectId } = await params
   const supabase = await createServerClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const authUser = await getAuthUser()
 
   let userId: string | null = null
-  if (user) {
+  if (authUser) {
     const { data: profile } = await supabase
-      .from('users').select('id').eq('auth_user_id', user.id).single()
+      .from('users').select('id').eq('auth_user_id', authUser.id).single()
     userId = profile?.id ?? null
   }
 

@@ -1,5 +1,5 @@
+import { requireAuth } from '@/lib/services/user'
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -154,20 +154,9 @@ function AccessBadge({ mode }: { mode: string }) {
 // ── Page (Server Component) ────────────────────────────────────────────────
 
 export default async function StudentDashboard() {
+  const profile = await requireAuth()
+
   const supabase = await createClient()
-
-  // Auth check
-  const { data: { user: authUser } } = await supabase.auth.getUser()
-  if (!authUser) redirect('/login')
-
-  // User profile
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, full_name, email, default_university_id, role')
-    .eq('auth_user_id', authUser.id)
-    .single()
-
-  if (!profile) redirect('/login')
 
   // All dashboard data in parallel
   const [

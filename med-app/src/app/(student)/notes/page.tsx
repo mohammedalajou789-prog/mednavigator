@@ -1,20 +1,11 @@
+import { requireAuth } from '@/lib/services/user'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 
 export default async function NotesPage() {
+  const profile = await requireAuth()
+
   const supabase = await createServerClient()
-
-  const { data: { user: authUser } } = await supabase.auth.getUser()
-  if (!authUser) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, full_name')
-    .eq('auth_user_id', authUser.id)
-    .single()
-
-  if (!profile) redirect('/login')
 
   const { data: notes } = await supabase
     .from('user_notes')
@@ -118,7 +109,6 @@ export default async function NotesPage() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                       <polyline points="14 2 14 8 20 8"/>
-                      <line x1="8" y1="13" x2="16" y2="13"/>
                       <line x1="8" y1="17" x2="13" y2="17"/>
                     </svg>
                   </div>

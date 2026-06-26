@@ -4,16 +4,17 @@ import Link from 'next/link'
 export default async function AdminsPage() {
   const supabase = await createClient()
 
-  const { data: admins } = await supabase
-    .from('users')
-    .select('id, full_name, email, phone, status, created_at')
-    .eq('role', 'admin')
-    .order('created_at', { ascending: false })
-
-  const { data: assignments } = await supabase
-    .from('admin_assignments')
-    .select('user_id, subjects(name), universities(name)')
-    .eq('is_active', true)
+  const [{ data: admins }, { data: assignments }] = await Promise.all([
+    supabase
+      .from('users')
+      .select('id, full_name, email, phone, status, created_at')
+      .eq('role', 'admin')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('admin_assignments')
+      .select('user_id, subjects(name), universities(name)')
+      .eq('is_active', true),
+  ])
 
   const activeCount = admins?.filter((a) => a.status === 'active').length ?? 0
 

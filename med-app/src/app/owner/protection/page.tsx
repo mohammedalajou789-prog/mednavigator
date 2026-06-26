@@ -1,21 +1,15 @@
+import { requireAuth } from '@/lib/services/user'
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import ProtectionForm from '@/components/owner/ProtectionForm'
 
 export default async function ProtectionCenterPage() {
+  const profile = await requireAuth()
+
+  if (profile.role !== 'owner') redirect('/owner')
+
   const supabase = await createServerClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (!profile || profile.role !== 'owner') redirect('/owner')
 
   const { data: settings } = await supabase
     .from('platform_settings')

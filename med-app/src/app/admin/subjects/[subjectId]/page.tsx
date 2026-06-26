@@ -1,9 +1,7 @@
+import { requireAuth } from '@/lib/services/user'
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getChaptersBySubject } from '@/lib/services/chapters'
-import { getSubSubjectsBySubject } from '@/lib/services/sub-subjects'
-import { getLecturesByChapter, getLecturesBySubSubject } from '@/lib/services/lectures'
 
 interface Props {
   params: Promise<{ subjectId: string }>
@@ -11,20 +9,11 @@ interface Props {
 
 export default async function AdminSubjectDetailPage({ params }: Props) {
   const { subjectId } = await params
+  const profile = await requireAuth()
+
+  if (profile.role !== 'admin' && profile.role !== 'owner') redirect('/login')
+
   const supabase = await createServerClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, role')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (!profile || (profile.role !== 'admin' && profile.role !== 'owner')) {
-    redirect('/login')
-  }
 
   const { data: subject } = await supabase
     .from('subjects')
@@ -37,43 +26,31 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
   const university = subject.universities as { name: string } | null
   const isSystemSubject = subject.subject_type === 'system'
 
-  const { data: chapters } = isSystemSubject
-    ? { data: [] }
-    : await getChaptersBySubject(subjectId)
+  const [groupsResult, lecturesResult] = await Promise.all([
+    isSystemSubject
+      ? supabase.from('sub_subjects').select('id, title, display_order').eq('subject_id', subjectId).is('archived_at', null).order('display_order')
+      : supabase.from('chapters').select('id, title, display_order').eq('subject_id', subjectId).is('archived_at', null).order('display_order'),
+    supabase.from('lectures').select('id, title, status, chapter_id, sub_subject_id, display_order').eq('subject_id', subjectId).order('display_order'),
+  ])
 
-  const { data: subSubjects } = isSystemSubject
-    ? await getSubSubjectsBySubject(subjectId)
-    : { data: [] }
+  const groups = groupsResult.data ?? []
+  const allLectures = lecturesResult.data ?? []
 
-  const chaptersWithLectures = await Promise.all(
-    (chapters ?? []).map(async (chapter) => {
-      const { data: lectures } = await getLecturesByChapter(chapter.id)
-      return { ...chapter, lectures: lectures ?? [] }
-    })
-  )
+  const groupsWithLectures = groups.map(group => ({
+    ...group,
+    lectures: allLectures.filter(l =>
+      isSystemSubject ? l.sub_subject_id === group.id : l.chapter_id === group.id
+    ),
+  }))
 
-  const subSubjectsWithLectures = await Promise.all(
-    (subSubjects ?? []).map(async (sub) => {
-      const { data: lectures } = await getLecturesBySubSubject(sub.id)
-      return { ...sub, lectures: lectures ?? [] }
-    })
-  )
-
-  const totalLectures = isSystemSubject
-    ? subSubjectsWithLectures.reduce((acc, s) => acc + s.lectures.length, 0)
-    : chaptersWithLectures.reduce((acc, c) => acc + c.lectures.length, 0)
-
-  const publishedLectures = isSystemSubject
-    ? subSubjectsWithLectures.reduce((acc, s) => acc + s.lectures.filter(l => l.status === 'published').length, 0)
-    : chaptersWithLectures.reduce((acc, c) => acc + c.lectures.filter(l => l.status === 'published').length, 0)
+  const totalLectures = allLectures.length
+  const publishedLectures = allLectures.filter(l => l.status === 'published').length
 
   const addGroupUrl = isSystemSubject
     ? `/admin/subjects/${subjectId}/sub-subjects/new`
     : `/admin/subjects/${subjectId}/chapters/new`
 
   const addGroupLabel = isSystemSubject ? '+ Add Sub-Subject' : '+ Add Chapter'
-
-  const groups = isSystemSubject ? subSubjectsWithLectures : chaptersWithLectures
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -117,9 +94,7 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
           <p className="text-sm text-gray-500">{isSystemSubject ? 'Sub-Subjects' : 'Chapters'}</p>
-          <p className="text-2xl font-semibold text-gray-900 dark:text-white mt-1">
-            {isSystemSubject ? subSubjectsWithLectures.length : chaptersWithLectures.length}
-          </p>
+          <p className="text-2xl font-semibold text-gray-900 dark:text-white mt-1">{groups.length}</p>
         </div>
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
           <p className="text-sm text-gray-500">Total Lectures</p>
@@ -132,7 +107,7 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
       </div>
 
       {/* Groups */}
-      {groups.length === 0 ? (
+      {groupsWithLectures.length === 0 ? (
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-12 text-center">
           <p className="text-gray-500 mb-4">
             No {isSystemSubject ? 'sub-subjects' : 'chapters'} yet.
@@ -146,7 +121,7 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
         </div>
       ) : (
         <div className="space-y-4">
-          {groups.map((group) => (
+          {groupsWithLectures.map((group) => (
             <div key={group.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
                 <h2 className="font-medium text-gray-900 dark:text-white">{group.title}</h2>

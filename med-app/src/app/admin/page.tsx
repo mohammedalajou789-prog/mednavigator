@@ -1,33 +1,29 @@
+import { requireAuth } from '@/lib/services/user'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 export default async function AdminHomePage() {
+  const profile = await requireAuth()
+
+  if (profile.role !== 'admin' && profile.role !== 'owner') redirect('/')
+
   const supabase = await createServerClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const [{ data: assignments }, { data: recentSheets }] = await Promise.all([
+    supabase
+      .from('admin_assignments')
+      .select('*, subjects(id, name, subject_type, is_published), universities(id, name)')
+      .eq('user_id', profile.id)
+      .eq('is_active', true),
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin' && profile?.role !== 'owner') redirect('/')
-
-  const { data: assignments } = await supabase
-    .from('admin_assignments')
-    .select('*, subjects(id, name, subject_type, is_published), universities(id, name)')
-    .eq('user_id', profile.id)
-    .eq('is_active', true)
-
-  const { data: recentSheets } = await supabase
-    .from('sheets')
-    .select('id, title, status, updated_at, lectures(title)')
-    .eq('updated_by', profile.id)
-    .order('updated_at', { ascending: false })
-    .limit(5)
+    supabase
+      .from('sheets')
+      .select('id, title, status, updated_at, lectures(title)')
+      .eq('updated_by', profile.id)
+      .order('updated_at', { ascending: false })
+      .limit(5),
+  ])
 
   const publishedCount = assignments?.filter(a => (a.subjects as Record<string, unknown>)?.is_published).length ?? 0
   const draftCount = (assignments?.length ?? 0) - publishedCount
@@ -37,7 +33,7 @@ export default async function AdminHomePage() {
 
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Welcome back, {profile?.full_name?.split(' ')[0]}</p>
+        <p className="text-gray-500 mt-1">Welcome back, {profile.full_name?.split(' ')[0]}</p>
       </div>
 
       {/* KPI Cards */}

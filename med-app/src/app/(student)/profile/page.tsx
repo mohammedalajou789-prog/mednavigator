@@ -1,26 +1,28 @@
+import { requireAuth } from '@/lib/services/user'
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ProfileClient from './ProfileClient'
 
 export default async function ProfilePage() {
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const authProfile = await requireAuth()
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*, universities(id, name)')
-    .eq('auth_user_id', user.id)
-    .single()
+  const supabase = await createServerClient()
+
+  const [{ data: profile }, { data: device }] = await Promise.all([
+    supabase
+      .from('users')
+      .select('*, universities(id, name)')
+      .eq('auth_user_id', authProfile.auth_user_id!)
+      .single(),
+    supabase
+      .from('devices')
+      .select('id, device_name, is_active, last_login_at, created_at')
+      .eq('user_id', authProfile.id)
+      .eq('is_active', true)
+      .maybeSingle(),
+  ])
 
   if (!profile) redirect('/login')
-
-  const { data: device } = await supabase
-    .from('devices')
-    .select('id, device_name, is_active, last_login_at, created_at')
-    .eq('user_id', profile.id)
-    .eq('is_active', true)
-    .maybeSingle()
 
   const university = profile.universities as { id: string; name: string } | null
 

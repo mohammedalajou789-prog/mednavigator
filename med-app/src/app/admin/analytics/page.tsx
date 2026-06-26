@@ -1,21 +1,14 @@
+import { requireAuth } from '@/lib/services/user'
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
 export default async function AdminAnalyticsPage() {
+  const profile = await requireAuth()
+
+  if (profile.role !== 'admin' && profile.role !== 'owner') redirect('/')
+
   const supabase = await createServerClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, role')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (!profile || (profile.role !== 'admin' && profile.role !== 'owner')) redirect('/')
-
-  // Get assigned subjects
   const { data: assignments } = await supabase
     .from('admin_assignments')
     .select('subject_id, subjects(id, name), universities(name)')
@@ -40,16 +33,29 @@ export default async function AdminAnalyticsPage() {
     )
   }
 
-  // Subscriptions
-  const { data: subscriptions } = await supabase
-    .from('subject_subscriptions')
-    .select('id, status, subject_id, subjects(name)')
-    .in('subject_id', assignedSubjectIds)
+  const [
+    { data: subscriptions },
+    { data: lectures },
+    { data: searchData },
+  ] = await Promise.all([
+    supabase
+      .from('subject_subscriptions')
+      .select('id, status, subject_id, subjects(name)')
+      .in('subject_id', assignedSubjectIds),
+    supabase
+      .from('lectures')
+      .select('id, status, subject_id')
+      .in('subject_id', assignedSubjectIds),
+    supabase
+      .from('search_history')
+      .select('search_query')
+      .order('created_at', { ascending: false })
+      .limit(200),
+  ])
 
   const activeSubscriptions = subscriptions?.filter(s => s.status === 'active').length ?? 0
   const expiredSubscriptions = subscriptions?.filter(s => s.status === 'expired').length ?? 0
 
-  // Count subscriptions per subject
   const subjectSubCounts: Record<string, { name: string; active: number; total: number }> = {}
   for (const s of subscriptions ?? []) {
     const id = s.subject_id
@@ -61,50 +67,36 @@ export default async function AdminAnalyticsPage() {
     if (s.status === 'active') subjectSubCounts[id].active++
   }
 
-  // Lectures count
-  const { data: lectures } = await supabase
-    .from('lectures')
-    .select('id, status, subject_id')
-    .in('subject_id', assignedSubjectIds)
-
   const publishedLectures = lectures?.filter(l => l.status === 'published').length ?? 0
   const draftLectures = lectures?.filter(l => l.status === 'draft').length ?? 0
-
-  // Sheets count
   const lectureIds = lectures?.map(l => l.id) ?? []
-  const { count: sheetsCount } = lectureIds.length > 0
-    ? await supabase.from('sheets').select('*', { count: 'exact', head: true }).in('lecture_id', lectureIds).eq('status', 'published')
-    : { count: 0 }
 
-  const { count: flashcardsCount } = lectureIds.length > 0
-    ? await supabase.from('flashcards').select('*', { count: 'exact', head: true }).in('lecture_id', lectureIds)
-    : { count: 0 }
-
-  const { count: quizCount } = lectureIds.length > 0
-    ? await supabase.from('quiz_questions').select('*', { count: 'exact', head: true }).in('lecture_id', lectureIds)
-    : { count: 0 }
-
-  const { count: pyqCount } = lectureIds.length > 0
-    ? await supabase.from('previous_year_questions').select('*', { count: 'exact', head: true }).in('lecture_id', lectureIds)
-    : { count: 0 }
-
-  // Progress tracking
-  const { data: progressData } = lectureIds.length > 0
-    ? await supabase
-        .from('user_progress')
-        .select('lecture_id, completed, content_type')
-        .in('lecture_id', lectureIds)
-    : { data: [] }
+  const [
+    { count: sheetsCount },
+    { count: flashcardsCount },
+    { count: quizCount },
+    { count: pyqCount },
+    { data: progressData },
+  ] = await Promise.all([
+    lectureIds.length > 0
+      ? supabase.from('sheets').select('*', { count: 'exact', head: true }).in('lecture_id', lectureIds).eq('status', 'published')
+      : Promise.resolve({ count: 0 }),
+    lectureIds.length > 0
+      ? supabase.from('flashcards').select('*', { count: 'exact', head: true }).in('lecture_id', lectureIds)
+      : Promise.resolve({ count: 0 }),
+    lectureIds.length > 0
+      ? supabase.from('quiz_questions').select('*', { count: 'exact', head: true }).in('lecture_id', lectureIds)
+      : Promise.resolve({ count: 0 }),
+    lectureIds.length > 0
+      ? supabase.from('previous_year_questions').select('*', { count: 'exact', head: true }).in('lecture_id', lectureIds)
+      : Promise.resolve({ count: 0 }),
+    lectureIds.length > 0
+      ? supabase.from('user_progress').select('lecture_id, completed, content_type').in('lecture_id', lectureIds)
+      : Promise.resolve({ data: [] }),
+  ])
 
   const completedCount = progressData?.filter(p => p.completed).length ?? 0
   const inProgressCount = progressData?.filter(p => !p.completed).length ?? 0
-
-  // Search history for assigned subjects
-  const { data: searchData } = await supabase
-    .from('search_history')
-    .select('search_query')
-    .order('created_at', { ascending: false })
-    .limit(200)
 
   const searchCounts: Record<string, number> = {}
   for (const s of searchData ?? []) {

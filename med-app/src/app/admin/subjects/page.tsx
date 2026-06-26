@@ -1,20 +1,14 @@
+import { requireAuth } from '@/lib/services/user'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 export default async function AdminSubjectsPage() {
+  const profile = await requireAuth()
+
+  if (profile.role !== 'admin' && profile.role !== 'owner') redirect('/')
+
   const supabase = await createServerClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin' && profile?.role !== 'owner') redirect('/')
 
   const { data: assignments } = await supabase
     .from('admin_assignments')

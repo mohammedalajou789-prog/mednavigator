@@ -4,23 +4,27 @@ import NotificationsForm from './NotificationsForm'
 export default async function NotificationsPage() {
   const supabase = await createClient()
 
-  const { data: universities } = await supabase
-    .from('universities')
-    .select('id, name')
-    .eq('is_active', true)
-    .order('name')
-
-  const { data: subjects } = await supabase
-    .from('subjects')
-    .select('id, name, university_id')
-    .eq('is_published', true)
-    .order('name')
-
-  const { data: recentNotifications } = await supabase
-    .from('notifications')
-    .select('id, title, message, target_type, priority, created_at')
-    .order('created_at', { ascending: false })
-    .limit(10)
+  const [
+    { data: universities },
+    { data: subjects },
+    { data: recentNotifications },
+  ] = await Promise.all([
+    supabase
+      .from('universities')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('name'),
+    supabase
+      .from('subjects')
+      .select('id, name, university_id')
+      .eq('is_published', true)
+      .order('name'),
+    supabase
+      .from('notifications')
+      .select('id, title, message, target_type, priority, created_at')
+      .order('created_at', { ascending: false })
+      .limit(10),
+  ])
 
   return (
     <div className="p-8">

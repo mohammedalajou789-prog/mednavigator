@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/services/user'
 import { redirect } from 'next/navigation'
 import OwnerSidebar from '@/components/owner/OwnerSidebar'
 import OwnerTopBar from '@/components/owner/OwnerTopBar'
@@ -8,22 +8,13 @@ export default async function OwnerLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createServerClient()
+  const profile = await requireAuth()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, full_name')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (profile?.role !== 'owner') redirect('/home')
+  if (profile.role !== 'owner') redirect('/home')
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-950 flex">
-      <OwnerSidebar fullName={profile?.full_name ?? 'Owner'} />
+      <OwnerSidebar fullName={profile.full_name ?? 'Owner'} />
       <div className="flex-1 ml-64 min-w-0 flex flex-col">
         <OwnerTopBar />
         <main className="flex-1">

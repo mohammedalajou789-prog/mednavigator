@@ -1,56 +1,40 @@
 import { createServerClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 export default async function OwnerAnalyticsPage() {
   const supabase = await createServerClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (profile?.role !== 'owner') redirect('/home')
-
-  // Core counts
   const [
     { count: totalUsers },
     { count: totalStudents },
+    { count: newUsers30d },
     { count: totalUniversities },
     { count: totalSubjects },
     { count: totalLectures },
     { count: totalSubscriptions },
     { count: activeSubscriptions },
+    { data: popularSubjects },
+    { data: searchData },
+    { data: recentUsers },
+    { count: pendingRequests },
   ] = await Promise.all([
     supabase.from('users').select('*', { count: 'exact', head: true }),
     supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student'),
+    supabase.from('users').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo.toISOString()),
     supabase.from('universities').select('*', { count: 'exact', head: true }).eq('is_active', true),
     supabase.from('subjects').select('*', { count: 'exact', head: true }).eq('is_published', true),
     supabase.from('lectures').select('*', { count: 'exact', head: true }).eq('status', 'published'),
     supabase.from('subject_subscriptions').select('*', { count: 'exact', head: true }),
     supabase.from('subject_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+    supabase.from('subject_subscriptions').select('subject_id, subjects(name, universities(name))').eq('status', 'active').limit(100),
+    supabase.from('search_history').select('search_query').order('created_at', { ascending: false }).limit(200),
+    supabase.from('users').select('id, full_name, email, role, created_at, default_university_id').order('created_at', { ascending: false }).limit(5),
+    supabase.from('university_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
   ])
 
-  // New users last 30 days
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-  const { count: newUsers30d } = await supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true })
-    .gte('created_at', thirtyDaysAgo.toISOString())
-
-  // Most popular subjects
-  const { data: popularSubjects } = await supabase
-    .from('subject_subscriptions')
-    .select('subject_id, subjects(name, universities(name))')
-    .eq('status', 'active')
-    .limit(100)
-
-  // Count subscriptions per subject
   const subjectCounts: Record<string, { name: string; university: string; count: number }> = {}
   for (const s of popularSubjects ?? []) {
     const id = s.subject_id
@@ -68,13 +52,6 @@ export default async function OwnerAnalyticsPage() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5)
 
-  // Most searched terms
-  const { data: searchData } = await supabase
-    .from('search_history')
-    .select('search_query')
-    .order('created_at', { ascending: false })
-    .limit(200)
-
   const searchCounts: Record<string, number> = {}
   for (const s of searchData ?? []) {
     const q = s.search_query.toLowerCase().trim()
@@ -83,19 +60,6 @@ export default async function OwnerAnalyticsPage() {
   const topSearches = Object.entries(searchCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
-
-  // Recent users
-  const { data: recentUsers } = await supabase
-    .from('users')
-    .select('id, full_name, email, role, created_at, default_university_id')
-    .order('created_at', { ascending: false })
-    .limit(5)
-
-  // University requests pending
-  const { count: pendingRequests } = await supabase
-    .from('university_requests')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'pending')
 
   const expiredSubscriptions = (totalSubscriptions ?? 0) - (activeSubscriptions ?? 0)
 

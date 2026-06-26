@@ -242,12 +242,14 @@ function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: R
       )
     }
 
-    case 'h1':
-      return (
-        <h1 key={key} style={{ fontSize: '2.4rem', fontWeight: 900, color: '#15203A', marginTop: '0', marginBottom: '24px', letterSpacing: '-0.025em', lineHeight: 1.15 }}>
-          {block.content}
-        </h1>
-      )
+   case 'h1': {
+  const h1Id = `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+  return (
+    <h1 key={key} id={h1Id} style={{ scrollMarginTop: '96px', fontSize: '2.4rem', fontWeight: 900, color: '#15203A', marginTop: '0', marginBottom: '24px', letterSpacing: '-0.025em', lineHeight: 1.15 }}>
+      {block.content}
+    </h1>
+  )
+}
 
     case 'h2': {
       const sectionId = `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`

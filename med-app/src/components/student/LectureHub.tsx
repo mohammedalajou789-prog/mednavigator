@@ -82,6 +82,8 @@ export interface TocSection {
   id: string
   level: number
   label: string
+  h1Num: number
+  h2Num: number | null
 }
 
 export interface FlashcardStats {
@@ -180,22 +182,29 @@ const ALL_TABS = ['sheet', 'summary', 'flashcards', 'quiz', 'previous_years']
 export function extractToc(content: string): TocSection[] {
   const lines = content.split('\n')
   const toc: TocSection[] = []
+  let h1Counter = 0
+  let h2Counter = 0
+
   lines.forEach((line) => {
     const h1 = line.match(/^#\s+(.+)/)
     const h2 = line.match(/^##\s+(.+)/)
     const h3 = line.match(/^###\s+(.+)/)
+
     if (h1) {
+      h1Counter++
+      h2Counter = 0 // reset sub-counter on new h1
       const label = h1[1].trim()
       const id = `section-${label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
-      toc.push({ id, level: 1, label })
+      toc.push({ id, level: 1, label, h1Num: h1Counter, h2Num: null })
     } else if (h2) {
+      h2Counter++
       const label = h2[1].trim()
       const id = `section-${label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
-      toc.push({ id, level: 2, label })
+      toc.push({ id, level: 2, label, h1Num: h1Counter, h2Num: h2Counter })
     } else if (h3) {
       const label = h3[1].trim()
       const id = `section-${label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
-      toc.push({ id, level: 3, label })
+      toc.push({ id, level: 3, label, h1Num: h1Counter, h2Num: h2Counter })
     }
   })
   return toc
@@ -777,52 +786,75 @@ export default function LectureHub({
             </p>
             <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '260px', overflowY: 'auto' }}>
               {tocSections
-                .filter(s => s.level <= 2)
-                .map((section, idx) => (
-                  <button
-                    key={section.id}
-                    onClick={() => handleTocClick(section.id)}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '8px 10px',
-                      borderRadius: '10px',
-                      border: 'none',
-                      background: 'transparent',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'background 0.12s',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#F5F7FF')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <span style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      background: '#2563EB',
-                      color: '#fff',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      {idx + 1}
-                    </span>
-                    <span style={{
-                      fontSize: '12.5px',
-                      fontWeight: section.level === 1 ? 600 : 500,
-                      color: section.level === 1 ? '#1E293B' : '#475569',
-                      lineHeight: 1.4,
-                    }}>
-                      {section.label}
-                    </span>
-                  </button>
-                ))}
+  .filter(s => s.level <= 3)
+  .map((section) => {
+    // Build the number label
+    let numLabel = ''
+    if (section.h1Num > 0 && section.h2Num === null) {
+      // Pure h1 with no parent: "1", "2", "3"
+      numLabel = `${section.h1Num}`
+    } else if (section.level === 1) {
+      numLabel = `${section.h1Num}`
+    } else if (section.level === 2) {
+      const letter = String.fromCharCode(96 + section.h2Num!) // a, b, c...
+      if (section.h1Num > 0) {
+        numLabel = `${section.h1Num}${letter}` // 1a, 1b, 2a...
+      } else {
+        numLabel = `${section.h2Num}` // standalone: 1, 2, 3
+      }
+    } else if (section.level === 3) {
+      numLabel = '·'
+    }
+
+    const isMainHeading = section.level === 1
+
+    return (
+      <button
+        key={section.id}
+        onClick={() => handleTocClick(section.id)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: isMainHeading ? '9px 10px' : '6px 10px 6px 18px',
+          borderRadius: '10px',
+          border: 'none',
+          background: 'transparent',
+          cursor: 'pointer',
+          textAlign: 'left',
+          transition: 'background 0.12s',
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = '#F5F7FF')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+      >
+        <span style={{
+          minWidth: '26px',
+          height: '26px',
+          borderRadius: '50%',
+          background: isMainHeading ? '#2563EB' : '#EEF3FF',
+          color: isMainHeading ? '#fff' : '#2563EB',
+          fontSize: isMainHeading ? '11px' : '10px',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          padding: '0 4px',
+        }}>
+          {numLabel}
+        </span>
+        <span style={{
+          fontSize: isMainHeading ? '13px' : '12px',
+          fontWeight: isMainHeading ? 700 : 500,
+          color: isMainHeading ? '#1E293B' : '#475569',
+          lineHeight: 1.4,
+        }}>
+          {section.label}
+        </span>
+      </button>
+    )
+  })}
             </nav>
           </div>
         )}

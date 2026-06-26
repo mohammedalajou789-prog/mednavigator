@@ -37,20 +37,24 @@ export default function SheetReader({
       const scrollHeight = el.scrollHeight - el.clientHeight
       if (scrollHeight <= 0) return
 
-      const pct = Math.round((scrollTop / scrollHeight) * 100)
+      const rawPct = (scrollTop / scrollHeight) * 100
+      const pct = Math.min(100, Math.round(rawPct))
 
-      // Only save if percentage changed by at least 5%
-      if (Math.abs(pct - lastSavedPct.current) < 5) return
+      // Update display immediately (no throttle on UI)
+      onProgressUpdate!(pct)
 
-      // Throttle: only fire once every 2 seconds
+      // Save to DB only if changed by 3% or more (throttled at 1.5s)
+      if (Math.abs(pct - lastSavedPct.current) < 3) return
       if (throttleTimer.current) return
 
       throttleTimer.current = setTimeout(() => {
         throttleTimer.current = null
         lastSavedPct.current = pct
-        onProgressUpdate!(pct)
-      }, 2000)
+      }, 1500)
     }
+
+    // Fire once on mount to restore saved progress position
+    handleScroll()
 
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
     return () => {

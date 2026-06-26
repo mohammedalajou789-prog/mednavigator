@@ -8,11 +8,11 @@ async function getActiveUniversities(): Promise<University[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('universities')
-    .select('id, name, logo_url, description, is_active, created_at, updated_at, archived_at, country, logo_media_id, cover_media_id')
+    .select('id, name, logo_url, description, is_active, created_at, updated_at, archived_at, country, logo_media_id, cover_media_id, slug')
     .eq('is_active', true)
     .order('name')
   if (error || !data) return []
-  return data as University[]
+  return data as any[]
 }
 
 const FEATURES = [

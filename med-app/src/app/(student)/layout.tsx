@@ -5,7 +5,6 @@ import StudentLayout from '@/components/student/StudentLayout'
 interface University {
   id: string
   name: string
-  slug: string | null
 }
 
 export default async function Layout({ children }: { children: React.ReactNode }) {

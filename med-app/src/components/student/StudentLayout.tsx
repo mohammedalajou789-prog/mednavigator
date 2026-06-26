@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 interface University {
   id: string
   name: string
+  slug?: string | null
 }
 
 interface StudentLayoutProps {
@@ -232,7 +233,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
               {exploreOpen && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', paddingLeft: '8px' }}>
                   {universities.map((uni) => {
-                    const uniPath = (uni as any).slug ?? uni.id
+                    const uniPath = uni.slug ?? uni.id
                     const active = pathname.startsWith(`/${uniPath}`)
                     return (
                       <a key={uni.id} href={`/${uniPath}`} style={{

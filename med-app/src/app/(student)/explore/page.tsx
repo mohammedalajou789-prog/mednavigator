@@ -1,4 +1,3 @@
-import { requireAuth } from '@/lib/services/user'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
@@ -23,8 +22,6 @@ function getInitials(name: string): string {
 }
 
 export default async function ExplorePage() {
-  await requireAuth() // must be logged in to explore
-
   const supabase = await createClient()
 
   const { data: universities } = await supabase

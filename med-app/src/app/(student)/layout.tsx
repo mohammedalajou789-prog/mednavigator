@@ -1,5 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/services/user'
+import { getAuthUser, getUserProfile } from '@/lib/services/user'
 import StudentLayout from '@/components/student/StudentLayout'
 
 interface University {
@@ -10,7 +10,10 @@ interface University {
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerClient()
-  const profile = await requireAuth()
+
+  // Get user if logged in — but do NOT redirect guests
+  const authUser = await getAuthUser()
+  const profile = authUser ? await getUserProfile() : null
 
   const { data: universitiesRaw } = await supabase
     .from('universities')
@@ -20,8 +23,9 @@ export default async function Layout({ children }: { children: React.ReactNode }
 
   const universities = (universitiesRaw ?? []) as any[]
 
-  // find the slug of the student's own university
-  const myUni = universities.find((u: any) => u.id === profile.default_university_id)
+  const myUni = profile
+    ? universities.find((u: any) => u.id === profile.default_university_id)
+    : null
   const myUniSlug = myUni?.slug ?? null
 
   return (

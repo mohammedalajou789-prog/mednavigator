@@ -10,6 +10,9 @@ const STUDENT_ONLY_ROUTES = [
   '/profile',
   '/search',
   '/subscriptions',
+  '/settings',
+  '/notes',
+  '/progress',
 ]
 
 const AUTH_ONLY_ROUTES = ['/login', '/register']

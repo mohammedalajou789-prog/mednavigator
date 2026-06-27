@@ -11,8 +11,8 @@ interface University {
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerClient()
 
-  // user is fetched client-side via useUser() hook
-const profile = null
+  const authUser = await getAuthUser()
+const profile = authUser ? await getUserProfile() : null
 
   // Use rpc or raw query to bypass TypeScript type restrictions on slug column
   const { data: universitiesRaw } = await supabase
@@ -27,7 +27,10 @@ const profile = null
     slug: u.slug ?? null,
   }))
 
-  const myUniSlug = null
+  const myUni = profile
+    ? universities.find((u) => u.id === profile.default_university_id)
+    : null
+const myUniSlug = myUni?.slug ?? null
 
   return (
     <StudentLayout

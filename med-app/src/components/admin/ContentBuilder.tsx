@@ -163,7 +163,7 @@ export default function ContentBuilder({
       const res = await fetch(endpoint, {
         method: existingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: existingId, lecture_id: lectureId, title, content, status }),
+        body: JSON.stringify({ id: existingId, lecture_id: lectureId, title, content, status: status.trim() }),
       })
 
       const result = await res.json()

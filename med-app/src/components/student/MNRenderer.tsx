@@ -11,7 +11,8 @@ interface MNRendererProps {
 
 export default function MNRenderer({ content, userName, showWatermark = false, imageSlots = {} }: MNRendererProps) {
   const blocks = parseContent(content)
-  let h2Counter = 0
+  let h1Counter = 0
+let h2Counter = 0
 
   return (
     <div className="relative font-sans">
@@ -29,15 +30,22 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
         {groupBlocksIntoSections(blocks).map((section, sIdx) => {
           if (section.type === 'pre') {
             return section.blocks.map((block, bIdx) => {
-              if (block.type === 'h2') h2Counter++
-              return renderBlock(block, sIdx * 1000 + bIdx, block.type === 'h2' ? h2Counter : undefined, imageSlots)
+              if (block.type === 'h1') { h1Counter++; h2Counter = 0 }
+if (block.type === 'h2') h2Counter++
+const numLabel = block.type === 'h2'
+  ? (h1Counter > 0 ? `${h1Counter}${String.fromCharCode(96 + h2Counter)}` : `${h2Counter}`)
+  : undefined
+return renderBlock(block, sIdx * 1000 + bIdx, block.type === 'h2' ? h2Counter : undefined, imageSlots, numLabel)
             })
           }
           h2Counter++
-          const currentH2 = h2Counter
-          return (
-            <div key={`sec-${sIdx}`} style={{ background: '#fff', border: '1px solid #ECEEF3', borderRadius: '18px', padding: '24px 26px', marginBottom: '18px', boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)' }}>
-              {renderBlock(section.heading, sIdx * 1000, currentH2, imageSlots)}
+const currentH2 = h2Counter
+const numLabel = h1Counter > 0
+  ? `${h1Counter}${String.fromCharCode(96 + h2Counter)}`
+  : `${h2Counter}`
+return (
+  <div key={`sec-${sIdx}`} style={{ background: '#fff', border: '1px solid #ECEEF3', borderRadius: '18px', padding: '24px 26px', marginBottom: '18px', boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)' }}>
+              {renderBlock(section.heading, sIdx * 1000, currentH2, imageSlots, numLabel)}
               {section.blocks.map((block, bIdx) =>
                 renderBlock(block, sIdx * 1000 + bIdx + 1, undefined, imageSlots)
               )}
@@ -204,7 +212,7 @@ function renderInline(text: string): React.ReactNode {
   })
 }
 
-function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: Record<number, string> = {}) {
+function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: Record<number, string> = {}, numLabel?: string) {
   switch (block.type) {
 
     case 'image_slot': {
@@ -257,7 +265,7 @@ function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: R
         <div key={key} id={sectionId} style={{ scrollMarginTop: '96px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)', color: '#fff', fontSize: '14px', fontWeight: 700, flexShrink: 0, boxShadow: '0 5px 12px -4px rgba(47,107,255,.6)' }}>
-              {h2Number}
+              {numLabel ?? h2Number}
             </span>
             <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>
               {block.content.toUpperCase()}

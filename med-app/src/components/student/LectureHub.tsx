@@ -200,7 +200,14 @@ export function extractToc(content: string): TocSection[] {
       h2Counter++
       const label = h2[1].trim()
       const id = `section-${label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
-      toc.push({ id, level: 2, label, h1Num: h1Counter, h2Num: h2Counter })
+      // If no h1 parent yet, treat h2 as h1-level for numbering
+      if (h1Counter === 0) {
+        h1Counter++
+        h2Counter = 0
+        toc.push({ id, level: 1, label, h1Num: h1Counter, h2Num: null })
+      } else {
+        toc.push({ id, level: 2, label, h1Num: h1Counter, h2Num: h2Counter })
+      }
     } else if (h3) {
       const label = h3[1].trim()
       const id = `section-${label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
@@ -242,7 +249,14 @@ export default function LectureHub({
     return false
   })
 
-  const [activeTab, setActiveTab]           = useState(availableTabs[0] ?? 'sheet')
+  const { sidebarOpen, setSidebarOpen } = useUIStore()
+
+const [activeTab, setActiveTab]           = useState(availableTabs[0] ?? 'sheet')
+
+useEffect(() => {
+  setSidebarOpen(false)
+  return () => setSidebarOpen(true)
+}, [])
   const [progressPercent, setProgressPercent] = useState(0)
   const [isCompleted, setIsCompleted]       = useState(false)
   const [isBookmarked, setIsBookmarked]     = useState(false)

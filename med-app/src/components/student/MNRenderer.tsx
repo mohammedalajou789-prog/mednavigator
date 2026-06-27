@@ -40,40 +40,30 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
             })
           }
 
-          // h2 section: heading floats ABOVE the card, content goes inside card
-          h2Counter++
-          const currentNum = h2Counter
-          const sectionId = `section-${section.heading.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+          // H1 floats ABOVE the card, card contains H2s and all content inside
+          h2Counter = 0
+          const h1Id = `section-${section.heading.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
 
           return (
-            <div key={`sec-${sIdx}`} style={{ marginBottom: '22px' }}>
-              {/* H2 label — floats ABOVE the card, exactly like H1 */}
-              <div
-                id={sectionId}
+            <div key={`sec-${sIdx}`} style={{ marginBottom: '28px' }}>
+              {/* H1 label — floats ABOVE the card */}
+              <h1
+                id={h1Id}
                 style={{
                   scrollMarginTop: '96px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  marginBottom: '12px',
-                  paddingLeft: '2px',
+                  fontSize: '1.9rem',
+                  fontWeight: 900,
+                  color: '#15203A',
+                  marginTop: '8px',
+                  marginBottom: '14px',
+                  letterSpacing: '-0.022em',
+                  lineHeight: 1.2,
                 }}
               >
-                <span style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: '30px', height: '30px', borderRadius: '50%',
-                  background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)',
-                  color: '#fff', fontSize: '14px', fontWeight: 700,
-                  flexShrink: 0, boxShadow: '0 5px 12px -4px rgba(47,107,255,.6)',
-                }}>
-                  {currentNum}
-                </span>
-                <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>
-                  {section.heading.content.toUpperCase()}
-                </span>
-              </div>
+                {section.heading.content}
+              </h1>
 
-              {/* Card containing only the content — NOT the heading */}
+              {/* Card containing all content including H2s */}
               <div style={{
                 background: '#fff',
                 border: '1px solid #ECEEF3',
@@ -81,9 +71,50 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
                 padding: '24px 26px',
                 boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)',
               }}>
-                {section.blocks.map((block, bIdx) =>
-                  renderBlock(block, sIdx * 1000 + bIdx + 1, undefined, imageSlots)
-                )}
+                {section.blocks.length === 0 ? null : (() => {
+                  // Split blocks into sub-sections by h2
+                  const subSections: { heading: Block | null; blocks: Block[] }[] = []
+                  let currentSub: { heading: Block | null; blocks: Block[] } = { heading: null, blocks: [] }
+
+                  for (const block of section.blocks) {
+                    if (block.type === 'h2') {
+                      subSections.push(currentSub)
+                      currentSub = { heading: block, blocks: [] }
+                    } else {
+                      currentSub.blocks.push(block)
+                    }
+                  }
+                  subSections.push(currentSub)
+
+                  return subSections.map((sub, subIdx) => (
+                    <div key={subIdx}>
+                      {sub.heading && (() => {
+                        h2Counter++
+                        const currentNum = h2Counter
+                        const sectionId = `section-${sub.heading.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+                        return (
+                          <div id={sectionId} style={{ scrollMarginTop: '96px', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', marginTop: subIdx === 0 ? '0' : '28px' }}>
+                            <span style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              width: '30px', height: '30px', borderRadius: '50%',
+                              background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)',
+                              color: '#fff', fontSize: '14px', fontWeight: 700,
+                              flexShrink: 0, boxShadow: '0 5px 12px -4px rgba(47,107,255,.6)',
+                            }}>
+                              {currentNum}
+                            </span>
+                            <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>
+                              {sub.heading.content.toUpperCase()}
+                            </span>
+                          </div>
+                        )
+                      })()}
+                      {sub.blocks.map((block, bIdx) =>
+                        renderBlock(block, subIdx * 500 + bIdx, undefined, imageSlots)
+                      )}
+                    </div>
+                  ))
+                })()}
               </div>
             </div>
           )
@@ -124,14 +155,11 @@ function groupBlocksIntoSections(blocks: Block[]): SectionGroup[] {
   let current: { type: 'section'; heading: Block; blocks: Block[] } | null = null
 
   for (const block of blocks) {
-    if (block.type === 'h2') {
+    if (block.type === 'h1') {
+      // H1 closes any open section, then starts a new section as heading
       if (pre.length > 0) { result.push({ type: 'pre', blocks: pre }); pre = [] }
       if (current) result.push(current)
       current = { type: 'section', heading: block, blocks: [] }
-    } else if (block.type === 'h1') {
-      // h1 resets h2 counter — close current section, start pre
-      if (current) { result.push(current); current = null }
-      pre.push(block)
     } else if (current) {
       current.blocks.push(block)
     } else {

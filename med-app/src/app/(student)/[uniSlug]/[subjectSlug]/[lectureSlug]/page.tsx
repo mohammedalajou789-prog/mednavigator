@@ -12,25 +12,19 @@ interface PageProps {
   params: Promise<{
     uniSlug: string
     subjectSlug: string
-    lectureId: string
+    lectureSlug: string
   }>
 }
 
 export default async function LecturePage({ params }: PageProps) {
-  const { uniSlug, subjectSlug, lectureId: lectureParam } = await params
-  const lectureId = lectureParam
+  const { uniSlug, subjectSlug, lectureSlug } = await params
 
   // resolve slugs → ids
   const supabaseSlug = await createServerClient()
   const { data: uniRow } = await supabaseSlug.from('universities').select('id').eq('slug' as any, uniSlug).single()
   const { data: subRow } = await supabaseSlug.from('subjects').select('id').eq('slug' as any, subjectSlug).single()
-  // Also resolve lecture slug → id
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lectureId)
-  let resolvedLectureId = lectureId
-  if (!isUUID) {
-    const { data: lecRow } = await supabaseSlug.from('lectures').select('id').eq('slug' as any, lectureId).single()
-    resolvedLectureId = lecRow?.id ?? lectureId
-  }
+  const { data: lecRow } = await supabaseSlug.from('lectures').select('id').eq('slug' as any, lectureSlug).single()
+  const resolvedLectureId = lecRow?.id ?? ''
   const universityId = uniRow?.id ?? ''
   const subjectId    = subRow?.id ?? ''
   if (!universityId || !subjectId) redirect('/')

@@ -156,7 +156,7 @@ export default async function SubjectPage({ params }: PageProps) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#8a93a6', marginBottom: '18px' }}>
           <Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}>Home</Link>
           <span style={{ color: '#cdd2db' }}>/</span>
-          <Link href={`/${universityId}`} style={{ color: 'inherit', textDecoration: 'none' }}>{university.name}</Link>
+          <Link href={`/${uniSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{university.name}</Link>
           <span style={{ color: '#cdd2db' }}>/</span>
           <span style={{ color: '#141b2e', fontWeight: 600 }}>{subject.name}</span>
         </div>
@@ -278,7 +278,7 @@ export default async function SubjectPage({ params }: PageProps) {
 
             {/* ── CONTINUE READING / FEATURED CARD ── */}
             {continueLecture && (
-              <Link href={`/${universityId}/${subjectId}/${continueLecture.id}`} style={{ textDecoration: 'none', display: 'block', marginBottom: '22px' }}>
+              <Link href={`/${uniSlug}/${subjectSlug}/${continueLecture.id}`} style={{ textDecoration: 'none', display: 'block', marginBottom: '22px' }}>
                 <div style={{
                   background: 'linear-gradient(135deg,#101729,#1b2540)',
                   borderRadius: '22px', padding: '20px 22px',
@@ -385,7 +385,7 @@ export default async function SubjectPage({ params }: PageProps) {
                       const barColor   = isDone ? '#1c9d62' : ACCENT
 
                       return (
-                        <Link key={lecture.id} href={`/${universityId}/${subjectId}/${lecture.id}`} style={{ textDecoration: 'none' }}>
+                        <Link key={lecture.id} href={`/${uniSlug}/${subjectSlug}/${lecture.id}`} style={{ textDecoration: 'none' }}>
                           <div style={{
                             background: '#fff', border: `1.5px solid ${cardBorder}`,
                             borderRadius: '18px', padding: '18px 20px',
@@ -534,7 +534,7 @@ export default async function SubjectPage({ params }: PageProps) {
               )}
 
               {/* Previous Years Bank */}
-              <Link href={`/${universityId}/${subjectId}/previous-years`} style={{ textDecoration: 'none' }}>
+              <Link href={`/${uniSlug}/${subjectSlug}/previous-years`} style={{ textDecoration: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '13px', padding: '15px', background: '#fff', border: '1px solid #ebedf1', borderRadius: '15px', cursor: 'pointer', transition: 'transform .14s, border-color .14s' }}>
                   <div style={{ width: '42px', height: '42px', flexShrink: 0, borderRadius: '12px', background: '#eef3ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3a6df0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -572,7 +572,7 @@ export default async function SubjectPage({ params }: PageProps) {
                   </div>
                   <div style={{ borderTop: '1px solid #f0f1f4', padding: '6px' }}>
                     {clinicalModules.map(mod => (
-                      <Link key={mod.id} href={`/${universityId}/${subjectId}/clinical/${mod.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 11px', borderRadius: '10px' }}>
+                      <Link key={mod.id} href={`/${uniSlug}/${subjectSlug}/clinical/${mod.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 11px', borderRadius: '10px' }}>
                         <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#1c9d62', flexShrink: 0 }} />
                         <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: '#3a4458' }}>
                           {moduleLabels[mod.module_type] ?? mod.module_type}
@@ -599,7 +599,7 @@ export default async function SubjectPage({ params }: PageProps) {
                       const iconStroke = prog.content_type === 'quiz' ? '#c79212'
                         : prog.content_type === 'flashcard' ? ACCENT : '#1c9d62'
                       return (
-                        <Link key={`${prog.lecture_id}-${prog.content_type}`} href={`/${universityId}/${subjectId}/${prog.lecture_id}`}
+                        <Link key={`${prog.lecture_id}-${prog.content_type}`} href={`/${uniSlug}/${subjectSlug}/${prog.lecture_id}`}
                           style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '11px', padding: '10px 11px', borderRadius: '11px' }}>
                           <div style={{ width: '30px', height: '30px', flexShrink: 0, borderRadius: '9px', background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {prog.content_type === 'quiz' ? (

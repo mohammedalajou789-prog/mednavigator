@@ -84,14 +84,14 @@ const firstSectionLabel: React.CSSProperties = {
 export default function StudentLayout({ children, universities = [], myUniSlug }: StudentLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, clearUser } = useUserStore()
+  const { user, isLoading, clearUser } = useUserStore()
   useUser()
   const { sidebarOpen, setSidebarOpen } = useUIStore()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [exploreOpen, setExploreOpen] = useState(false)
   const [guestToast, setGuestToast] = useState(false)
 
-  const isGuest = !user
+  const isGuest = !isLoading && !user
 
   useEffect(() => { setMobileOpen(false) }, [pathname])
 
@@ -178,8 +178,13 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
         </div>
 
         {/* User card or Guest card */}
-        {isGuest ? (
-          <div style={{ marginBottom: '18px', borderRadius: '14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', overflow: 'hidden' }}>
+        {isLoading ? (
+  <div style={{ marginBottom: '18px', padding: '14px', borderRadius: '14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}>
+    <div style={{ height: '12px', borderRadius: '6px', background: 'rgba(255,255,255,.08)', marginBottom: '8px', width: '60%' }} />
+    <div style={{ height: '10px', borderRadius: '5px', background: 'rgba(255,255,255,.05)', width: '80%' }} />
+  </div>
+) : isGuest ? (
+  <div style={{ marginBottom: '18px', borderRadius: '14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', overflow: 'hidden' }}>
             <div style={{ padding: '14px 14px 10px' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#9FB8F2', letterSpacing: '.06em', marginBottom: '4px' }}>BROWSING AS GUEST</div>
               <div style={{ fontSize: '12px', color: '#6E7A94', lineHeight: 1.5 }}>Sign up to track progress, save bookmarks, and more.</div>

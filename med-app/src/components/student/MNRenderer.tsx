@@ -106,34 +106,35 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
 
                 return (
                   <div key={`sub-${subIdx}`} style={{ marginBottom: '14px' }}>
-                    {/* H2 label — above the card */}
+                    {/* White card containing H2 label + content */}
                     <div id={sectionId} style={{
                       scrollMarginTop: '96px',
-                      display: 'flex', alignItems: 'center', gap: '12px',
-                      marginBottom: '10px',
-                    }}>
-                      <span style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: '30px', height: '30px', borderRadius: '50%',
-                        background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)',
-                        color: '#fff', fontSize: '14px', fontWeight: 700,
-                        flexShrink: 0, boxShadow: '0 5px 12px -4px rgba(47,107,255,.6)',
-                      }}>
-                        {currentNum}
-                      </span>
-                      <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>
-                        {sub.heading.content.toUpperCase()}
-                      </span>
-                    </div>
-
-                    {/* H2 content — its own white card */}
-                    <div style={{
                       background: '#fff',
                       border: '1px solid #ECEEF3',
                       borderRadius: '18px',
                       padding: '24px 26px',
                       boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)',
                     }}>
+                      {/* H2 label — inside the card as header */}
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: '12px',
+                        marginBottom: '18px',
+                      }}>
+                        <span style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          width: '30px', height: '30px', borderRadius: '50%',
+                          background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)',
+                          color: '#fff', fontSize: '14px', fontWeight: 700,
+                          flexShrink: 0, boxShadow: '0 5px 12px -4px rgba(47,107,255,.6)',
+                        }}>
+                          {currentNum}
+                        </span>
+                        <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>
+                          {sub.heading.content.toUpperCase()}
+                        </span>
+                      </div>
+
+                      {/* H2 content */}
                       {sub.blocks.map((block, bIdx) =>
                         renderBlock(block, sIdx * 1000 + subIdx * 100 + bIdx, undefined, imageSlots)
                       )}

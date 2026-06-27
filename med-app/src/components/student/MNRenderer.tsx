@@ -12,7 +12,10 @@ interface MNRendererProps {
 export default function MNRenderer({ content, userName, showWatermark = false, imageSlots = {} }: MNRendererProps) {
   const blocks = parseContent(content)
   let h1Counter = 0
-let h2Counter = 0
+  let h2Counter = 0
+
+  // Group into sections by h2
+  const sections = groupBlocksIntoSections(blocks)
 
   return (
     <div className="relative font-sans">
@@ -26,29 +29,62 @@ let h2Counter = 0
           ))}
         </div>
       )}
+
       <div>
-        {groupBlocksIntoSections(blocks).map((section, sIdx) => {
+        {sections.map((section, sIdx) => {
           if (section.type === 'pre') {
+            // pre-section: blocks before any h2
             return section.blocks.map((block, bIdx) => {
               if (block.type === 'h1') { h1Counter++; h2Counter = 0 }
-if (block.type === 'h2') h2Counter++
-const numLabel = block.type === 'h2'
-  ? (h1Counter > 0 ? `${h1Counter}${String.fromCharCode(96 + h2Counter)}` : `${h2Counter}`)
-  : undefined
-return renderBlock(block, sIdx * 1000 + bIdx, block.type === 'h2' ? h2Counter : undefined, imageSlots, numLabel)
+              return renderBlock(block, sIdx * 1000 + bIdx, undefined, imageSlots)
             })
           }
+
+          // h2 section: heading floats ABOVE the card, content goes inside card
           h2Counter++
-const currentH2 = h2Counter
-const numLabel = h1Counter > 0
-  ? `${h1Counter}${String.fromCharCode(96 + h2Counter)}`
-  : `${h2Counter}`
-return (
-  <div key={`sec-${sIdx}`} style={{ background: '#fff', border: '1px solid #ECEEF3', borderRadius: '18px', padding: '24px 26px', marginBottom: '18px', boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)' }}>
-              {renderBlock(section.heading, sIdx * 1000, currentH2, imageSlots, numLabel)}
-              {section.blocks.map((block, bIdx) =>
-                renderBlock(block, sIdx * 1000 + bIdx + 1, undefined, imageSlots)
-              )}
+          const currentNum = h2Counter
+          const sectionId = `section-${section.heading.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+
+          return (
+            <div key={`sec-${sIdx}`} style={{ marginBottom: '22px' }}>
+              {/* H2 label — floats ABOVE the card, exactly like H1 */}
+              <div
+                id={sectionId}
+                style={{
+                  scrollMarginTop: '96px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  marginBottom: '12px',
+                  paddingLeft: '2px',
+                }}
+              >
+                <span style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '30px', height: '30px', borderRadius: '50%',
+                  background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)',
+                  color: '#fff', fontSize: '14px', fontWeight: 700,
+                  flexShrink: 0, boxShadow: '0 5px 12px -4px rgba(47,107,255,.6)',
+                }}>
+                  {currentNum}
+                </span>
+                <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>
+                  {section.heading.content.toUpperCase()}
+                </span>
+              </div>
+
+              {/* Card containing only the content — NOT the heading */}
+              <div style={{
+                background: '#fff',
+                border: '1px solid #ECEEF3',
+                borderRadius: '18px',
+                padding: '24px 26px',
+                boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)',
+              }}>
+                {section.blocks.map((block, bIdx) =>
+                  renderBlock(block, sIdx * 1000 + bIdx + 1, undefined, imageSlots)
+                )}
+              </div>
             </div>
           )
         })}
@@ -92,6 +128,10 @@ function groupBlocksIntoSections(blocks: Block[]): SectionGroup[] {
       if (pre.length > 0) { result.push({ type: 'pre', blocks: pre }); pre = [] }
       if (current) result.push(current)
       current = { type: 'section', heading: block, blocks: [] }
+    } else if (block.type === 'h1') {
+      // h1 resets h2 counter — close current section, start pre
+      if (current) { result.push(current); current = null }
+      pre.push(block)
     } else if (current) {
       current.blocks.push(block)
     } else {
@@ -212,7 +252,7 @@ function renderInline(text: string): React.ReactNode {
   })
 }
 
-function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: Record<number, string> = {}, numLabel?: string) {
+function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: Record<number, string> = {}) {
   switch (block.type) {
 
     case 'image_slot': {
@@ -250,27 +290,36 @@ function renderBlock(block: Block, key: number, h2Number?: number, imageSlots: R
       )
     }
 
-   case 'h1': {
-  const h1Id = `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
-  return (
-    <h1 key={key} id={h1Id} style={{ scrollMarginTop: '96px', fontSize: '2.4rem', fontWeight: 900, color: '#15203A', marginTop: '0', marginBottom: '24px', letterSpacing: '-0.025em', lineHeight: 1.15 }}>
-      {block.content}
-    </h1>
-  )
-}
+    case 'h1': {
+      const h1Id = `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+      return (
+        <h1 key={key} id={h1Id} style={{
+          scrollMarginTop: '96px',
+          fontSize: '1.9rem',
+          fontWeight: 900,
+          color: '#15203A',
+          marginTop: '32px',
+          marginBottom: '20px',
+          letterSpacing: '-0.022em',
+          lineHeight: 1.2,
+        }}>
+          {block.content}
+        </h1>
+      )
+    }
 
+    // h2 is now rendered inline only when it appears in 'pre' sections
+    // (normally it's handled by the section renderer above, but just in case)
     case 'h2': {
       const sectionId = `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
       return (
-        <div key={key} id={sectionId} style={{ scrollMarginTop: '96px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
-            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)', color: '#fff', fontSize: '14px', fontWeight: 700, flexShrink: 0, boxShadow: '0 5px 12px -4px rgba(47,107,255,.6)' }}>
-              {numLabel ?? h2Number}
-            </span>
-            <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>
-              {block.content.toUpperCase()}
-            </span>
-          </div>
+        <div key={key} id={sectionId} style={{ scrollMarginTop: '96px', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)', color: '#fff', fontSize: '14px', fontWeight: 700, flexShrink: 0 }}>
+            ?
+          </span>
+          <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>
+            {block.content.toUpperCase()}
+          </span>
         </div>
       )
     }

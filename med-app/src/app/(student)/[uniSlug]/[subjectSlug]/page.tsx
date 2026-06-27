@@ -51,14 +51,14 @@ export default async function SubjectPage({ params }: PageProps) {
   ] = await Promise.all([
     supabase.from('chapters').select('id,title,display_order').eq('subject_id', subjectId).is('archived_at', null).order('display_order'),
     supabase.from('sub_subjects').select('id,title,display_order').eq('subject_id', subjectId).is('archived_at', null).order('display_order'),
-    supabase.from('lectures').select('id,title,chapter_id,sub_subject_id,is_preview,display_order').eq('subject_id', subjectId).eq('status', 'published').order('display_order'),
+    supabase.from('lectures').select('id,title,chapter_id,sub_subject_id,is_preview,display_order,slug' as any).eq('subject_id', subjectId).eq('status', 'published').order('display_order') as any,
     supabase.from('videos').select('id,title,video_url,is_preview,display_order').eq('subject_id', subjectId).is('archived_at', null).order('display_order'),
     supabase.from('clinical_modules').select('id,module_type').eq('subject_id', subjectId).is('archived_at', null),
   ])
 
   const groups      = isSystem ? (subSubjects ?? []) : (chapters ?? [])
   const lectureList = lectures ?? []
-  const lectureIds  = lectureList.map(l => l.id)
+  const lectureIds  = lectureList.map((l: any) => l.id)
 
   // ── content counts per lecture ─────────────────────────────────────
   const sheetMap: Record<string, boolean>  = {}
@@ -118,9 +118,9 @@ export default async function SubjectPage({ params }: PageProps) {
   const ringOffset = ringC * (1 - progressPercent / 100)
 
   // continue-reading lecture info
-  const continueLecture = continueRow ? lectureList.find(l => l.id === continueRow!.lecture_id) : null
+  const continueLecture = continueRow ? lectureList.find((l: any) => l.id === continueRow!.lecture_id) : null
   const continueGroup   = continueLecture
-    ? groups.find(g => g.id === (isSystem ? continueLecture.sub_subject_id : continueLecture.chapter_id))
+    ? groups.find(g => g.id === (isSystem ? (continueLecture as any).sub_subject_id : (continueLecture as any).chapter_id))
     : null
   const continueProgress = continueRow?.progress_percentage ?? 0
   const continueCta      = continueProgress > 0 ? 'Resume reading →' : 'Start reading →'
@@ -278,7 +278,7 @@ export default async function SubjectPage({ params }: PageProps) {
 
             {/* ── CONTINUE READING / FEATURED CARD ── */}
             {continueLecture && (
-              <Link href={`/${uniSlug}/${subjectSlug}/${continueLecture.id}`} style={{ textDecoration: 'none', display: 'block', marginBottom: '22px' }}>
+              <Link href={`/${uniSlug}/${subjectSlug}/${(continueLecture as any).slug ?? continueLecture.id}`} style={{ textDecoration: 'none', display: 'block', marginBottom: '22px' }}>
                 <div style={{
                   background: 'linear-gradient(135deg,#101729,#1b2540)',
                   borderRadius: '22px', padding: '20px 22px',
@@ -354,7 +354,7 @@ export default async function SubjectPage({ params }: PageProps) {
 
             {/* ── LECTURE CARDS grouped by chapter/sub-subject ── */}
             {groups.map(group => {
-              const groupLectures = lectureList.filter(l =>
+              const groupLectures = lectureList.filter((l: any) =>
                 isSystem ? l.sub_subject_id === group.id : l.chapter_id === group.id)
               if (groupLectures.length === 0) return null
 
@@ -367,7 +367,7 @@ export default async function SubjectPage({ params }: PageProps) {
                   }}>{group.title.toUpperCase()}</div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    {groupLectures.map(lecture => {
+                    {groupLectures.map((lecture: any) => {
                       const lp     = progressByLecture[lecture.id]
                       const isDone = lp?.completed ?? false
                       const pct    = lp?.progress_percentage ?? 0
@@ -385,7 +385,7 @@ export default async function SubjectPage({ params }: PageProps) {
                       const barColor   = isDone ? '#1c9d62' : ACCENT
 
                       return (
-                        <Link key={lecture.id} href={`/${uniSlug}/${subjectSlug}/${lecture.id}`} style={{ textDecoration: 'none' }}>
+                        <Link key={lecture.id} href={`/${uniSlug}/${subjectSlug}/${(lecture as any).slug ?? lecture.id}`} style={{ textDecoration: 'none' }}>
                           <div style={{
                             background: '#fff', border: `1.5px solid ${cardBorder}`,
                             borderRadius: '18px', padding: '18px 20px',
@@ -592,14 +592,14 @@ export default async function SubjectPage({ params }: PageProps) {
                   </div>
                   <div style={{ background: '#fff', border: '1px solid #ebedf1', borderRadius: '15px', padding: '7px' }}>
                     {recentlyCompleted.map(prog => {
-                      const lec = lectureList.find(l => l.id === prog.lecture_id)
+                      const lec = lectureList.find((l: any) => l.id === prog.lecture_id)
                       if (!lec) return null
                       const iconBg = prog.content_type === 'quiz' ? '#fdf2dd'
                         : prog.content_type === 'flashcard' ? ACCENT_SOFT : '#e6f6ee'
                       const iconStroke = prog.content_type === 'quiz' ? '#c79212'
                         : prog.content_type === 'flashcard' ? ACCENT : '#1c9d62'
                       return (
-                        <Link key={`${prog.lecture_id}-${prog.content_type}`} href={`/${uniSlug}/${subjectSlug}/${prog.lecture_id}`}
+                        <Link key={`${prog.lecture_id}-${prog.content_type}`} href={`/${uniSlug}/${subjectSlug}/${(lectureList.find((l: any) => l.id === prog.lecture_id) as any)?.slug ?? prog.lecture_id}`}
                           style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '11px', padding: '10px 11px', borderRadius: '11px' }}>
                           <div style={{ width: '30px', height: '30px', flexShrink: 0, borderRadius: '9px', background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {prog.content_type === 'quiz' ? (

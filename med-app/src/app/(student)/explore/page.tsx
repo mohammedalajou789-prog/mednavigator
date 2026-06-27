@@ -42,7 +42,7 @@ export default async function ExplorePage() {
     countMap[row.university_id] = (countMap[row.university_id] ?? 0) + 1
   })
 
-  const unis = (universities ?? []) as University[]
+  const unis = (universities ?? []) as any[] as University[]
 
   return (
     <div className="p-6 space-y-6 max-w-7xl">

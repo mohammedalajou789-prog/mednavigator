@@ -59,7 +59,7 @@ function navLinkStyle(active: boolean, locked = false): React.CSSProperties {
     display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
     borderRadius: '11px', fontSize: '14px', fontWeight: active ? 600 : 500,
     color: locked ? '#4A5568' : active ? '#EAF0FF' : '#9AA7C4',
-    cursor: locked ? 'pointer' : 'pointer', textDecoration: 'none',
+    cursor: 'pointer', textDecoration: 'none',
     background: active ? 'rgba(76,130,255,.16)' : 'transparent',
     boxShadow: active ? 'inset 0 0 0 1px rgba(120,160,255,.2)' : 'none',
     transition: 'background .15s, color .15s',
@@ -106,7 +106,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
   }, [setSidebarOpen])
 
   useEffect(() => {
-    const onUniPage = universities.some(u => pathname.startsWith(`/${u.id}`))
+    const onUniPage = universities.some(u => pathname.startsWith(`/${u.slug ?? u.id}`))
     if (onUniPage) setExploreOpen(true)
   }, [pathname, universities])
 
@@ -156,7 +156,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
         }}>
           <LockIcon />
           <span>Create a free account to access this feature</span>
-          <a href="/register" style={{ color: '#6E9BFF', fontWeight: 700, marginLeft: '6px' }}>Sign up →</a>
+          <Link href="/register" prefetch={false} style={{ color: '#6E9BFF', fontWeight: 700, marginLeft: '6px' }}>Sign up →</Link>
         </div>
       )}
 
@@ -170,26 +170,26 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
       >
         {/* Logo */}
         <div style={{ padding: '0 6px 18px', display: 'flex', alignItems: 'center' }}>
-          <a href="/home">
+          <Link href="/home" prefetch={false}>
             <span style={{ fontSize: '19px', fontWeight: 800, letterSpacing: '-0.01em', color: '#fff' }}>
               Med<span style={{ color: '#9FB8F2' }}>Navigator</span>
             </span>
-          </a>
+          </Link>
         </div>
 
         {/* User card or Guest card */}
         {isLoading ? (
-  <div style={{ marginBottom: '18px', padding: '14px', borderRadius: '14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}>
-    <div style={{ height: '12px', borderRadius: '6px', background: 'rgba(255,255,255,.08)', marginBottom: '8px', width: '60%' }} />
-    <div style={{ height: '10px', borderRadius: '5px', background: 'rgba(255,255,255,.05)', width: '80%' }} />
-  </div>
-) : isGuest ? (
-  <div style={{ marginBottom: '18px', borderRadius: '14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', overflow: 'hidden' }}>
+          <div style={{ marginBottom: '18px', padding: '14px', borderRadius: '14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}>
+            <div style={{ height: '12px', borderRadius: '6px', background: 'rgba(255,255,255,.08)', marginBottom: '8px', width: '60%' }} />
+            <div style={{ height: '10px', borderRadius: '5px', background: 'rgba(255,255,255,.05)', width: '80%' }} />
+          </div>
+        ) : isGuest ? (
+          <div style={{ marginBottom: '18px', borderRadius: '14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', overflow: 'hidden' }}>
             <div style={{ padding: '14px 14px 10px' }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#9FB8F2', letterSpacing: '.06em', marginBottom: '4px' }}>BROWSING AS GUEST</div>
               <div style={{ fontSize: '12px', color: '#6E7A94', lineHeight: 1.5 }}>Sign up to track progress, save bookmarks, and more.</div>
             </div>
-            <a href="/register" style={{
+            <Link href="/register" prefetch={false} style={{
               display: 'block', textAlign: 'center', padding: '10px',
               background: 'linear-gradient(135deg,#3B6FFF,#2F56D6)',
               color: '#fff', fontSize: '13px', fontWeight: 700,
@@ -197,7 +197,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
               borderTop: '1px solid rgba(255,255,255,.06)',
             }}>
               Create Free Account →
-            </a>
+            </Link>
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 10px', marginBottom: '18px', borderRadius: '14px', background: 'rgba(255,255,255,.045)', border: '1px solid rgba(255,255,255,.06)' }}>
@@ -217,10 +217,10 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           {/* EXPLORE */}
           <div style={firstSectionLabel}>EXPLORE</div>
 
-          <a href="/explore" style={navLinkStyle(pathname === '/explore')}>
+          <Link href="/explore" prefetch={false} style={navLinkStyle(pathname === '/explore')}>
             <span style={iconStyle(pathname === '/explore')}><ExploreIcon /></span>
             All Universities
-          </a>
+          </Link>
 
           {universities.length > 0 && (
             <>
@@ -241,7 +241,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
                     const uniPath = uni.slug ?? uni.id
                     const active = pathname.startsWith(`/${uniPath}`)
                     return (
-                      <a key={uni.id} href={`/${uniPath}`} style={{
+                      <Link key={uni.id} href={`/${uniPath}`} prefetch={false} style={{
                         display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px',
                         borderRadius: '9px', fontSize: '13px', fontWeight: active ? 600 : 400,
                         color: active ? '#EAF0FF' : '#6E7A94', textDecoration: 'none',
@@ -250,7 +250,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
                       }}>
                         <span style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, background: active ? '#6E9BFF' : '#3D4E6B' }} />
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{uni.name}</span>
-                      </a>
+                      </Link>
                     )
                   })}
                 </div>
@@ -275,10 +275,10 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
               const uniHref = myUniSlug ? `/${myUniSlug}` : '/home'
               const active = myUniSlug ? pathname.startsWith(`/${myUniSlug}`) : false
               return (
-                <a key="my-university" href={uniHref} style={navLinkStyle(active)}>
+                <Link key="my-university" href={uniHref} prefetch={false} style={navLinkStyle(active)}>
                   <span style={iconStyle(active)}>{item.icon}</span>
                   My University
-                </a>
+                </Link>
               )
             }
 
@@ -295,10 +295,10 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
 
             const active = isActive(item.href)
             return (
-              <a key={item.label} href={item.href} style={navLinkStyle(active)}>
+              <Link key={item.label} href={item.href} prefetch={false} style={navLinkStyle(active)}>
                 <span style={iconStyle(active)}>{item.icon}</span>
                 {item.label}
-              </a>
+              </Link>
             )
           })}
 
@@ -318,10 +318,10 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
             }
             const active = isActive(item.href)
             return (
-              <a key={item.href} href={item.href} style={navLinkStyle(active)}>
+              <Link key={item.href} href={item.href} prefetch={false} style={navLinkStyle(active)}>
                 <span style={iconStyle(active)}>{item.icon}</span>
                 {item.label}
-              </a>
+              </Link>
             )
           })}
 
@@ -331,9 +331,9 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
               <div style={{ fontSize: '12px', color: '#9AA7C4', marginBottom: '8px', lineHeight: 1.5 }}>
                 Already have an account?
               </div>
-              <a href="/login" style={{ display: 'block', textAlign: 'center', padding: '8px', borderRadius: '8px', border: '1px solid rgba(110,155,255,.3)', color: '#9FB8F2', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
+              <Link href="/login" prefetch={false} style={{ display: 'block', textAlign: 'center', padding: '8px', borderRadius: '8px', border: '1px solid rgba(110,155,255,.3)', color: '#9FB8F2', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
                 Sign In
-              </a>
+              </Link>
             </div>
           )}
 
@@ -384,20 +384,20 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           <ThemeToggle />
 
           {isGuest ? (
-            <a href="/register" style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '40px', padding: '0 16px', borderRadius: '20px', background: 'linear-gradient(135deg,#3B6FFF,#2F56D6)', color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
+            <Link href="/register" prefetch={false} style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '40px', padding: '0 16px', borderRadius: '20px', background: 'linear-gradient(135deg,#3B6FFF,#2F56D6)', color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
               Sign Up Free
-            </a>
+            </Link>
           ) : (
             <>
-              <a href="/notifications" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '11px', background: '#F4F5F8', border: '1px solid #EBEDF3', color: '#5B6678', cursor: 'pointer', flexShrink: 0 }}>
+              <Link href="/notifications" prefetch={false} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '11px', background: '#F4F5F8', border: '1px solid #EBEDF3', color: '#5B6678', cursor: 'pointer', flexShrink: 0 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-              </a>
-              <a href="/profile" style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '40px', padding: '0 8px 0 6px', borderRadius: '24px', background: '#F4F5F8', border: '1px solid #EBEDF3', cursor: 'pointer', textDecoration: 'none' }}>
+              </Link>
+              <Link href="/profile" prefetch={false} style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '40px', padding: '0 8px 0 6px', borderRadius: '24px', background: '#F4F5F8', border: '1px solid #EBEDF3', cursor: 'pointer', textDecoration: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(140deg,#5B8CFF,#2F6BFF)', color: '#fff', fontSize: '12px', fontWeight: 700 }}>
                   {initials}
                 </div>
                 <svg style={{ color: '#8A93A6' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </a>
+              </Link>
             </>
           )}
         </header>
@@ -423,10 +423,10 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
               )
             }
             return (
-              <a key={item.href} href={item.href}
+              <Link key={item.href} href={item.href} prefetch={false}
                 className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all text-[10px] font-medium ${pathname.startsWith(item.href) ? 'text-blue-600' : 'text-slate-400'}`}>
                 {item.label}
-              </a>
+              </Link>
             )
           })}
         </nav>

@@ -16,7 +16,7 @@ export default async function UniversityPage({ params }: PageProps) {
     .select('id, name, logo_url, is_active, slug')
     .eq('slug' as any, uniSlug)
     .eq('is_active', true)
-    .single()
+    .single() as any
 
   if (!university) notFound()
 
@@ -41,9 +41,17 @@ export default async function UniversityPage({ params }: PageProps) {
       </div>
 
       <div className="flex items-center gap-4 mb-8">
-        <div className="h-14 w-14 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
-          {university.name.slice(0, 2).toUpperCase()}
-        </div>
+        {(university as any).logo_url ? (
+  <img
+    src={(university as any).logo_url}
+    alt={university.name}
+    className="h-14 w-14 rounded-xl object-contain bg-white p-1 flex-shrink-0 border border-slate-200"
+  />
+) : (
+  <div className="h-14 w-14 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+    {university.name.slice(0, 2).toUpperCase()}
+  </div>
+)}
         <div>
           <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{university.name}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">

@@ -4,6 +4,7 @@ import Link from 'next/link'
 interface University {
   id: string
   name: string
+  slug: string | null
   logo_url: string | null
 }
 
@@ -26,7 +27,7 @@ export default async function ExplorePage() {
 
   const { data: universities } = await supabase
     .from('universities')
-    .select('id, name, logo_url')
+    .select('id, name, logo_url, slug')
     .eq('is_active', true)
     .order('name')
 
@@ -69,7 +70,7 @@ export default async function ExplorePage() {
             return (
               <Link
                 key={uni.id}
-                href={`/${uni.id}`}
+                href={`/${uni.slug ?? uni.id}`}
                 className="block rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all group"
               >
                 {/* Logo or initials */}

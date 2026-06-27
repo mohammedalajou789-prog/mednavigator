@@ -40,13 +40,27 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
             })
           }
 
-          // H1 floats ABOVE the card, card contains H2s and all content inside
+          // H1 floats ABOVE everything. Content before first H2 → own card. Each H2 → own card below it.
           h2Counter = 0
           const h1Id = `section-${section.heading.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
 
+          // Split blocks into sub-sections by h2
+          const subSections: { heading: Block | null; blocks: Block[] }[] = []
+          let currentSub: { heading: Block | null; blocks: Block[] } = { heading: null, blocks: [] }
+          for (const block of section.blocks) {
+            if (block.type === 'h2') {
+              subSections.push(currentSub)
+              currentSub = { heading: block, blocks: [] }
+            } else {
+              currentSub.blocks.push(block)
+            }
+          }
+          subSections.push(currentSub)
+
           return (
             <div key={`sec-${sIdx}`} style={{ marginBottom: '28px' }}>
-              {/* H1 label — floats ABOVE the card */}
+
+              {/* H1 — floats above everything, no card */}
               <h1
                 id={h1Id}
                 style={{
@@ -63,59 +77,70 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
                 {section.heading.content}
               </h1>
 
-              {/* Card containing all content including H2s */}
-              <div style={{
-                background: '#fff',
-                border: '1px solid #ECEEF3',
-                borderRadius: '18px',
-                padding: '24px 26px',
-                boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)',
-              }}>
-                {section.blocks.length === 0 ? null : (() => {
-                  // Split blocks into sub-sections by h2
-                  const subSections: { heading: Block | null; blocks: Block[] }[] = []
-                  let currentSub: { heading: Block | null; blocks: Block[] } = { heading: null, blocks: [] }
+              {subSections.map((sub, subIdx) => {
+                // Skip empty pre-H2 sections
+                if (!sub.heading && sub.blocks.filter(b => b.type !== 'empty').length === 0) return null
 
-                  for (const block of section.blocks) {
-                    if (block.type === 'h2') {
-                      subSections.push(currentSub)
-                      currentSub = { heading: block, blocks: [] }
-                    } else {
-                      currentSub.blocks.push(block)
-                    }
-                  }
-                  subSections.push(currentSub)
-
-                  return subSections.map((sub, subIdx) => (
-                    <div key={subIdx}>
-                      {sub.heading && (() => {
-                        h2Counter++
-                        const currentNum = h2Counter
-                        const sectionId = `section-${sub.heading.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
-                        return (
-                          <div id={sectionId} style={{ scrollMarginTop: '96px', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', marginTop: subIdx === 0 ? '0' : '28px' }}>
-                            <span style={{
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              width: '30px', height: '30px', borderRadius: '50%',
-                              background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)',
-                              color: '#fff', fontSize: '14px', fontWeight: 700,
-                              flexShrink: 0, boxShadow: '0 5px 12px -4px rgba(47,107,255,.6)',
-                            }}>
-                              {currentNum}
-                            </span>
-                            <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>
-                              {sub.heading.content.toUpperCase()}
-                            </span>
-                          </div>
-                        )
-                      })()}
+                if (!sub.heading) {
+                  // Content before first H2 → its own white card
+                  return (
+                    <div key={`pre-${subIdx}`} style={{
+                      background: '#fff',
+                      border: '1px solid #ECEEF3',
+                      borderRadius: '18px',
+                      padding: '24px 26px',
+                      marginBottom: '14px',
+                      boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)',
+                    }}>
                       {sub.blocks.map((block, bIdx) =>
-                        renderBlock(block, subIdx * 500 + bIdx, undefined, imageSlots)
+                        renderBlock(block, sIdx * 1000 + subIdx * 100 + bIdx, undefined, imageSlots)
                       )}
                     </div>
-                  ))
-                })()}
-              </div>
+                  )
+                }
+
+                // H2 section → H2 label floats above its own white card
+                h2Counter++
+                const currentNum = h2Counter
+                const sectionId = `section-${sub.heading.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+
+                return (
+                  <div key={`sub-${subIdx}`} style={{ marginBottom: '14px' }}>
+                    {/* H2 label — above the card */}
+                    <div id={sectionId} style={{
+                      scrollMarginTop: '96px',
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      marginBottom: '10px',
+                    }}>
+                      <span style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '30px', height: '30px', borderRadius: '50%',
+                        background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)',
+                        color: '#fff', fontSize: '14px', fontWeight: 700,
+                        flexShrink: 0, boxShadow: '0 5px 12px -4px rgba(47,107,255,.6)',
+                      }}>
+                        {currentNum}
+                      </span>
+                      <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>
+                        {sub.heading.content.toUpperCase()}
+                      </span>
+                    </div>
+
+                    {/* H2 content — its own white card */}
+                    <div style={{
+                      background: '#fff',
+                      border: '1px solid #ECEEF3',
+                      borderRadius: '18px',
+                      padding: '24px 26px',
+                      boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)',
+                    }}>
+                      {sub.blocks.map((block, bIdx) =>
+                        renderBlock(block, sIdx * 1000 + subIdx * 100 + bIdx, undefined, imageSlots)
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )
         })}

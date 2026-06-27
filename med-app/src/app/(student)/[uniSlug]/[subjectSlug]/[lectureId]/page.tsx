@@ -17,12 +17,20 @@ interface PageProps {
 }
 
 export default async function LecturePage({ params }: PageProps) {
-  const { uniSlug, subjectSlug, lectureId } = await params
+  const { uniSlug, subjectSlug, lectureId: lectureParam } = await params
+  const lectureId = lectureParam
 
   // resolve slugs → ids
   const supabaseSlug = await createServerClient()
   const { data: uniRow } = await supabaseSlug.from('universities').select('id').eq('slug' as any, uniSlug).single()
   const { data: subRow } = await supabaseSlug.from('subjects').select('id').eq('slug' as any, subjectSlug).single()
+  // Also resolve lecture slug → id
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lectureId)
+  let resolvedLectureId = lectureId
+  if (!isUUID) {
+    const { data: lecRow } = await supabaseSlug.from('lectures').select('id').eq('slug' as any, lectureId).single()
+    resolvedLectureId = lecRow?.id ?? lectureId
+  }
   const universityId = uniRow?.id ?? ''
   const subjectId    = subRow?.id ?? ''
   if (!universityId || !subjectId) redirect('/')
@@ -52,7 +60,7 @@ export default async function LecturePage({ params }: PageProps) {
     supabase
       .from('lectures')
       .select('id, title, description, status')
-      .eq('id', lectureId)
+      .eq('id', resolvedLectureId)
       .eq('status', 'published')
       .single(),
     supabase
@@ -79,25 +87,25 @@ export default async function LecturePage({ params }: PageProps) {
     { data: sheetData },
     { data: summaryData },
   ] = await Promise.all([
-    getSheetByLectureId(lectureId, subjectId, userId, accessAllowed),
-    getSummaryByLectureId(lectureId, subjectId, userId, accessAllowed),
-    getFlashcardsByLectureId(lectureId, subjectId, userId, accessAllowed),
-    getQuizQuestionsByLectureId(lectureId, subjectId, userId, accessAllowed),
-    getPreviousYearQuestionsByLectureId(lectureId, subjectId, userId, accessAllowed),
+    getSheetByLectureId(resolvedLectureId, subjectId, userId, accessAllowed),
+    getSummaryByLectureId(resolvedLectureId, subjectId, userId, accessAllowed),
+    getFlashcardsByLectureId(resolvedLectureId, subjectId, userId, accessAllowed),
+    getQuizQuestionsByLectureId(resolvedLectureId, subjectId, userId, accessAllowed),
+    getPreviousYearQuestionsByLectureId(resolvedLectureId, subjectId, userId, accessAllowed),
     supabase
       .from('videos')
       .select('id, title, description, video_url, is_preview, display_order')
-      .eq('lecture_id', lectureId)
+      .eq('lecture_id', resolvedLectureId)
       .order('display_order'),
     supabase
       .from('sheets')
       .select('id')
-      .eq('lecture_id', lectureId)
+      .eq('lecture_id', resolvedLectureId)
       .maybeSingle(),
     supabase
       .from('summaries')
       .select('id')
-      .eq('lecture_id', lectureId)
+      .eq('lecture_id', resolvedLectureId)
       .maybeSingle(),
   ])
 
@@ -142,7 +150,8 @@ export default async function LecturePage({ params }: PageProps) {
     <LectureHub
       lecture={lecture}
       subject={subject}
-      universityId={universityId}
+      universityId={uniSlug}
+      subjectSlug={subjectSlug}
       userName={userName ?? undefined}
       userId={userId ?? undefined}
       sheet={sheetResult.data}

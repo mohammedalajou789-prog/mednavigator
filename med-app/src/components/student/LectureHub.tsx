@@ -108,6 +108,7 @@ interface LectureHubProps {
   lecture: Lecture
   subject: Subject
   universityId: string
+  subjectSlug?: string
   userName?: string
   userId?: string
   sheet: Sheet | null
@@ -222,6 +223,7 @@ export default function LectureHub({
   lecture,
   subject,
   universityId,
+  subjectSlug,
   userName,
   userId,
   sheet,
@@ -436,7 +438,7 @@ useEffect(() => {
             <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
             <Link href={`/${universityId}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>Subjects</Link>
             <span style={{ color: '#C5CBD6' }}>/</span>
-            <Link href={`/${universityId}/${subject.id}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>{subject.name}</Link>
+            <Link href={`/${universityId}/${subjectSlug ?? subject.id}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>{subject.name}</Link>
             <span style={{ color: '#C5CBD6' }}>/</span>
             <span style={{ color: '#1B2335', fontWeight: 700 }}>{lecture.title}</span>
           </div>
@@ -941,7 +943,7 @@ useEffect(() => {
               {isBookmarked ? 'Bookmarked' : 'Bookmark'}
             </button>
             <Link
-              href={`/${universityId}/${subject.id}`}
+              href={`/${universityId}/${subjectSlug ?? subject.id}`}
               prefetch={false}
               style={{
                 width: '100%',

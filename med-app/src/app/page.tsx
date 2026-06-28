@@ -1,3 +1,4 @@
+import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import type { University } from '@/types/database'
 import LandingNavbar from '@/components/student/LandingNavbar'

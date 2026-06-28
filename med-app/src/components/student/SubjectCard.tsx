@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import type { Subject } from '@/types/database'
 
-// ── Design tokens ──────────────────────────────────────────────────────────
 const PRIMARY  = '#2563EB'
 const SUCCESS  = '#16A34A'
 const AMBER    = '#D97706'
@@ -30,8 +29,8 @@ const ACCESS_STYLES: Record<string, { bg: string; color: string; label: string }
 }
 
 export default function SubjectCard({ subject, universityId }: SubjectCardProps) {
-  const typeKey   = subject.subject_type as keyof typeof TYPE_STYLES
-  const accessKey = subject.access_mode  as keyof typeof ACCESS_STYLES
+  const typeKey     = subject.subject_type as keyof typeof TYPE_STYLES
+  const accessKey   = subject.access_mode  as keyof typeof ACCESS_STYLES
   const typeStyle   = TYPE_STYLES[typeKey]   ?? TYPE_STYLES.standard
   const accessStyle = ACCESS_STYLES[accessKey] ?? ACCESS_STYLES.free
   const typeLabel   = subject.subject_type.charAt(0).toUpperCase() + subject.subject_type.slice(1)
@@ -41,46 +40,25 @@ export default function SubjectCard({ subject, universityId }: SubjectCardProps)
     <Link
       href={`/${universityId}/${(subject as any).slug ?? subject.id}`}
       prefetch={false}
-      style={{
-        display: 'flex', flexDirection: 'column',
-        background: CARD_BG, border: `1px solid ${CARD_BDR}`,
-        borderRadius: '18px', overflow: 'hidden',
-        textDecoration: 'none',
-        boxShadow: '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)',
-        transition: 'box-shadow .2s, border-color .2s, transform .2s',
-      }}
-      onMouseEnter={e => {
-        const el = e.currentTarget as HTMLElement
-        el.style.transform = 'translateY(-3px)'
-        el.style.boxShadow = '0 16px 36px -16px rgba(37,99,235,.20)'
-        el.style.borderColor = `rgba(37,99,235,.30)`
-      }}
-      onMouseLeave={e => {
-        const el = e.currentTarget as HTMLElement
-        el.style.transform = 'translateY(0)'
-        el.style.boxShadow = '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)'
-        el.style.borderColor = CARD_BDR
-      }}
+      className="group flex flex-col overflow-hidden text-[unset] no-underline hover:-translate-y-1 transition-transform duration-200"
+      style={{ background: CARD_BG, border: `1px solid ${CARD_BDR}`, borderRadius: '18px', boxShadow: '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)', textDecoration: 'none' }}
     >
       {/* Top color bar */}
       <div style={{ height: '5px', background: typeStyle.bar, flexShrink: 0 }} />
 
-      {/* Card body */}
+      {/* Body */}
       <div style={{ padding: '18px 20px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
 
-        {/* Badges row */}
+        {/* Badges */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '14px' }}>
           <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
-            {/* Type badge */}
             <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 9px', borderRadius: '7px', background: typeStyle.bg, color: typeStyle.color }}>
               {typeLabel}
             </span>
-            {/* Access badge */}
             <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 9px', borderRadius: '7px', background: accessStyle.bg, color: accessStyle.color }}>
               {accessStyle.label}
             </span>
           </div>
-          {/* Lock icon for premium */}
           {isPremium && (
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={AMBER} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
@@ -89,7 +67,7 @@ export default function SubjectCard({ subject, universityId }: SubjectCardProps)
           )}
         </div>
 
-        {/* Subject name */}
+        {/* Name */}
         <h3 style={{ margin: '0 0 6px', fontSize: '17px', fontWeight: 700, letterSpacing: '-.01em', color: INK, lineHeight: 1.3, flex: 1 }}>
           {subject.name}
         </h3>

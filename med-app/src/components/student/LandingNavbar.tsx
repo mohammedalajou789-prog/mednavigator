@@ -4,11 +4,26 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { University } from '@/types/database'
-import { cn } from '@/lib/utils/cn'
+
+// ── Design tokens ──────────────────────────────────────────────────────────
+const PRIMARY  = '#2563EB'
+const CARD_BG  = '#FFFFFF'
+const CARD_BDR = '#E2E8F0'
+const INK      = '#0F172A'
+const INK2     = '#64748B'
+const INK3     = '#94A3B8'
 
 interface LandingNavbarProps {
   universities: University[]
 }
+
+const LogoIcon = () => (
+  <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+  </div>
+)
 
 export default function LandingNavbar({ universities }: LandingNavbarProps) {
   const router = useRouter()
@@ -20,51 +35,69 @@ export default function LandingNavbar({ universities }: LandingNavbarProps) {
   }
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 dark:bg-gray-950/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800">
-      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-        <Link href="/" className="text-lg font-bold">
-          <span className="text-blue-600">Med</span>
-          <span className="text-gray-900 dark:text-white">Navigator</span>
+    <nav style={{
+      position: 'sticky', top: 0, zIndex: 50,
+      background: 'rgba(248,250,252,0.92)',
+      backdropFilter: 'blur(10px)',
+      borderBottom: `1px solid ${CARD_BDR}`,
+    }}>
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+
+        {/* Logo */}
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+          <LogoIcon />
+          <span style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-.02em', color: INK }}>
+            Med<span style={{ color: PRIMARY }}>Navigator</span>
+          </span>
         </Link>
 
-        <div className="relative hidden sm:block">
+        {/* University selector */}
+        <div style={{ position: 'relative' }} className="hidden sm:block">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:border-gray-300 transition-colors"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '38px', padding: '0 14px', border: `1px solid ${CARD_BDR}`, borderRadius: '10px', background: CARD_BG, fontSize: '13.5px', color: INK2, cursor: 'pointer', fontFamily: 'inherit', transition: 'border-color .15s' }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = '#CBD5E1')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = CARD_BDR)}
           >
-            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={INK3} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z"/>
             </svg>
             Select your university
-            <svg className={cn('w-3.5 h-3.5 text-gray-400 transition-transform', dropdownOpen && 'rotate-180')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={INK3} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ transition: 'transform .2s', transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+              <polyline points="6 9 12 15 18 9"/>
             </svg>
           </button>
 
           {dropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden z-50">
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+              width: '260px', background: CARD_BG,
+              border: `1px solid ${CARD_BDR}`, borderRadius: '14px',
+              boxShadow: '0 8px 30px rgba(15,23,42,.12)', overflow: 'hidden', zIndex: 50,
+            }}>
               {universities.length === 0 ? (
-                <div className="px-4 py-6 text-center text-sm text-gray-400">
+                <div style={{ padding: '24px', textAlign: 'center', fontSize: '13.5px', color: INK3 }}>
                   No universities available yet.
                 </div>
               ) : (
-                <div className="py-1 max-h-64 overflow-y-auto">
+                <div style={{ padding: '6px', maxHeight: '260px', overflowY: 'auto' }}>
                   {universities.map((uni) => (
                     <button
                       key={uni.id}
                       onClick={() => handleUniversitySelect((uni as any).slug ?? uni.id)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-left transition-colors"
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '9px', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13.5px', color: INK, textAlign: 'left', transition: 'background .15s' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
                       {uni.logo_url ? (
-                        <img src={uni.logo_url} alt={uni.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                        <img src={uni.logo_url} alt={uni.name} style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `1px solid ${CARD_BDR}` }} />
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                          <span className="text-blue-600 text-[9px] font-bold">
-                            {uni.name.slice(0, 2).toUpperCase()}
-                          </span>
+                        <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `rgba(37,99,235,0.10)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <span style={{ fontSize: '9px', fontWeight: 700, color: PRIMARY }}>{uni.name.slice(0, 2).toUpperCase()}</span>
                         </div>
                       )}
-                      <span className="truncate">{uni.name}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{uni.name}</span>
                     </button>
                   ))}
                 </div>
@@ -73,14 +106,22 @@ export default function LandingNavbar({ universities }: LandingNavbarProps) {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Link href="/login" className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 transition-colors">
+        {/* Auth buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Link
+            href="/login"
+            style={{ display: 'inline-flex', alignItems: 'center', height: '38px', padding: '0 16px', borderRadius: '10px', border: `1px solid ${CARD_BDR}`, background: CARD_BG, fontSize: '13.5px', fontWeight: 600, color: INK, textDecoration: 'none', transition: 'border-color .15s' }}
+          >
             Login
           </Link>
-          <Link href="/register" className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+          <Link
+            href="/register"
+            style={{ display: 'inline-flex', alignItems: 'center', height: '38px', padding: '0 16px', borderRadius: '10px', border: 'none', background: PRIMARY, fontSize: '13.5px', fontWeight: 600, color: '#fff', textDecoration: 'none' }}
+          >
             Register
           </Link>
         </div>
+
       </div>
     </nav>
   )

@@ -1,5 +1,11 @@
 import type { University } from '@/types/database'
 
+// ── Design tokens ──────────────────────────────────────────────────────────
+const PRIMARY  = '#2563EB'
+const INK      = '#0F172A'
+const INK2     = '#64748B'
+const CARD_BDR = '#E2E8F0'
+
 interface UniversityHeaderProps {
   university: University
   subjectCount: number
@@ -9,22 +15,38 @@ export default function UniversityHeader({ university, subjectCount }: Universit
   const initials = university.name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center gap-4 mb-1">
+    <div style={{ marginBottom: '28px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '4px' }}>
+
+        {/* Logo */}
         {university.logo_url ? (
-          <img src={university.logo_url} alt={university.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+          <img
+            src={university.logo_url}
+            alt={university.name}
+            style={{ width: '58px', height: '58px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `1px solid ${CARD_BDR}` }}
+          />
         ) : (
-          <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950 flex items-center justify-center flex-shrink-0">
-            <span className="text-blue-600 dark:text-blue-400 text-sm font-bold">{initials}</span>
+          <div style={{ width: '58px', height: '58px', borderRadius: '50%', background: `rgba(37,99,235,0.10)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ fontSize: '16px', fontWeight: 700, color: PRIMARY }}>{initials}</span>
           </div>
         )}
+
+        {/* Name + count */}
         <div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{university.name}</h1>
-          <p className="text-sm text-gray-400">{subjectCount} {subjectCount === 1 ? 'subject' : 'subjects'} available</p>
+          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 800, letterSpacing: '-.02em', color: INK }}>
+            {university.name}
+          </h1>
+          <p style={{ margin: '2px 0 0', fontSize: '14px', color: INK2 }}>
+            {subjectCount} {subjectCount === 1 ? 'subject' : 'subjects'} available
+          </p>
         </div>
       </div>
+
+      {/* Description */}
       {university.description && (
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 max-w-2xl">{university.description}</p>
+        <p style={{ margin: '12px 0 0', fontSize: '14px', color: INK2, lineHeight: 1.6, maxWidth: '600px' }}>
+          {university.description}
+        </p>
       )}
     </div>
   )

@@ -27,21 +27,21 @@ const GUEST_LOCKED_ROUTES = [
 ]
 
 const studentNavItems = [
-  { label: 'Dashboard', href: '/home', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg> },
-  { label: 'My University', href: '__my_uni__', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> },
-  { label: 'My Progress', href: '/progress', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> },
-  { label: 'Bookmarks', href: '/bookmarks', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg> },
-  { label: 'Notes', href: '/notes', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> },
+  { label: 'Dashboard',     href: '/home',      icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg> },
+  { label: 'My University', href: '__my_uni__', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> },
+  { label: 'My Progress',   href: '/progress',  icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> },
+  { label: 'Bookmarks',     href: '/bookmarks', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg> },
+  { label: 'Notes',         href: '/notes',     icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> },
 ]
 
 const studentOtherItems = [
-  { label: 'Notifications', href: '/notifications', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg> },
-  { label: 'Settings', href: '/settings', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
-  { label: 'Help Center', href: '/help', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
+  { label: 'Notifications', href: '/notifications', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg> },
+  { label: 'Settings',      href: '/settings',      icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
+  { label: 'Help Center',   href: '/help',          icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
 ]
 
 const ExploreIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10"/>
     <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
   </svg>
@@ -54,42 +54,69 @@ const LockIcon = () => (
   </svg>
 )
 
-function navLinkStyle(active: boolean, locked = false): React.CSSProperties {
+const LogoIcon = () => (
+  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+  </div>
+)
+
+// ── Design tokens ──────────────────────────────────────────────────────────
+const SIDEBAR_BG       = '#0D1B2A'
+const SIDEBAR_BORDER   = 'rgba(255,255,255,0.07)'
+const ACTIVE_BG        = 'rgba(37,99,235,0.18)'
+const ACTIVE_COLOR     = '#F1F5F9'
+const ACTIVE_BAR       = '#60A5FA'
+const MUTED_COLOR      = '#94A3B8'
+const ICON_ACTIVE      = '#60A5FA'
+const ICON_MUTED       = '#64748B'
+
+function navItemStyle(active: boolean, locked = false): React.CSSProperties {
   return {
-    display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
-    borderRadius: '11px', fontSize: '14px', fontWeight: active ? 600 : 500,
-    color: locked ? '#4A5568' : active ? '#EAF0FF' : '#9AA7C4',
+    position: 'relative',
+    display: 'flex', alignItems: 'center', gap: '12px',
+    padding: '10px 12px', borderRadius: '11px',
+    fontSize: '14px', fontWeight: active ? 600 : 500,
+    color: locked ? '#334155' : active ? ACTIVE_COLOR : MUTED_COLOR,
     cursor: 'pointer', textDecoration: 'none',
-    background: active ? 'rgba(76,130,255,.16)' : 'transparent',
-    boxShadow: active ? 'inset 0 0 0 1px rgba(120,160,255,.2)' : 'none',
+    background: active ? ACTIVE_BG : 'transparent',
     transition: 'background .15s, color .15s',
-    opacity: locked ? 0.6 : 1,
+    opacity: locked ? 0.5 : 1,
   }
 }
 
-function iconStyle(active: boolean, locked = false): React.CSSProperties {
-  return { color: locked ? '#4A5568' : active ? '#6E9BFF' : '#7C89A8', flexShrink: 0 }
+function iconColor(active: boolean, locked = false): string {
+  if (locked) return '#334155'
+  return active ? ICON_ACTIVE : ICON_MUTED
 }
 
 const sectionLabel: React.CSSProperties = {
-  fontSize: '10.5px', fontWeight: 700, letterSpacing: '.14em',
-  color: '#56648A', padding: '16px 12px 6px',
+  fontSize: '10.5px', fontWeight: 700, letterSpacing: '.12em',
+  color: MUTED_COLOR, padding: '16px 12px 6px', textTransform: 'uppercase',
 }
 
 const firstSectionLabel: React.CSSProperties = {
-  fontSize: '10.5px', fontWeight: 700, letterSpacing: '.14em',
-  color: '#56648A', padding: '8px 12px 6px',
+  ...sectionLabel, padding: '6px 12px 6px',
 }
 
+// ── Active bar indicator ───────────────────────────────────────────────────
+const ActiveBar = () => (
+  <span style={{
+    position: 'absolute', left: 0, top: '6px', bottom: '6px',
+    width: '3px', borderRadius: '0 3px 3px 0', background: ACTIVE_BAR,
+  }} />
+)
+
 export default function StudentLayout({ children, universities = [], myUniSlug }: StudentLayoutProps) {
-  const pathname = usePathname()
-  const router = useRouter()
+  const pathname  = usePathname()
+  const router    = useRouter()
   const { user, isLoading, clearUser } = useUserStore()
   useUser()
   const { sidebarOpen, setSidebarOpen } = useUIStore()
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [exploreOpen, setExploreOpen] = useState(false)
-  const [guestToast, setGuestToast] = useState(false)
+  const [mobileOpen,   setMobileOpen]   = useState(false)
+  const [exploreOpen,  setExploreOpen]  = useState(false)
+  const [guestToast,   setGuestToast]   = useState(false)
 
   const isGuest = !isLoading && !user
 
@@ -141,9 +168,9 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
   const sidebarVisible = sidebarOpen || mobileOpen
 
   return (
-    <div className="flex h-screen" style={{ background: '#F5F6FA', fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" }}>
+    <div className="flex h-screen" style={{ background: '#F8FAFC', fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" }}>
 
-      {/* Guest toast notification */}
+      {/* ── Guest toast ── */}
       {guestToast && (
         <div style={{
           position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
@@ -152,85 +179,97 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           fontSize: '13px', fontWeight: 500,
           boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
           display: 'flex', alignItems: 'center', gap: '10px',
-          animation: 'fadeIn .2s ease',
         }}>
           <LockIcon />
           <span>Create a free account to access this feature</span>
-          <Link href="/register" prefetch={false} style={{ color: '#6E9BFF', fontWeight: 700, marginLeft: '6px' }}>Sign up →</Link>
+          <Link href="/register" prefetch={false} style={{ color: '#60A5FA', fontWeight: 700, marginLeft: '6px' }}>Sign up →</Link>
         </div>
       )}
 
+      {/* ── Mobile overlay ── */}
       {mobileOpen && (
         <div className="fixed inset-0 z-20 bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
+      {/* ════════════════════════════════════════════════════════
+          SIDEBAR
+      ════════════════════════════════════════════════════════ */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-30 flex flex-col transition-transform duration-200 ${sidebarVisible ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${!sidebarOpen && 'lg:hidden'}`}
-        style={{ width: '266px', flexShrink: 0, background: 'linear-gradient(185deg,#121E3E 0%,#0C152F 100%)', padding: '22px 16px 18px', color: '#9AA7C4' }}
+        className={`fixed lg:static inset-y-0 left-0 z-30 flex flex-col transition-transform duration-200
+          ${sidebarVisible ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          ${!sidebarOpen && 'lg:hidden'}`}
+        style={{ width: '264px', flexShrink: 0, background: SIDEBAR_BG, color: MUTED_COLOR, borderRight: `1px solid ${SIDEBAR_BORDER}` }}
       >
-        {/* Logo */}
-        <div style={{ padding: '0 6px 18px', display: 'flex', alignItems: 'center' }}>
-          <Link href="/home" prefetch={false}>
-            <span style={{ fontSize: '19px', fontWeight: 800, letterSpacing: '-0.01em', color: '#fff' }}>
-              Med<span style={{ color: '#9FB8F2' }}>Navigator</span>
+
+        {/* ── Logo ── */}
+        <div style={{ height: '64px', display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: `1px solid ${SIDEBAR_BORDER}`, flexShrink: 0 }}>
+          <Link href="/home" prefetch={false} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+            <LogoIcon />
+            <span style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
+              Med<span style={{ color: '#60A5FA' }}>Navigator</span>
             </span>
           </Link>
         </div>
 
-        {/* User card or Guest card */}
-        {isLoading ? (
-          <div style={{ marginBottom: '18px', padding: '14px', borderRadius: '14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}>
-            <div style={{ height: '12px', borderRadius: '6px', background: 'rgba(255,255,255,.08)', marginBottom: '8px', width: '60%' }} />
-            <div style={{ height: '10px', borderRadius: '5px', background: 'rgba(255,255,255,.05)', width: '80%' }} />
-          </div>
-        ) : isGuest ? (
-          <div style={{ marginBottom: '18px', borderRadius: '14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 14px 10px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#9FB8F2', letterSpacing: '.06em', marginBottom: '4px' }}>BROWSING AS GUEST</div>
-              <div style={{ fontSize: '12px', color: '#6E7A94', lineHeight: 1.5 }}>Sign up to track progress, save bookmarks, and more.</div>
+        {/* ── User / Guest card ── */}
+        <div style={{ padding: '12px 12px 4px', flexShrink: 0 }}>
+          {isLoading ? (
+            <div style={{ padding: '12px', borderRadius: '13px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${SIDEBAR_BORDER}` }}>
+              <div style={{ height: '11px', borderRadius: '6px', background: 'rgba(255,255,255,0.08)', marginBottom: '8px', width: '55%' }} />
+              <div style={{ height: '9px', borderRadius: '5px', background: 'rgba(255,255,255,0.05)', width: '75%' }} />
             </div>
-            <Link href="/register" prefetch={false} style={{
-              display: 'block', textAlign: 'center', padding: '10px',
-              background: 'linear-gradient(135deg,#3B6FFF,#2F56D6)',
-              color: '#fff', fontSize: '13px', fontWeight: 700,
-              textDecoration: 'none', letterSpacing: '.02em',
-              borderTop: '1px solid rgba(255,255,255,.06)',
-            }}>
-              Create Free Account →
-            </Link>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 10px', marginBottom: '18px', borderRadius: '14px', background: 'rgba(255,255,255,.045)', border: '1px solid rgba(255,255,255,.06)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(140deg,#5B8CFF,#2F6BFF)', color: '#fff', fontSize: '13px', fontWeight: 700, flexShrink: 0 }}>
-              {initials}
+          ) : isGuest ? (
+            <div style={{ borderRadius: '13px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${SIDEBAR_BORDER}`, overflow: 'hidden' }}>
+              <div style={{ padding: '12px 14px 8px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#60A5FA', letterSpacing: '.06em', marginBottom: '4px' }}>BROWSING AS GUEST</div>
+                <div style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.5 }}>Sign up to track progress and save bookmarks.</div>
+              </div>
+              <Link href="/register" prefetch={false} style={{
+                display: 'block', textAlign: 'center', padding: '9px',
+                background: '#2563EB', color: '#fff',
+                fontSize: '13px', fontWeight: 700, textDecoration: 'none',
+                borderTop: `1px solid ${SIDEBAR_BORDER}`,
+              }}>
+                Create Free Account →
+              </Link>
             </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#EAF0FF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.full_name ?? 'Student'}</div>
-              <div style={{ fontSize: '11.5px', color: '#7C89A8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email ?? ''}</div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '12px', borderRadius: '13px', background: 'rgba(255,255,255,0.05)', border: `1px solid ${SIDEBAR_BORDER}` }}>
+              {/* Avatar */}
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#2563EB', color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {initials}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#F1F5F9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.full_name ?? 'Student'}</div>
+                <div style={{ fontSize: '11.5px', color: MUTED_COLOR, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email ?? ''}</div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Nav */}
-        <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '3px', scrollbarWidth: 'none' }}>
+        {/* ── Nav ── */}
+        <nav style={{ flex: 1, overflowY: 'auto', padding: '4px 12px 8px', display: 'flex', flexDirection: 'column', gap: '2px', scrollbarWidth: 'none' }}>
 
           {/* EXPLORE */}
           <div style={firstSectionLabel}>EXPLORE</div>
 
-          <Link href="/explore" prefetch={false} style={navLinkStyle(pathname === '/explore')}>
-            <span style={iconStyle(pathname === '/explore')}><ExploreIcon /></span>
+          {/* All Universities */}
+          <Link href="/explore" prefetch={false} style={navItemStyle(pathname === '/explore')}>
+            {pathname === '/explore' && <ActiveBar />}
+            <span style={{ color: iconColor(pathname === '/explore') }}><ExploreIcon /></span>
             All Universities
           </Link>
 
+          {/* Universities list */}
           {universities.length > 0 && (
             <>
               <button
                 onClick={() => setExploreOpen(v => !v)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px', borderRadius: '11px', fontSize: '12px', fontWeight: 500, color: '#7C89A8', cursor: 'pointer', background: 'transparent', border: 'none', width: '100%', fontFamily: 'inherit' }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px 5px', background: 'transparent', border: 'none', width: '100%', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                <span>Universities ({universities.length})</span>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                  style={{ transition: 'transform .2s', transform: exploreOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#60A5FA' }}>Universities ({universities.length})</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={MUTED_COLOR} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ transition: 'transform .2s', transform: exploreOpen ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>
                   <polyline points="6 9 12 15 18 9"/>
                 </svg>
               </button>
@@ -239,16 +278,18 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', paddingLeft: '8px' }}>
                   {universities.map((uni) => {
                     const uniPath = uni.slug ?? uni.id
-                    const active = pathname.startsWith(`/${uniPath}`)
+                    const active  = pathname.startsWith(`/${uniPath}`)
                     return (
                       <Link key={uni.id} href={`/${uniPath}`} prefetch={false} style={{
-                        display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px',
-                        borderRadius: '9px', fontSize: '13px', fontWeight: active ? 600 : 400,
-                        color: active ? '#EAF0FF' : '#6E7A94', textDecoration: 'none',
-                        background: active ? 'rgba(76,130,255,.14)' : 'transparent',
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '8px 12px', borderRadius: '9px',
+                        fontSize: '13px', fontWeight: active ? 600 : 400,
+                        color: active ? ACTIVE_COLOR : '#64748B',
+                        textDecoration: 'none',
+                        background: active ? ACTIVE_BG : 'transparent',
                         transition: 'background .15s, color .15s',
                       }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, background: active ? '#6E9BFF' : '#3D4E6B' }} />
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, background: active ? ACTIVE_BAR : '#334155' }} />
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{uni.name}</span>
                       </Link>
                     )
@@ -265,18 +306,19 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
             if (item.href === '__my_uni__') {
               if (isGuest) {
                 return (
-                  <a key="my-university" href="#" onClick={handleLockedClick} style={navLinkStyle(false, true)}>
-                    <span style={iconStyle(false, true)}>{item.icon}</span>
+                  <a key="my-university" href="#" onClick={handleLockedClick} style={navItemStyle(false, true)}>
+                    <span style={{ color: iconColor(false, true) }}>{item.icon}</span>
                     <span style={{ flex: 1 }}>My University</span>
                     <LockIcon />
                   </a>
                 )
               }
               const uniHref = myUniSlug ? `/${myUniSlug}` : '/home'
-              const active = myUniSlug ? pathname.startsWith(`/${myUniSlug}`) : false
+              const active  = myUniSlug ? pathname.startsWith(`/${myUniSlug}`) : false
               return (
-                <Link key="my-university" href={uniHref} prefetch={false} style={navLinkStyle(active)}>
-                  <span style={iconStyle(active)}>{item.icon}</span>
+                <Link key="my-university" href={uniHref} prefetch={false} style={navItemStyle(active)}>
+                  {active && <ActiveBar />}
+                  <span style={{ color: iconColor(active) }}>{item.icon}</span>
                   My University
                 </Link>
               )
@@ -285,8 +327,8 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
             const isLocked = isGuest && GUEST_LOCKED_ROUTES.includes(item.href)
             if (isLocked) {
               return (
-                <a key={item.label} href="#" onClick={handleLockedClick} style={navLinkStyle(false, true)}>
-                  <span style={iconStyle(false, true)}>{item.icon}</span>
+                <a key={item.label} href="#" onClick={handleLockedClick} style={navItemStyle(false, true)}>
+                  <span style={{ color: iconColor(false, true) }}>{item.icon}</span>
                   <span style={{ flex: 1 }}>{item.label}</span>
                   <LockIcon />
                 </a>
@@ -295,8 +337,9 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
 
             const active = isActive(item.href)
             return (
-              <Link key={item.label} href={item.href} prefetch={false} style={navLinkStyle(active)}>
-                <span style={iconStyle(active)}>{item.icon}</span>
+              <Link key={item.label} href={item.href} prefetch={false} style={navItemStyle(active)}>
+                {active && <ActiveBar />}
+                <span style={{ color: iconColor(active) }}>{item.icon}</span>
                 {item.label}
               </Link>
             )
@@ -309,8 +352,8 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
             const isLocked = isGuest && GUEST_LOCKED_ROUTES.includes(item.href)
             if (isLocked) {
               return (
-                <a key={item.label} href="#" onClick={handleLockedClick} style={navLinkStyle(false, true)}>
-                  <span style={iconStyle(false, true)}>{item.icon}</span>
+                <a key={item.label} href="#" onClick={handleLockedClick} style={navItemStyle(false, true)}>
+                  <span style={{ color: iconColor(false, true) }}>{item.icon}</span>
                   <span style={{ flex: 1 }}>{item.label}</span>
                   <LockIcon />
                 </a>
@@ -318,20 +361,21 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
             }
             const active = isActive(item.href)
             return (
-              <Link key={item.href} href={item.href} prefetch={false} style={navLinkStyle(active)}>
-                <span style={iconStyle(active)}>{item.icon}</span>
+              <Link key={item.href} href={item.href} prefetch={false} style={navItemStyle(active)}>
+                {active && <ActiveBar />}
+                <span style={{ color: iconColor(active) }}>{item.icon}</span>
                 {item.label}
               </Link>
             )
           })}
 
-          {/* Guest login prompt */}
+          {/* Guest sign in prompt */}
           {isGuest && (
-            <div style={{ margin: '16px 4px 0', padding: '14px', borderRadius: '12px', background: 'rgba(110,155,255,.08)', border: '1px solid rgba(110,155,255,.15)' }}>
-              <div style={{ fontSize: '12px', color: '#9AA7C4', marginBottom: '8px', lineHeight: 1.5 }}>
+            <div style={{ margin: '14px 4px 0', padding: '14px', borderRadius: '12px', background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.15)' }}>
+              <div style={{ fontSize: '12px', color: MUTED_COLOR, marginBottom: '8px', lineHeight: 1.5 }}>
                 Already have an account?
               </div>
-              <Link href="/login" prefetch={false} style={{ display: 'block', textAlign: 'center', padding: '8px', borderRadius: '8px', border: '1px solid rgba(110,155,255,.3)', color: '#9FB8F2', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
+              <Link href="/login" prefetch={false} style={{ display: 'block', textAlign: 'center', padding: '8px', borderRadius: '8px', border: '1px solid rgba(37,99,235,0.3)', color: '#93C5FD', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
                 Sign In
               </Link>
             </div>
@@ -339,37 +383,55 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
 
         </nav>
 
-        {/* Logout or nothing for guest */}
+        {/* ── Logout ── */}
         {!isGuest && (
-          <button
-            onClick={handleLogout}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 12px', marginTop: '8px', borderRadius: '11px', fontSize: '14px', fontWeight: 600, color: '#FF8C8C', cursor: 'pointer', background: 'transparent', border: 'none', width: '100%', fontFamily: 'inherit', borderTop: '1px solid rgba(255,255,255,.06)' }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-            Logout
-          </button>
+          <div style={{ borderTop: `1px solid ${SIDEBAR_BORDER}`, padding: '10px 12px', flexShrink: 0 }}>
+            <button
+              onClick={handleLogout}
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '11px', fontSize: '14px', fontWeight: 600, color: '#F87171', cursor: 'pointer', background: 'transparent', border: 'none', width: '100%', fontFamily: 'inherit', transition: 'background .15s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Logout
+            </button>
+          </div>
         )}
       </aside>
 
-      {/* MAIN AREA */}
+      {/* ════════════════════════════════════════════════════════
+          MAIN AREA
+      ════════════════════════════════════════════════════════ */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <header style={{ height: '72px', flexShrink: 0, background: '#fff', borderBottom: '1px solid #EBEDF3', display: 'flex', alignItems: 'center', gap: '18px', padding: '0 26px' }}>
+
+        {/* ── Top Bar ── */}
+        <header style={{
+          height: '68px', flexShrink: 0,
+          background: 'rgba(248,250,252,0.85)',
+          backdropFilter: 'blur(10px)',
+          borderBottom: '1px solid #E2E8F0',
+          display: 'flex', alignItems: 'center', gap: '14px', padding: '0 24px',
+          position: 'sticky', top: 0, zIndex: 20,
+        }}>
+
+          {/* Sidebar toggle */}
           <button
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '11px', background: '#F4F5F8', border: '1px solid #EBEDF3', color: '#5B6678', cursor: 'pointer', flexShrink: 0 }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#64748B', cursor: 'pointer', flexShrink: 0 }}
             onClick={() => { if (window.innerWidth >= 1024) setSidebarOpen(!sidebarOpen); else setMobileOpen(!mobileOpen) }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
           </button>
 
-          <div style={{ flex: 1, maxWidth: '560px', display: 'flex', alignItems: 'center', gap: '11px', height: '42px', padding: '0 16px', borderRadius: '12px', background: '#F4F5F8', border: '1px solid #EBEDF3' }}>
-            <svg style={{ flexShrink: 0, color: '#9AA3B2' }} width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          {/* Search */}
+          <div style={{ position: 'relative', flex: 1, maxWidth: '480px' }}>
+            <svg style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', flexShrink: 0 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input
               placeholder="Search lectures, sheets, quizzes..."
-              style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontFamily: 'inherit', fontSize: '14px', color: '#1B2335' }}
+              style={{ width: '100%', height: '40px', borderRadius: '10px', border: '1px solid #E2E8F0', background: '#fff', padding: '0 14px 0 38px', fontFamily: 'inherit', fontSize: '14px', color: '#0F172A', outline: 'none' }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   if (isGuest) { setGuestToast(true); return }
@@ -381,50 +443,61 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           </div>
 
           <div style={{ flex: 1 }} />
+
+          {/* Theme toggle */}
           <ThemeToggle />
 
           {isGuest ? (
-            <Link href="/register" prefetch={false} style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '40px', padding: '0 16px', borderRadius: '20px', background: 'linear-gradient(135deg,#3B6FFF,#2F56D6)', color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
+            <Link href="/register" prefetch={false} style={{ display: 'flex', alignItems: 'center', height: '40px', padding: '0 18px', borderRadius: '10px', background: '#2563EB', color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
               Sign Up Free
             </Link>
           ) : (
             <>
-              <Link href="/notifications" prefetch={false} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '11px', background: '#F4F5F8', border: '1px solid #EBEDF3', color: '#5B6678', cursor: 'pointer', flexShrink: 0 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              {/* Notifications bell */}
+              <Link href="/notifications" prefetch={false} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#64748B', flexShrink: 0, textDecoration: 'none' }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
               </Link>
-              <Link href="/profile" prefetch={false} style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '40px', padding: '0 8px 0 6px', borderRadius: '24px', background: '#F4F5F8', border: '1px solid #EBEDF3', cursor: 'pointer', textDecoration: 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(140deg,#5B8CFF,#2F6BFF)', color: '#fff', fontSize: '12px', fontWeight: 700 }}>
+
+              {/* Profile chip */}
+              <Link href="/profile" prefetch={false} style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '40px', padding: '0 8px 0 5px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', cursor: 'pointer', textDecoration: 'none', flexShrink: 0 }}>
+                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#2563EB', color: '#fff', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {initials}
                 </div>
-                <svg style={{ color: '#8A93A6' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                <svg style={{ color: '#94A3B8' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </Link>
             </>
           )}
         </header>
 
+        {/* ── Page content ── */}
         <main className="flex-1 overflow-y-auto">
           {children}
         </main>
 
-        <nav className="lg:hidden flex-shrink-0 bg-white border-t border-slate-200 flex items-center justify-around px-2 py-1">
+        {/* ── Mobile bottom nav ── */}
+        <nav className="lg:hidden flex-shrink-0 border-t flex items-center justify-around px-2 py-1"
+          style={{ background: '#fff', borderColor: '#E2E8F0' }}>
           {[
-            { label: 'Home', href: '/home' },
-            { label: 'Explore', href: '/explore' },
+            { label: 'Home',      href: '/home' },
+            { label: 'Explore',   href: '/explore' },
             { label: 'Bookmarks', href: '/bookmarks' },
-            { label: 'Alerts', href: '/notifications' },
+            { label: 'Alerts',    href: '/notifications' },
           ].map((item) => {
             const isLocked = isGuest && GUEST_LOCKED_ROUTES.includes(item.href)
             if (isLocked) {
               return (
                 <button key={item.href} onClick={handleLockedClick}
-                  className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all text-[10px] font-medium text-slate-300`}>
+                  className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] font-medium"
+                  style={{ color: '#CBD5E1' }}>
                   {item.label}
                 </button>
               )
             }
+            const active = pathname.startsWith(item.href)
             return (
               <Link key={item.href} href={item.href} prefetch={false}
-                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all text-[10px] font-medium ${pathname.startsWith(item.href) ? 'text-blue-600' : 'text-slate-400'}`}>
+                className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] font-medium"
+                style={{ color: active ? '#2563EB' : '#94A3B8' }}>
                 {item.label}
               </Link>
             )
@@ -435,6 +508,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
   )
 }
 
+// ── Theme Toggle ───────────────────────────────────────────────────────────
 function ThemeToggle() {
   const { theme, setTheme } = useUIStore()
   const cycle = () => {
@@ -443,11 +517,9 @@ function ThemeToggle() {
     else setTheme('light')
   }
   return (
-    <button onClick={cycle}
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '11px', background: '#F4F5F8', border: '1px solid #EBEDF3', color: '#5B6678', cursor: 'pointer', flexShrink: 0 }}
-      aria-label={`Theme: ${theme}`}
-    >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <button onClick={cycle} aria-label={`Theme: ${theme}`}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#64748B', cursor: 'pointer', flexShrink: 0 }}>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         {theme === 'dark'
           ? <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
           : <><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></>

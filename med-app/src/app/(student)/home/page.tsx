@@ -45,7 +45,7 @@ interface Progress {
 interface PinnedSubject {
   subject_id: string
   subject: Subject & {
-    university: { id: string; name: string }
+    university: { id: string; name: string; slug?: string }
   }
 }
 
@@ -97,70 +97,124 @@ function getAccessLabel(mode: string) {
   return mode
 }
 
-// ── UI Components (Server) ─────────────────────────────────────────────────
+function getTodayLabel(): string {
+  return new Date().toLocaleDateString('en-US', {
+    weekday: 'long', day: 'numeric', month: 'long'
+  }).toUpperCase()
+}
 
-function KpiCard({ icon, label, value, sub, color }: {
-  icon: string
-  label: string
+// ── Design tokens ──────────────────────────────────────────────────────────
+const PRIMARY   = '#2563EB'
+const SUCCESS   = '#16A34A'
+const AMBER     = '#D97706'
+const PURPLE    = '#7C3AED'
+const CARD_BG   = '#FFFFFF'
+const CARD_BDR  = '#E2E8F0'
+const BG        = '#F8FAFC'
+const INK       = '#0F172A'
+const INK2      = '#64748B'
+const INK3      = '#94A3B8'
+
+// ── KPI Card ───────────────────────────────────────────────────────────────
+
+function KpiCard({ iconBg, icon, badge, badgeColor, value, sub }: {
+  iconBg: string
+  icon: React.ReactNode
+  badge: string
+  badgeColor: string
   value: string | number
-  sub?: string
-  color: 'blue' | 'purple' | 'green' | 'amber'
+  sub: string
 }) {
-  const colorMap = {
-    blue:   { bg: 'bg-blue-50 dark:bg-blue-950/40',   icon: 'text-blue-600 dark:text-blue-400',   value: 'text-blue-700 dark:text-blue-300' },
-    purple: { bg: 'bg-purple-50 dark:bg-purple-950/40', icon: 'text-purple-600 dark:text-purple-400', value: 'text-purple-700 dark:text-purple-300' },
-    green:  { bg: 'bg-green-50 dark:bg-green-950/40',  icon: 'text-green-600 dark:text-green-400',  value: 'text-green-700 dark:text-green-300' },
-    amber:  { bg: 'bg-amber-50 dark:bg-amber-950/40',  icon: 'text-amber-600 dark:text-amber-400',  value: 'text-amber-700 dark:text-amber-300' },
-  }
-  const c = colorMap[color]
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 flex items-start gap-4 shadow-sm">
-      <div className={`rounded-xl p-3 ${c.bg}`}>
-        <span className={`text-xl ${c.icon}`}>{icon}</span>
+    <div style={{ background: CARD_BG, border: `1px solid ${CARD_BDR}`, borderRadius: '16px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '16px', boxShadow: '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ width: '38px', height: '38px', borderRadius: '11px', background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {icon}
+        </div>
+        <span style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '.07em', color: badgeColor }}>{badge}</span>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">{label}</p>
-        <p className={`text-2xl font-semibold ${c.value}`}>{value}</p>
-        {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{sub}</p>}
+      <div>
+        <div style={{ fontSize: '30px', fontWeight: 800, lineHeight: 1, letterSpacing: '-.02em', color: INK, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+        <div style={{ marginTop: '6px', fontSize: '13px', color: INK2 }}>{sub}</div>
       </div>
     </div>
   )
 }
 
+// ── Type / Access badges ───────────────────────────────────────────────────
+
 function TypeBadge({ type }: { type: string }) {
-  const map: Record<string, string> = {
-    standard: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-    system: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
-    clinical: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
+  const map: Record<string, { bg: string; color: string }> = {
+    standard: { bg: 'rgba(37,99,235,0.10)',  color: PRIMARY },
+    system:   { bg: 'rgba(124,58,237,0.10)', color: PURPLE },
+    clinical: { bg: 'rgba(22,163,74,0.10)',  color: SUCCESS },
   }
+  const s = map[type] ?? { bg: '#F1F5F9', color: INK2 }
   return (
-    <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${map[type] ?? 'bg-slate-100 text-slate-600'}`}>
+    <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 9px', borderRadius: '7px', background: s.bg, color: s.color }}>
       {getTypeLabel(type)}
     </span>
   )
 }
 
 function AccessBadge({ mode }: { mode: string }) {
-  const map: Record<string, string> = {
-    free: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-    premium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-    mixed: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+  const map: Record<string, { bg: string; color: string }> = {
+    free:    { bg: 'rgba(22,163,74,0.10)',  color: SUCCESS },
+    premium: { bg: 'rgba(217,119,6,0.12)',  color: AMBER },
+    mixed:   { bg: '#F1F5F9',               color: INK2 },
   }
+  const s = map[mode] ?? { bg: '#F1F5F9', color: INK2 }
   return (
-    <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${map[mode] ?? 'bg-slate-100 text-slate-600'}`}>
+    <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 9px', borderRadius: '7px', background: s.bg, color: s.color }}>
       {getAccessLabel(mode)}
     </span>
   )
 }
 
-// ── Page (Server Component) ────────────────────────────────────────────────
+// ── Content type icon ──────────────────────────────────────────────────────
+
+function ContentIcon({ type, color, bg }: { type: string; color: string; bg: string }) {
+  const icons: Record<string, React.ReactNode> = {
+    sheet: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/>
+      </svg>
+    ),
+    flashcards: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+      </svg>
+    ),
+    quiz: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    ),
+    previous_years: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+    ),
+    summary: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+        <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+      </svg>
+    ),
+  }
+  return (
+    <div style={{ width: '34px', height: '34px', borderRadius: '10px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: bg }}>
+      {icons[type] ?? icons.sheet}
+    </div>
+  )
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────
 
 export default async function StudentDashboard() {
   const profile = await requireAuth()
-
   const supabase = await createClient()
 
-  // All dashboard data in parallel
   const [
     uniResult,
     pinnedResult,
@@ -201,21 +255,17 @@ export default async function StudentDashboard() {
       .eq('user_id', profile.id).eq('status', 'active'),
   ])
 
-  // Unread notifications count
   const { data: readIds } = await supabase
-    .from('notification_reads')
-    .select('notification_id')
-    .eq('user_id', profile.id)
+    .from('notification_reads').select('notification_id').eq('user_id', profile.id)
 
-  const readSet = new Set((readIds ?? []).map((r: { notification_id: string }) => r.notification_id))
-  const notifications = (notifResult.data ?? []) as Notification[]
-  const unreadCount = notifications.filter(n => !readSet.has(n.id)).length
-
-  const university = uniResult.data as University | null
-  const pinnedSubjects = (pinnedResult.data ?? []) as unknown as PinnedSubject[]
-  const subscriptions = (subsResult.data ?? []) as unknown as Subscription[]
-  const recentProgress = (progressResult.data ?? []) as unknown as Progress[]
-  const bookmarkCount = bookmarkResult.count ?? 0
+  const readSet         = new Set((readIds ?? []).map((r: { notification_id: string }) => r.notification_id))
+  const notifications   = (notifResult.data ?? []) as Notification[]
+  const unreadCount     = notifications.filter(n => !readSet.has(n.id)).length
+  const university      = uniResult.data as University | null
+  const pinnedSubjects  = (pinnedResult.data ?? []) as unknown as PinnedSubject[]
+  const subscriptions   = (subsResult.data ?? []) as unknown as Subscription[]
+  const recentProgress  = (progressResult.data ?? []) as unknown as Progress[]
+  const bookmarkCount   = bookmarkResult.count ?? 0
   const activeSubjectCount = activeSubsResult.count ?? 0
 
   const lastProgress = recentProgress.find(p => !p.completed && p.progress_percentage > 0)
@@ -228,228 +278,242 @@ export default async function StudentDashboard() {
   const firstName = profile.full_name?.split(' ')[0] ?? 'Student'
 
   return (
-    <div className="p-6 space-y-8 max-w-7xl">
+    <div style={{ padding: '28px', maxWidth: '1080px', margin: '0 auto' }}>
 
-      {/* Welcome Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-            {getInitials(profile.full_name ?? null)}
+      {/* ── Welcome header ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: PRIMARY, marginBottom: '6px' }}>
+            {getTodayLabel()}
           </div>
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
-              Welcome back, {firstName}
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {university?.name ?? 'No university selected'} &middot;{' '}
-              {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
+          <h1 style={{ margin: 0, fontSize: '30px', fontWeight: 800, letterSpacing: '-.025em', color: INK, lineHeight: 1.1 }}>
+            Welcome back, {firstName}
+          </h1>
+          <div style={{ fontSize: '14.5px', color: INK2, marginTop: '4px' }}>
+            {university?.name ?? 'No university selected'} · Let&apos;s keep the streak going.
           </div>
         </div>
         {university && (
-          <Link href={`/${university.slug ?? university.id}`} className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-            Browse subjects →
+          <Link href={`/${university.slug ?? university.id}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', height: '42px', padding: '0 18px', borderRadius: '11px', border: `1px solid ${CARD_BDR}`, background: CARD_BG, color: INK, fontSize: '14px', fontWeight: 600, textDecoration: 'none', boxShadow: '0 1px 2px rgba(15,23,42,.06)', whiteSpace: 'nowrap' }}>
+            Browse subjects
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </Link>
         )}
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard icon="📚" label="Active Subjects" value={activeSubjectCount} sub="subscribed" color="blue" />
-        <KpiCard icon="📈" label="Overall Progress" value={`${overallProgress}%`} sub={`${recentProgress.filter(p => p.completed).length} lectures done`} color="green" />
-        <KpiCard icon="🔖" label="Bookmarks" value={bookmarkCount} sub="saved items" color="purple" />
-        <KpiCard icon="🔔" label="Notifications" value={unreadCount} sub={unreadCount === 0 ? 'all read' : 'unread'} color="amber" />
+      {/* ── KPI Cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px', marginBottom: '22px' }}>
+        <KpiCard
+          iconBg={`rgba(37,99,235,0.12)`} badge="SUBSCRIBED" badgeColor={INK3}
+          icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={PRIMARY} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>}
+          value={activeSubjectCount} sub="Active subjects"
+        />
+        <KpiCard
+          iconBg={`rgba(22,163,74,0.12)`} badge="ON TRACK" badgeColor={SUCCESS}
+          icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={SUCCESS} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>}
+          value={`${overallProgress}%`} sub={`Overall progress · ${recentProgress.filter(p => p.completed).length} lectures done`}
+        />
+        <KpiCard
+          iconBg={`rgba(124,58,237,0.12)`} badge="SAVED" badgeColor={INK3}
+          icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-4.5L5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>}
+          value={bookmarkCount} sub="Bookmarks"
+        />
+        <KpiCard
+          iconBg={`rgba(217,119,6,0.12)`} badge="ALL READ" badgeColor={INK3}
+          icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={AMBER} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>}
+          value={unreadCount} sub="Notifications"
+        />
       </div>
 
-      {/* Continue Learning */}
+      {/* ── Continue Learning ── */}
       {lastProgress && lastProgress.lecture && (
-        <section>
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-3">Continue learning</h2>
-          <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-5">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div className="flex items-start gap-4">
-                <div className="h-11 w-11 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0 text-white text-lg">▶</div>
-                <div>
-                  <p className="text-xs font-medium text-blue-500 dark:text-blue-400 uppercase tracking-wide mb-1">
-                    {lastProgress.content_type.replace('_', ' ')}
-                  </p>
-                  <p className="font-semibold text-slate-900 dark:text-white text-base">{lastProgress.lecture.title}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Last accessed {formatTimeAgo(lastProgress.last_accessed_at)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-2xl font-semibold text-blue-600 dark:text-blue-400">{lastProgress.progress_percentage}%</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">completed</p>
-                </div>
-                <Link
-                  href={lastProgress.lecture.subject_id
-                    ? `/${university?.slug ?? university?.id ?? ''}/${lastProgress.lecture.subject_id}/${lastProgress.lecture.id}`
-                    : '#'}
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 transition-colors"
-                >
-                  Resume →
-                </Link>
-              </div>
+        <div style={{ background: `linear-gradient(120deg,rgba(37,99,235,0.06),${CARD_BG} 60%)`, border: `1px solid ${CARD_BDR}`, borderRadius: '18px', overflow: 'hidden', marginBottom: '22px', boxShadow: '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '22px 24px' }}>
+            <div style={{ width: '54px', height: '54px', flexShrink: 0, borderRadius: '15px', background: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 16px rgba(37,99,235,.35)' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="7 4 20 12 7 20 7 4"/></svg>
             </div>
-            <div className="mt-4 h-1.5 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-600 rounded-full transition-all duration-500" style={{ width: `${lastProgress.progress_percentage}%` }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '11.5px', fontWeight: 700, letterSpacing: '.06em', color: PRIMARY, marginBottom: '3px' }}>
+                {lastProgress.content_type.replace('_', ' ').toUpperCase()} · CONTINUE LEARNING
+              </div>
+              <div style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '-.01em', color: INK }}>{lastProgress.lecture.title}</div>
+              <div style={{ fontSize: '13px', color: INK2, marginTop: '2px' }}>Last accessed {formatTimeAgo(lastProgress.last_accessed_at)}</div>
             </div>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: PRIMARY, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums' }}>{lastProgress.progress_percentage}%</div>
+              <div style={{ fontSize: '11.5px', color: INK3, fontWeight: 600 }}>completed</div>
+            </div>
+            <Link
+              href={lastProgress.lecture.subject_id
+                ? `/${university?.slug ?? university?.id ?? ''}/${lastProgress.lecture.subject_id}/${lastProgress.lecture.id}`
+                : '#'}
+              style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 20px', border: 'none', borderRadius: '12px', background: PRIMARY, color: '#fff', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>
+              Resume
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </Link>
           </div>
-        </section>
+          {/* Progress bar */}
+          <div style={{ height: '5px', background: 'rgba(37,99,235,0.12)' }}>
+            <div style={{ height: '100%', width: `${lastProgress.progress_percentage}%`, background: PRIMARY, transition: 'width .6s ease' }} />
+          </div>
+        </div>
       )}
 
-      {/* Pinned Subjects */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Pinned subjects</h2>
+      {/* ── Two column: Recent Activity + Right Rail ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '22px', marginBottom: '22px' }}>
+
+        {/* Recent Activity */}
+        <div style={{ background: CARD_BG, border: `1px solid ${CARD_BDR}`, borderRadius: '18px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 14px' }}>
+            <div style={{ fontSize: '15px', fontWeight: 700, letterSpacing: '-.01em', color: INK }}>Recent activity</div>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: PRIMARY }}>View all</span>
+          </div>
+          {recentProgress.length === 0 ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: INK3, fontSize: '13.5px' }}>No activity yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {recentProgress.map((p, i) => {
+                const colorMap: Record<string, { color: string; bg: string }> = {
+                  sheet:          { color: PRIMARY, bg: `rgba(37,99,235,0.10)` },
+                  flashcards:     { color: PURPLE,  bg: `rgba(124,58,237,0.10)` },
+                  quiz:           { color: AMBER,   bg: `rgba(217,119,6,0.12)` },
+                  previous_years: { color: PURPLE,  bg: `rgba(124,58,237,0.10)` },
+                  summary:        { color: SUCCESS, bg: `rgba(22,163,74,0.10)` },
+                }
+                const cm = colorMap[p.content_type] ?? { color: INK2, bg: '#F1F5F9' }
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '13px', padding: '13px 20px', borderTop: `1px solid ${CARD_BDR}` }}>
+                    <ContentIcon type={p.content_type} color={cm.color} bg={cm.bg} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: INK }}>{p.lecture?.title ?? 'Lecture'}</div>
+                      <div style={{ fontSize: '12.5px', color: INK3, textTransform: 'capitalize' }}>{p.content_type.replace('_', ' ')} · {p.progress_percentage}%</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      {p.completed && <div style={{ fontSize: '11px', fontWeight: 700, color: SUCCESS }}>DONE</div>}
+                      <div style={{ fontSize: '11.5px', color: INK3 }}>{formatTimeAgo(p.last_accessed_at)}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Right rail */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+
+          {/* Active subscription */}
+          <div style={{ background: CARD_BG, border: `1px solid ${CARD_BDR}`, borderRadius: '18px', padding: '18px 20px', boxShadow: '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <div style={{ fontSize: '15px', fontWeight: 700, letterSpacing: '-.01em', color: INK }}>Active subscription</div>
+              <Link href="/subscriptions" style={{ fontSize: '13px', fontWeight: 600, color: PRIMARY, textDecoration: 'none' }}>View all</Link>
+            </div>
+            {subscriptions.length === 0 ? (
+              <div style={{ fontSize: '13px', color: INK3, textAlign: 'center', padding: '16px 0' }}>No active subscriptions.</div>
+            ) : (() => {
+              const sub = subscriptions[0]
+              const days = getDaysRemaining(sub.end_date)
+              const pct = Math.min(100, Math.max(0, Math.round((days / 90) * 100)))
+              return (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '11px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `rgba(22,163,74,0.12)` }}>
+                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={SUCCESS} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '14.5px', fontWeight: 700, color: INK }}>{sub.subject?.name ?? 'Subject'}</div>
+                      <div style={{ fontSize: '12.5px', color: INK3 }}>Expires {new Date(sub.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '14px', height: '7px', borderRadius: '99px', background: '#F1F5F9', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, borderRadius: '99px', background: PRIMARY, transition: 'width .6s ease' }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+                    <span style={{ fontSize: '12px', color: INK3 }}>Subscription</span>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: days <= 7 ? AMBER : PRIMARY }}>{days} days left</span>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+
+          {/* Notifications */}
+          <div style={{ background: CARD_BG, border: `1px solid ${CARD_BDR}`, borderRadius: '18px', padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column', boxShadow: '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ fontSize: '15px', fontWeight: 700, letterSpacing: '-.01em', color: INK }}>Notifications</div>
+              <Link href="/notifications" style={{ fontSize: '13px', fontWeight: 600, color: PRIMARY, textDecoration: 'none' }}>View all</Link>
+            </div>
+            {notifications.length === 0 ? (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '18px 0', gap: '8px', color: INK3 }}>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                <div style={{ fontSize: '13.5px', fontWeight: 600, color: INK2 }}>You&apos;re all caught up</div>
+                <div style={{ fontSize: '12.5px' }}>No new notifications.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {notifications.slice(0, 3).map(n => (
+                  <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '9px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: n.priority === 'critical' ? 'rgba(220,38,38,0.10)' : n.priority === 'important' ? 'rgba(217,119,6,0.10)' : '#F1F5F9' }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={n.priority === 'critical' ? '#DC2626' : n.priority === 'important' ? AMBER : INK2} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '13.5px', fontWeight: 600, color: INK }}>{n.title}</div>
+                      <div style={{ fontSize: '12px', color: INK3 }}>{formatTimeAgo(n.created_at)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Pinned Subjects ── */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <div style={{ fontSize: '16px', fontWeight: 700, letterSpacing: '-.01em', color: INK }}>Pinned subjects</div>
           {university && (
-            <Link href={`/${university.slug ?? university.id}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">View all</Link>
+            <Link href={`/${university.slug ?? university.id}`} style={{ fontSize: '13px', fontWeight: 600, color: PRIMARY, textDecoration: 'none' }}>View all</Link>
           )}
         </div>
         {pinnedSubjects.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
-            <p className="text-2xl mb-2">📌</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">No pinned subjects yet.</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Pin a subject from the subject page to see it here.</p>
+          <div style={{ background: CARD_BG, border: `1px dashed ${CARD_BDR}`, borderRadius: '18px', padding: '36px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '10px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `rgba(37,99,235,0.10)`, color: PRIMARY }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14l-1.5-5.5a3 3 0 0 1 .3-2.3L20 6H4l1.2 3.2a3 3 0 0 1 .3 2.3z"/><line x1="9" y1="6" x2="9" y2="3"/><line x1="15" y1="6" x2="15" y2="3"/></svg>
+            </div>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: INK }}>No pinned subjects yet</div>
+            <div style={{ fontSize: '13.5px', color: INK2, maxWidth: '340px' }}>Pin a subject from its page and it will show up here for quick access.</div>
+            {university && (
+              <Link href={`/${university.slug ?? university.id}`}
+                style={{ marginTop: '6px', height: '38px', padding: '0 16px', borderRadius: '10px', border: `1px solid ${CARD_BDR}`, background: '#F1F5F9', color: INK, fontSize: '13.5px', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                Browse subjects
+              </Link>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '18px' }}>
             {pinnedSubjects.map(({ subject_id, subject }) => (
               <Link
                 key={subject_id}
                 href={`/${(subject.university as any)?.slug ?? subject.university_id}/${subject.slug ?? subject_id}`}
-                className="block rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all group"
+                style={{ background: CARD_BG, border: `1px solid ${CARD_BDR}`, borderRadius: '18px', overflow: 'hidden', textDecoration: 'none', display: 'block', boxShadow: '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)' }}
               >
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-lg flex-shrink-0">📖</div>
-                  <div className="flex gap-1.5 flex-wrap justify-end">
+                <div style={{ height: '5px', background: `linear-gradient(90deg,${PRIMARY},${PURPLE})` }} />
+                <div style={{ padding: '18px' }}>
+                  <div style={{ display: 'flex', gap: '7px', marginBottom: '12px', flexWrap: 'wrap' }}>
                     <TypeBadge type={subject.subject_type} />
                     <AccessBadge mode={subject.access_mode} />
                   </div>
+                  <div style={{ fontSize: '16px', fontWeight: 700, color: INK, marginBottom: '4px' }}>{subject.name}</div>
+                  <div style={{ fontSize: '12.5px', color: INK3 }}>{subject.university?.name ?? ''}</div>
                 </div>
-                <p className="font-semibold text-slate-900 dark:text-white text-sm leading-snug">{subject.name}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subject.university?.name ?? ''}</p>
               </Link>
             ))}
           </div>
         )}
-      </section>
-
-      {/* Active Subscriptions */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">Active subscriptions</h2>
-          <Link href="/subscriptions" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">View all</Link>
-        </div>
-        {subscriptions.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
-            <p className="text-2xl mb-2">🔔</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">No active subscriptions.</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Contact support to activate access to premium subjects.</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {subscriptions.map(sub => {
-              const days = getDaysRemaining(sub.end_date)
-              const isExpiringSoon = days <= 7
-              return (
-                <div key={sub.id} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-9 w-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-base flex-shrink-0">✓</div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-slate-900 dark:text-white text-sm truncate">{sub.subject?.name ?? 'Unknown subject'}</p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                        Expires {new Date(sub.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex-shrink-0 text-right">
-                    <span className={`text-sm font-semibold ${isExpiringSoon ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
-                      {days}d left
-                    </span>
-                    {isExpiringSoon && <p className="text-xs text-amber-500 dark:text-amber-400 mt-0.5">Expiring soon</p>}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* Bottom Grid: Recent Activity + Notifications */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* Recent Activity */}
-        <section>
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-3">Recent activity</h2>
-          {recentProgress.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
-              <p className="text-2xl mb-2">📊</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">No activity yet.</p>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-y divide-slate-100 dark:divide-slate-700">
-              {recentProgress.map((p, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3">
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${p.completed ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-700'}`}>
-                    {p.content_type === 'sheet' ? '📄' : p.content_type === 'flashcards' ? '🃏' : p.content_type === 'quiz' ? '❓' : p.content_type === 'previous_years' ? '📅' : '📌'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{p.lecture?.title ?? 'Lecture'}</p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 capitalize">{p.content_type.replace('_', ' ')} · {p.progress_percentage}%</p>
-                  </div>
-                  <div className="flex-shrink-0 text-right">
-                    {p.completed && <p className="text-xs font-medium text-green-600 dark:text-green-400">Done</p>}
-                    <p className="text-xs text-slate-400 dark:text-slate-500">{formatTimeAgo(p.last_accessed_at)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Notifications */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">
-              Notifications
-              {unreadCount > 0 && (
-                <span className="ml-2 inline-flex items-center justify-center h-5 w-5 text-xs font-semibold bg-blue-600 text-white rounded-full">
-                  {unreadCount}
-                </span>
-              )}
-            </h2>
-            <Link href="/notifications" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">View all</Link>
-          </div>
-          {notifications.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
-              <p className="text-2xl mb-2">🔔</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">No notifications.</p>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-y divide-slate-100 dark:divide-slate-700">
-              {notifications.map(n => (
-                <div key={n.id} className="flex items-start gap-3 px-4 py-3">
-                  <div className={`mt-0.5 h-8 w-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${
-                    n.priority === 'critical' ? 'bg-red-100 dark:bg-red-900/30' :
-                    n.priority === 'important' ? 'bg-amber-100 dark:bg-amber-900/30' :
-                    'bg-slate-100 dark:bg-slate-700'
-                  }`}>🔔</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug">{n.title}</p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate">{n.message}</p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{formatTimeAgo(n.created_at)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
       </div>
+
     </div>
   )
 }

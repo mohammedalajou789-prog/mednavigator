@@ -1,69 +1,117 @@
 import Link from 'next/link'
 import type { Subject } from '@/types/database'
-import { cn } from '@/lib/utils/cn'
+
+// ── Design tokens ──────────────────────────────────────────────────────────
+const PRIMARY  = '#2563EB'
+const SUCCESS  = '#16A34A'
+const AMBER    = '#D97706'
+const PURPLE   = '#7C3AED'
+const CARD_BG  = '#FFFFFF'
+const CARD_BDR = '#E2E8F0'
+const INK      = '#0F172A'
+const INK2     = '#64748B'
+const INK3     = '#94A3B8'
 
 interface SubjectCardProps {
   subject: Subject
   universityId: string
 }
 
-const TYPE_COLORS = {
-  standard: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-  system: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
-  clinical: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
-} as const
+const TYPE_STYLES: Record<string, { bg: string; color: string; bar: string }> = {
+  standard: { bg: `rgba(37,99,235,0.10)`,  color: PRIMARY, bar: `linear-gradient(90deg,${PRIMARY},${PURPLE})` },
+  system:   { bg: `rgba(124,58,237,0.10)`, color: PURPLE,  bar: `linear-gradient(90deg,${PURPLE},${PRIMARY})` },
+  clinical: { bg: `rgba(22,163,74,0.10)`,  color: SUCCESS, bar: `linear-gradient(90deg,${SUCCESS},${PRIMARY})` },
+}
 
-const ACCESS_BADGES = {
-  free: { label: 'Free', className: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
-  premium: { label: 'Premium', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
-  mixed: { label: 'Mixed', className: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' },
-} as const
+const ACCESS_STYLES: Record<string, { bg: string; color: string; label: string }> = {
+  free:    { bg: `rgba(22,163,74,0.10)`,  color: SUCCESS, label: 'Free' },
+  premium: { bg: `rgba(217,119,6,0.12)`,  color: AMBER,   label: 'Premium' },
+  mixed:   { bg: '#F1F5F9',               color: INK2,    label: 'Mixed' },
+}
 
 export default function SubjectCard({ subject, universityId }: SubjectCardProps) {
-  const typeColor = TYPE_COLORS[subject.subject_type as keyof typeof TYPE_COLORS] ?? TYPE_COLORS.standard
-  const typeLabel = subject.subject_type.charAt(0).toUpperCase() + subject.subject_type.slice(1)
-  const accessBadge = ACCESS_BADGES[subject.access_mode as keyof typeof ACCESS_BADGES] ?? ACCESS_BADGES.free
-  const isPremium = subject.access_mode === 'premium'
+  const typeKey   = subject.subject_type as keyof typeof TYPE_STYLES
+  const accessKey = subject.access_mode  as keyof typeof ACCESS_STYLES
+  const typeStyle   = TYPE_STYLES[typeKey]   ?? TYPE_STYLES.standard
+  const accessStyle = ACCESS_STYLES[accessKey] ?? ACCESS_STYLES.free
+  const typeLabel   = subject.subject_type.charAt(0).toUpperCase() + subject.subject_type.slice(1)
+  const isPremium   = subject.access_mode === 'premium'
 
   return (
     <Link
       href={`/${universityId}/${(subject as any).slug ?? subject.id}`}
       prefetch={false}
-      className="group relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all flex flex-col"
+      style={{
+        display: 'flex', flexDirection: 'column',
+        background: CARD_BG, border: `1px solid ${CARD_BDR}`,
+        borderRadius: '18px', overflow: 'hidden',
+        textDecoration: 'none',
+        boxShadow: '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)',
+        transition: 'box-shadow .2s, border-color .2s, transform .2s',
+      }}
+      onMouseEnter={e => {
+        const el = e.currentTarget as HTMLElement
+        el.style.transform = 'translateY(-3px)'
+        el.style.boxShadow = '0 16px 36px -16px rgba(37,99,235,.20)'
+        el.style.borderColor = `rgba(37,99,235,.30)`
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLElement
+        el.style.transform = 'translateY(0)'
+        el.style.boxShadow = '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)'
+        el.style.borderColor = CARD_BDR
+      }}
     >
-      <div className="flex items-center justify-between gap-2 mb-4">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={cn('text-xs font-medium px-2 py-0.5 rounded-md', typeColor)}>
-            {typeLabel}
-          </span>
-          <span className={cn('text-xs font-medium px-2 py-0.5 rounded-md', accessBadge.className)}>
-            {accessBadge.label}
-          </span>
+      {/* Top color bar */}
+      <div style={{ height: '5px', background: typeStyle.bar, flexShrink: 0 }} />
+
+      {/* Card body */}
+      <div style={{ padding: '18px 20px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+
+        {/* Badges row */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
+            {/* Type badge */}
+            <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 9px', borderRadius: '7px', background: typeStyle.bg, color: typeStyle.color }}>
+              {typeLabel}
+            </span>
+            {/* Access badge */}
+            <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 9px', borderRadius: '7px', background: accessStyle.bg, color: accessStyle.color }}>
+              {accessStyle.label}
+            </span>
+          </div>
+          {/* Lock icon for premium */}
+          {isPremium && (
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={AMBER} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          )}
         </div>
-        {isPremium && (
-          <svg className="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-          </svg>
+
+        {/* Subject name */}
+        <h3 style={{ margin: '0 0 6px', fontSize: '17px', fontWeight: 700, letterSpacing: '-.01em', color: INK, lineHeight: 1.3, flex: 1 }}>
+          {subject.name}
+        </h3>
+
+        {/* Description */}
+        {subject.description && (
+          <p style={{ margin: '0 0 14px', fontSize: '13.5px', lineHeight: 1.55, color: INK2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {subject.description}
+          </p>
         )}
-      </div>
 
-      <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-snug flex-1">
-        {subject.name}
-      </h3>
-
-      {subject.description && (
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2 leading-relaxed">
-          {subject.description}
-        </p>
-      )}
-
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
-        <span className="text-xs text-slate-400 dark:text-slate-500">
-          {(subject.price ?? 0) > 0 ? `${subject.price} JOD` : 'Free access'}
-        </span>
-        <svg className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-        </svg>
+        {/* Footer */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '14px', borderTop: `1px solid ${CARD_BDR}`, marginTop: 'auto' }}>
+          <span style={{ fontSize: '13.5px', fontWeight: 700, color: accessStyle.color }}>
+            {(subject.price ?? 0) > 0 ? `${subject.price} JOD` : `${accessStyle.label} access`}
+          </span>
+          <div style={{ width: '30px', height: '30px', borderRadius: '9px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={INK3} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </div>
+        </div>
       </div>
     </Link>
   )

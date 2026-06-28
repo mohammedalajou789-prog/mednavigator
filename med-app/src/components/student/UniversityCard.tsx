@@ -1,6 +1,13 @@
 import Link from 'next/link'
 import type { University } from '@/types/database'
 
+// ── Design tokens ──────────────────────────────────────────────────────────
+const PRIMARY  = '#2563EB'
+const CARD_BG  = '#FFFFFF'
+const CARD_BDR = '#E2E8F0'
+const INK      = '#0F172A'
+const INK3     = '#94A3B8'
+
 interface UniversityCardProps {
   university: University
 }
@@ -17,34 +24,64 @@ export default function UniversityCard({ university }: UniversityCardProps) {
     <Link
       href={`/${(university as any).slug ?? university.id}`}
       prefetch={false}
-      className="group bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 text-center hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm transition-all"
+      style={{
+        display: 'block', textDecoration: 'none',
+        background: CARD_BG, border: `1px solid ${CARD_BDR}`,
+        borderRadius: '18px', overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)',
+        transition: 'box-shadow .2s, border-color .2s, transform .2s',
+      }}
+      onMouseEnter={e => {
+        const el = e.currentTarget as HTMLElement
+        el.style.transform = 'translateY(-3px)'
+        el.style.boxShadow = '0 16px 36px -16px rgba(37,99,235,.20)'
+        el.style.borderColor = 'rgba(37,99,235,.30)'
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLElement
+        el.style.transform = 'translateY(0)'
+        el.style.boxShadow = '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)'
+        el.style.borderColor = CARD_BDR
+      }}
     >
-      <div className="flex justify-center mb-3">
+      {/* Logo area */}
+      <div style={{ padding: '24px 20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
         {university.logo_url ? (
           <img
             src={university.logo_url}
             alt={university.name}
-            className="w-12 h-12 rounded-full object-cover"
+            style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: `1px solid ${CARD_BDR}`, flexShrink: 0 }}
           />
         ) : (
-          <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950 flex items-center justify-center">
-            <span className="text-blue-600 dark:text-blue-400 text-sm font-bold">
-              {initials}
-            </span>
+          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: `rgba(37,99,235,0.10)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ fontSize: '16px', fontWeight: 700, color: PRIMARY }}>{initials}</span>
           </div>
         )}
+
+        <div style={{ textAlign: 'center', minWidth: 0, width: '100%' }}>
+          <h3 style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: 700, color: INK, letterSpacing: '-.01em', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+            {university.name}
+          </h3>
+          <p style={{ margin: 0, fontSize: '12.5px', color: INK3, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+            Resources available
+          </p>
+        </div>
       </div>
 
-      <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1 line-clamp-2 leading-snug">
-        {university.name}
-      </h3>
-
-      <p className="text-xs text-gray-400 flex items-center justify-center gap-1">
-        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+      {/* Footer */}
+      <div style={{ padding: '12px 20px', borderTop: `1px solid ${CARD_BDR}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '.06em', color: PRIMARY }}>
+          BROWSE SUBJECTS
+        </span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={PRIMARY} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+          <polyline points="12 5 19 12 12 19"/>
         </svg>
-        Resources available
-      </p>
+      </div>
     </Link>
   )
 }

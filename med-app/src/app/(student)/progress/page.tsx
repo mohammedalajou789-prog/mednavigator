@@ -125,7 +125,7 @@ export default async function ProgressPage() {
   }
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100%', padding: '28px 32px 80px', fontFamily: 'inherit' }}>
+    <div style={{ background: 'var(--bg)', minHeight: '100%', padding: '28px 28px 64px', fontFamily: 'inherit' }}>
 
       {/* Header */}
       <div style={{ marginBottom: '28px' }}>
@@ -138,7 +138,7 @@ export default async function ProgressPage() {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '28px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '28px' }}>
         <KpiCard
           icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -189,11 +189,11 @@ export default async function ProgressPage() {
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '20px', alignItems: 'start' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
         {/* Subject Progress */}
         <div>
-          <h2 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 700, color: 'var(--ink)' }}>
+          <h2 style={{ margin: '0 0 12px', fontSize: '16px', fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--ink)' }}>
             Progress by Subject
           </h2>
 
@@ -260,7 +260,7 @@ export default async function ProgressPage() {
         </div>
 
         {/* Right column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px', alignItems: 'stretch' }}>
 
           {/* Summary card */}
           <div style={{ background: 'var(--card)', borderRadius: '18px', border: '1px solid var(--line)', padding: '20px', boxShadow: 'var(--shadow)' }}>

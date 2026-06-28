@@ -1,4 +1,4 @@
-import { getAuthUser } from '@/lib/services/user'
+﻿import { getAuthUser } from '@/lib/services/user'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -165,7 +165,7 @@ export default async function SubjectPage({ params }: PageProps) {
         </div>
 
         {/* Hero Banner */}
-        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '32px 34px', marginBottom: 18, background: 'linear-gradient(120deg,rgb(232,240,255) 0%,rgb(239,244,255) 46%,rgb(250,251,255) 100%)', border: '1px solid rgb(223,232,251)', boxShadow: 'rgba(16,24,40,0.04) 0px 1px 2px,rgba(40,90,200,0.4) 0px 22px 46px -30px' }}>
+        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '32px 34px', marginBottom: 18, background: 'linear-gradient(120deg,rgb(232,240,255) 0%,rgb(239,244,255) 46%,rgb(250,251,255) 100%)', border: '1px solid rgb(223,232,251)', boxShadow: 'none' }}>
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 320, height: 160, background: 'radial-gradient(rgba(249,168,212,0.3) 0%,rgba(216,180,254,0.15) 55%,transparent 75%)', pointerEvents: 'none', borderRadius: '50%', filter: 'blur(24px)', zIndex: 0 }} />
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 30 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -181,7 +181,7 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
               <h1 style={{ margin: '0 0 10px', fontSize: 40, fontWeight: 800, letterSpacing: '-0.035em', color: '#15203A' }}>{subject.name}</h1>
               {subject.description && (
-                <p style={{ margin: '0 0 22px', fontSize: 14.5, lineHeight: 1.55, color: 'rgba(27,35,53,0.65)', maxWidth: 460 }}>{subject.description}</p>
+                <p style={{ margin: '0 0 22px', fontSize: 14.5, lineHeight: 1.55, color: 'rgba(27,35,53,0.65)', maxWidth: 680 }}>{subject.description}</p>
               )}
               <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

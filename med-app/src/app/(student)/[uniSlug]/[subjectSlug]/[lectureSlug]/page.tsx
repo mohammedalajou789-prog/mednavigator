@@ -19,28 +19,18 @@ interface PageProps {
 export default async function LecturePage({ params }: PageProps) {
   const { uniSlug, subjectSlug, lectureSlug } = await params
 
+  const supabaseSlug = await createServerClient()
+  const { data: uniRow } = await supabaseSlug.from('universities').select('id').eq('slug' as any, uniSlug).single()
+  const { data: subRow } = await supabaseSlug.from('subjects').select('id').eq('slug' as any, subjectSlug).single()
+  const { data: lecRow } = await supabaseSlug.from('lectures').select('id').eq('slug' as any, lectureSlug).single()
+  const resolvedLectureId = lecRow?.id ?? ''
+  const universityId = uniRow?.id ?? ''
+  const subjectId    = subRow?.id ?? ''
+  if (!universityId || !subjectId) redirect('/')
   const supabase = await createServerClient()
 
-  // ── Step 1: resolve slugs + auth in parallel ──
-  const [
-    { data: uniRow },
-    { data: subRow },
-    { data: lecRow },
-    { data: { user } },
-  ] = await Promise.all([
-    supabase.from('universities').select('id').eq('slug' as any, uniSlug).single(),
-    supabase.from('subjects').select('id').eq('slug' as any, subjectSlug).single(),
-    supabase.from('lectures').select('id').eq('slug' as any, lectureSlug).single(),
-    supabase.auth.getUser(),
-  ])
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const universityId      = uniRow?.id ?? ''
-  const subjectId         = subRow?.id ?? ''
-  const resolvedLectureId = lecRow?.id ?? ''
-
-  if (!universityId || !subjectId || !resolvedLectureId) redirect('/')
-
-  // ── Step 2: get user profile ──
   let userId: string | null = null
   let userName: string | null = null
   if (user) {
@@ -49,11 +39,10 @@ export default async function LecturePage({ params }: PageProps) {
       .select('id, full_name')
       .eq('auth_user_id', user.id)
       .single()
-    userId   = profile?.id ?? null
+    userId = profile?.id ?? null
     userName = profile?.full_name ?? null
   }
 
-  // ── Step 3: lecture + subject + access in parallel ──
   const [
     { data: lecture },
     { data: subject },
@@ -64,12 +53,11 @@ export default async function LecturePage({ params }: PageProps) {
     checkUserAccess(subjectId, userId),
   ])
 
-  if (!lecture) redirect(`/${uniSlug}/${subjectSlug}`)
-  if (!subject) redirect(`/${uniSlug}`)
+  if (!lecture) redirect(`/${universityId}/${subjectId}`)
+  if (!subject) redirect(`/${universityId}`)
 
   const accessAllowed = accessResult.allowed
 
-  // ── Step 4: all content in parallel ──
   const [
     sheetResult,
     summaryResult,
@@ -90,29 +78,26 @@ export default async function LecturePage({ params }: PageProps) {
     supabase.from('summaries').select('id').eq('lecture_id', resolvedLectureId).maybeSingle(),
   ])
 
-  // ── Step 5: image slots in parallel ──
-  const sheetImageSlots:   Record<number, string> = {}
+  const sheetImageSlots: Record<number, string> = {}
   const summaryImageSlots: Record<number, string> = {}
 
-  const [sheetSlots, summarySlots] = await Promise.all([
-    sheetData?.id
-      ? supabase.from('image_slots').select('slot_number, media_library(file_url)').eq('entity_type', 'sheet').eq('entity_id', sheetData.id)
-      : Promise.resolve({ data: null }),
-    summaryData?.id
-      ? supabase.from('image_slots').select('slot_number, media_library(file_url)').eq('entity_type', 'summary').eq('entity_id', summaryData.id)
-      : Promise.resolve({ data: null }),
-  ])
-
-  if (sheetSlots.data) {
-    for (const slot of sheetSlots.data) {
-      const media = slot.media_library as { file_url: string } | null
-      if (media?.file_url) sheetImageSlots[slot.slot_number] = media.file_url
+  if (sheetData?.id) {
+    const { data: slots } = await supabase.from('image_slots').select('slot_number, media_library(file_url)').eq('entity_type', 'sheet').eq('entity_id', sheetData.id)
+    if (slots) {
+      for (const slot of slots) {
+        const media = slot.media_library as { file_url: string } | null
+        if (media?.file_url) sheetImageSlots[slot.slot_number] = media.file_url
+      }
     }
   }
-  if (summarySlots.data) {
-    for (const slot of summarySlots.data) {
-      const media = slot.media_library as { file_url: string } | null
-      if (media?.file_url) summaryImageSlots[slot.slot_number] = media.file_url
+
+  if (summaryData?.id) {
+    const { data: slots } = await supabase.from('image_slots').select('slot_number, media_library(file_url)').eq('entity_type', 'summary').eq('entity_id', summaryData.id)
+    if (slots) {
+      for (const slot of slots) {
+        const media = slot.media_library as { file_url: string } | null
+        if (media?.file_url) summaryImageSlots[slot.slot_number] = media.file_url
+      }
     }
   }
 

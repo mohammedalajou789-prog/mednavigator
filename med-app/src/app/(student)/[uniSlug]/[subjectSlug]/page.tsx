@@ -165,48 +165,48 @@ export default async function SubjectPage({ params }: PageProps) {
         </div>
 
         {/* Hero Banner */}
-        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '32px 34px', marginBottom: 18, background: 'linear-gradient(120deg,#16234A 0%,#1E3A8A 50%,#2F6BFF 100%)', boxShadow: 'rgba(31,58,138,0.75) 0px 22px 44px -22px' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(440px 280px at 90% -25%,rgba(236,118,150,0.4),transparent 70%),radial-gradient(380px 260px at 8% 125%,rgba(124,92,252,0.36),transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '32px 34px', marginBottom: 18, background: 'linear-gradient(120deg,rgb(232,240,255) 0%,rgb(239,244,255) 46%,rgb(250,251,255) 100%)', border: '1px solid rgb(223,232,251)', boxShadow: 'rgba(16,24,40,0.04) 0px 1px 2px,rgba(40,90,200,0.4) 0px 22px 46px -30px' }}>
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 320, height: 160, background: 'radial-gradient(rgba(249,168,212,0.3) 0%,rgba(216,180,254,0.15) 55%,transparent 75%)', pointerEvents: 'none', borderRadius: '50%', filter: 'blur(24px)', zIndex: 0 }} />
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 30 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '5px 13px', borderRadius: 999, background: 'rgba(255,255,255,0.15)', color: '#EAF0FF' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '5px 13px', borderRadius: 999, background: 'rgb(239,244,255)', border: '1px solid rgb(213,226,255)', color: '#2F6BFF' }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#5BE0A8' }} />
                   {typeBadge}
                 </span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '5px 13px', borderRadius: 999, background: 'rgba(255,255,255,0.15)', color: '#FFE6A6' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '5px 13px', borderRadius: 999, background: 'rgb(255,246,224)', border: '1px solid rgb(243,225,174)', color: '#A1730A' }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15 9 22 9 16.5 13.5 18.5 21 12 16.5 5.5 21 7.5 13.5 2 9 9 9"/></svg>
                   {accessBadge}
                 </span>
               </div>
-              <h1 style={{ margin: '0 0 10px', fontSize: 40, fontWeight: 800, letterSpacing: '-0.035em', color: '#fff' }}>{subject.name}</h1>
+              <h1 style={{ margin: '0 0 10px', fontSize: 40, fontWeight: 800, letterSpacing: '-0.035em', color: '#15203A' }}>{subject.name}</h1>
               {subject.description && (
-                <p style={{ margin: '0 0 22px', fontSize: 14.5, lineHeight: 1.55, color: 'rgba(234,240,255,0.82)', maxWidth: 460 }}>{subject.description}</p>
+                <p style={{ margin: '0 0 22px', fontSize: 14.5, lineHeight: 1.55, color: 'rgba(27,35,53,0.65)', maxWidth: 460 }}>{subject.description}</p>
               )}
               <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(234,240,255,.65)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{totalLectures}</span>
-                  <span style={{ fontSize: 13, color: 'rgba(234,240,255,0.7)' }}>Lecture{totalLectures !== 1 ? 's' : ''}</span>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(47,107,255,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#15203A' }}>{totalLectures}</span>
+                  <span style={{ fontSize: 13, color: 'rgba(27,35,53,0.55)' }}>Lecture{totalLectures !== 1 ? 's' : ''}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(234,240,255,.65)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{groups.length}</span>
-                  <span style={{ fontSize: 13, color: 'rgba(234,240,255,0.7)' }}>{isSystem ? 'Sub-Subjects' : 'Chapter'}{groups.length !== 1 ? 's' : ''}</span>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(47,107,255,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#15203A' }}>{groups.length}</span>
+                  <span style={{ fontSize: 13, color: 'rgba(27,35,53,0.55)' }}>{isSystem ? 'Sub-Subjects' : 'Chapter'}{groups.length !== 1 ? 's' : ''}</span>
                 </div>
               </div>
             </div>
             {/* Progress Ring */}
             <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-              <div style={{ position: 'relative', width: 124, height: 124 }}>
-                <svg width="124" height="124" viewBox="0 0 124 124" style={{ transform: 'rotate(-90deg)' }}>
-                  <circle cx="62" cy="62" r="54" fill="none" stroke="rgba(255,255,255,.16)" strokeWidth="10"/>
-                  <circle cx="62" cy="62" r="54" fill="none" stroke="#fff" strokeWidth="10" strokeLinecap="round"
+              <div style={{ position: 'relative', width: 160, height: 160 }}>
+                <svg width="160" height="160" viewBox="0 0 124 124" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx="62" cy="62" r="54" fill="none" stroke="rgba(47,107,255,0.18)" strokeWidth="10"/>
+                  <circle cx="62" cy="62" r="54" fill="none" stroke="#2F6BFF" strokeWidth="10" strokeLinecap="round"
                     strokeDasharray="339.3" strokeDashoffset={339.3 * (1 - progressPercent / 100)}/>
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', letterSpacing: '-0.03em' }}>{progressPercent}%</div>
-                  <div style={{ fontSize: 11, color: 'rgba(234,240,255,0.7)', fontWeight: 600 }}>{completedCount} of {totalLectures} done</div>
+                  <div style={{ fontSize: 38, fontWeight: 800, color: '#2F6BFF', letterSpacing: '-0.03em' }}>{progressPercent}%</div>
+                  <div style={{ fontSize: 11, color: 'rgba(27,35,53,0.55)', fontWeight: 600 }}>{completedCount} of {totalLectures} done</div>
                 </div>
               </div>
             </div>

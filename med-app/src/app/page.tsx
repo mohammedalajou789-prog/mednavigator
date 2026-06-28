@@ -1,214 +1,147 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import type { University } from '@/types/database'
+import LandingNavbar from '@/components/student/LandingNavbar'
+import UniversityCard from '@/components/student/UniversityCard'
 
-interface PageProps {
-  params: Promise<{ uniSlug: string }>
+async function getActiveUniversities(): Promise<University[]> {
+  const supabase = await createServerClient()
+  const { data, error } = await supabase
+    .from('universities')
+    .select('id, name, logo_url, description, is_active, created_at, updated_at, archived_at, country, logo_media_id, cover_media_id, slug')
+    .eq('is_active', true)
+    .order('name')
+  if (error || !data) return []
+  return data as any[]
 }
 
-export default async function UniversityPage({ params }: PageProps) {
-  const { uniSlug } = await params
+const FEATURES = [
+  { title: 'Organized by subject', desc: 'Content grouped into structured academic subjects per university.', icon: '🎓', iconBg: '#EEF2FF', iconColor: '#4F46E5' },
+  { title: 'Progress tracking', desc: 'Track completed lectures and monitor your learning progress visually.', icon: '↗', iconBg: '#F0FDF4', iconColor: '#16A34A' },
+  { title: 'Bookmarks & notes', desc: 'Save important content and add personal notes — private to you.', icon: '📖', iconBg: '#FDF4FF', iconColor: '#7C3AED' },
+  { title: 'Previous years bank', desc: 'Access past exam papers organized by year, type, batch, and lecture.', icon: '📄', iconBg: '#FFF7ED', iconColor: '#D97706' },
+  { title: 'Clinical resources', desc: 'OSCE cases, checklists, and oral exam prep for clinical students.', icon: '❤', iconBg: '#FEF2F2', iconColor: '#DC2626' },
+  { title: 'Works on all devices', desc: 'Seamless experience on desktop, tablet, and mobile.', icon: '📱', iconBg: '#F0F9FF', iconColor: '#0284C7' },
+]
 
-  const supabase = await createServerClient()
-
-  const { data: university } = await supabase
-    .from('universities')
-    .select('id, name, logo_url')
-    .eq('slug' as any, uniSlug)
-    .single()
-
-  if (!university) notFound()
-
-  const { data: subjects } = await supabase
-    .from('subjects')
-    .select('id, name, subject_type, category, access_mode, description')
-    .eq('university_id', university.id)
-    .eq('is_published', true)
-    .order('name') as any
-
-  const subjectList = (subjects ?? []) as Array<{
-    id: string
-    name: string
-    subject_type: string
-    category: string | null
-    access_mode: string
-    description: string | null
-  }>
-
-  const preclinical   = subjectList.filter(s => s.category === 'preclinical')
-  const clinicalMajor = subjectList.filter(s => s.category === 'clinical_major')
-  const clinicalMinor = subjectList.filter(s => s.category === 'clinical_minor')
-  const other         = subjectList.filter(s => !['preclinical','clinical_major','clinical_minor'].includes(s.category ?? ''))
-
-  const sections = [
-    { key: 'preclinical',    label: 'Pre-Clinical',     list: preclinical,   barColor: '#2F6BFF', barBg: 'rgba(47,107,255,0.13)' },
-    { key: 'clinical_major', label: 'Clinical — Major', list: clinicalMajor, barColor: '#6E6BD8', barBg: 'rgba(110,107,216,0.13)' },
-    { key: 'clinical_minor', label: 'Clinical — Minor', list: clinicalMinor, barColor: '#138A5A', barBg: 'rgba(19,138,90,0.13)'  },
-    { key: 'other',          label: 'General',          list: other,         barColor: '#9AA3B2', barBg: 'rgba(154,163,178,0.13)' },
-  ].filter(s => s.list.length > 0)
-
-  const typeStyle: Record<string, { color: string; bg: string; dot: string }> = {
-    standard: { color: '#2F6BFF', bg: 'rgba(47,107,255,0.11)',  dot: '#2F6BFF' },
-    system:   { color: '#6E6BD8', bg: 'rgba(110,107,216,0.11)', dot: '#6E6BD8' },
-    clinical: { color: '#138A5A', bg: 'rgba(19,138,90,0.11)',   dot: '#138A5A' },
-  }
-
-  const accessStyle: Record<string, { color: string; bg: string }> = {
-    free:    { color: '#138A5A', bg: 'rgba(19,138,90,0.11)'  },
-    mixed:   { color: '#D89A06', bg: 'rgba(216,154,6,0.11)'  },
-    premium: { color: '#DC4842', bg: 'rgba(220,72,66,0.11)'  },
-  }
-
-  const gradients: Record<string, string> = {
-    preclinical:    'linear-gradient(90deg,#2F6BFF,#6E6BD8)',
-    clinical_major: 'linear-gradient(90deg,#6E6BD8,#2F6BFF)',
-    clinical_minor: 'linear-gradient(90deg,#138A5A,#2F6BFF)',
-    other:          'linear-gradient(90deg,#9AA3B2,#6E6BD8)',
-  }
+export default async function LandingPage() {
+  const universities = await getActiveUniversities()
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)', fontFamily: '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif' }}>
-      <main style={{ maxWidth: 1080, margin: '0 auto', padding: '28px 28px 64px' }}>
+    <div className="min-h-screen bg-white dark:bg-gray-950">
+      <LandingNavbar universities={universities} />
 
-        {/* Breadcrumb */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-3)', marginBottom: 18 }}>
-          <Link href="/home" style={{ fontWeight: 600, color: 'var(--ink-2)', textDecoration: 'none' }}>
-            Home
-          </Link>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-          <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{university.name}</span>
-        </nav>
-
-        {/* University Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
-          <div style={{ width: 58, height: 58, borderRadius: '50%', border: '1px solid var(--line)', overflow: 'hidden', flexShrink: 0, background: 'var(--card)' }}>
-            {university.logo_url ? (
-              <img src={university.logo_url} alt={university.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2F6BFF', color: '#fff', fontSize: 22, fontWeight: 800 }}>
-                {university.name.charAt(0)}
-              </div>
-            )}
+      <section className="max-w-6xl mx-auto px-6 pt-16 pb-12 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <p className="text-xs font-semibold tracking-widest text-blue-600 uppercase mb-4">
+            Medical education platform
+          </p>
+          <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white leading-tight mb-5">
+            Your medical education,{' '}
+            <span className="text-blue-600">organized.</span>
+          </h1>
+          <p className="text-base text-gray-500 dark:text-gray-400 leading-relaxed mb-8 max-w-md">
+            Lectures, sheets, summaries, flashcards, quizzes, and previous years — all in one structured academic platform.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <Link href="#universities" className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors">
+              Explore universities
+            </Link>
+            <Link href="/login" className="inline-flex items-center justify-center px-6 py-3 border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 text-sm font-medium rounded-xl transition-colors">
+              Login
+            </Link>
           </div>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>{university.name}</h1>
-            <div style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 2 }}>
-              {subjectList.length} {subjectList.length === 1 ? 'subject' : 'subjects'} available
-            </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+            <p className="text-xs text-gray-400">No account needed to browse — explore as a guest</p>
           </div>
         </div>
 
-        {/* Empty State */}
-        {subjectList.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--ink-3)', fontSize: 14 }}>
-            No subjects available yet.
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hidden lg:block">
+          <div className="flex items-center gap-1.5 mb-3">
+            <div className="w-3 h-3 rounded-full bg-red-400" />
+            <div className="w-3 h-3 rounded-full bg-yellow-400" />
+            <div className="w-3 h-3 rounded-full bg-green-400" />
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="bg-slate-800 px-4 py-2.5 flex items-center justify-between">
+              <span className="text-white text-xs font-medium">Heart Failure — Sheet</span>
+              <span className="text-blue-400 text-xs">72% read</span>
+            </div>
+            <div className="grid grid-cols-[80px_1fr]">
+              <div className="bg-slate-800 p-3 flex flex-col gap-1.5">
+                {['Dashboard', 'Subjects', 'Bookmarks', 'Flashcards', 'Quizzes', 'Progress'].map((item, i) => (
+                  <div key={item} className={`text-[9px] px-2 py-1 rounded ${i === 0 ? 'bg-blue-600/20 text-blue-400' : 'text-slate-400'}`}>
+                    {item}
+                  </div>
+                ))}
+              </div>
+              <div className="p-3 bg-gray-50 dark:bg-gray-900">
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-[9px] space-y-2">
+                  <div className="font-semibold text-gray-900 dark:text-white text-[10px]">1. Definition</div>
+                  <div className="bg-yellow-50 rounded px-2 py-1 text-yellow-800">HF is a syndrome where the heart cannot pump sufficiently.</div>
+                  <div className="border-l-2 border-red-500 bg-red-50 rounded-r px-2 py-1 text-red-800">ACE inhibitors improve survival in HFrEF.</div>
+                  <div className="border-l-2 border-green-500 bg-green-50 rounded-r px-2 py-1 text-green-800">Always treat the underlying cause.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="border-t border-gray-100 dark:border-gray-800" />
+
+      <section className="max-w-6xl mx-auto px-6 py-16">
+        <h2 className="text-2xl font-semibold text-center text-gray-900 dark:text-white mb-2">
+          Everything organized around learning
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-10">
+          Built for medical students, not marketplaces.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {FEATURES.map((f) => (
+            <div key={f.title} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3 text-lg" style={{ background: f.iconBg, color: f.iconColor }}>
+                {f.icon}
+              </div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">{f.title}</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="border-t border-gray-100 dark:border-gray-800" />
+
+      <section id="universities" className="max-w-6xl mx-auto px-6 py-16">
+        <h2 className="text-2xl font-semibold text-center text-gray-900 dark:text-white mb-2">
+          Available universities
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-10">
+          Select your institution and access its organized educational resources.
+        </p>
+        {universities.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <p className="text-sm">Universities will appear here once added.</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
-            {sections.map(section => (
-              <div key={section.key}>
-
-                {/* Section Header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                  <div style={{ width: 4, height: 18, borderRadius: 99, background: section.barColor }} />
-                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink-2)' }}>
-                    {section.label.toUpperCase()}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>· {section.list.length} {section.list.length === 1 ? 'subject' : 'subjects'}</div>
-                </div>
-
-                {/* Cards Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
-                  {section.list.map(subject => {
-                    const ts = typeStyle[subject.subject_type] ?? typeStyle.standard
-                    const as_ = accessStyle[subject.access_mode] ?? accessStyle.free
-                    const isLocked = subject.access_mode === 'premium'
-                    const typeLabel = subject.subject_type === 'system' ? 'System' : subject.subject_type === 'clinical' ? 'Clinical' : 'Standard'
-                    const accessLabel = subject.access_mode === 'premium' ? 'Premium' : subject.access_mode === 'mixed' ? 'Mixed' : 'Free'
-                    const grad = gradients[section.key]
-
-                    return (
-                      <Link
-                        key={subject.id}
-                        href={`/${uniSlug}/${subject.id}`}
-                        style={{ textDecoration: 'none', display: 'block' }}
-                      >
-                        <div style={{
-                          background: 'var(--card)',
-                          border: '1px solid var(--line)',
-                          borderRadius: 18,
-                          boxShadow: 'var(--shadow)',
-                          overflow: 'hidden',
-                          cursor: 'pointer',
-                          height: '100%',
-                          display: 'flex',
-                          flexDirection: 'column',
-                        }}>
-                          {/* top gradient bar */}
-                          <div style={{ height: 6, background: grad }} />
-
-                          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', flex: 1, gap: 0 }}>
-
-                            {/* Badges */}
-                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 9px', borderRadius: 7, background: ts.bg, color: ts.color }}>
-                                  {typeLabel}
-                                </span>
-                                <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 9px', borderRadius: 7, background: as_.bg, color: as_.color, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                  {isLocked && (
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                      <rect x="3" y="11" width="18" height="11" rx="2"/>
-                                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                                    </svg>
-                                  )}
-                                  {accessLabel}
-                                </span>
-                              </div>
-                              <div style={{ color: 'var(--ink-3)' }}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M12 2l2.4 7.4H22l-6 4.5 2.3 7.1-6.3-4.6L5.7 21 8 13.9 2 9.4h7.6z"/>
-                                </svg>
-                              </div>
-                            </div>
-
-                            {/* Subject Name */}
-                            <h3 style={{ margin: '14px 0 6px', fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--ink)' }}>
-                              {subject.name}
-                            </h3>
-
-                            {/* Description */}
-                            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: 'var(--ink-2)', flex: 1 }}>
-                              {subject.description ?? 'No description available.'}
-                            </p>
-
-                            {/* Footer */}
-                            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ fontSize: 13.5, fontWeight: 700, color: as_.color }}>
-                                {accessLabel === 'Free' ? 'Free access' : accessLabel === 'Mixed' ? 'Partial access' : 'Premium only'}
-                              </span>
-                              <div style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--bg-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-2)' }}>
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="9 18 15 12 9 6"/>
-                                </svg>
-                              </div>
-                            </div>
-
-                          </div>
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </div>
-
-              </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {universities.map((uni) => (
+              <UniversityCard key={uni.id} university={uni} />
             ))}
           </div>
         )}
+      </section>
 
-      </main>
+      <footer className="bg-slate-800 py-8 px-6">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-white font-semibold text-base">
+            Med<span className="text-blue-400">Navigator</span>
+          </div>
+          <p className="text-slate-400 text-xs">Academic resource platform for medical students</p>
+          <p className="text-slate-400 text-xs">© 2026 MedNavigator. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   )
 }

@@ -1,226 +1,98 @@
-import { requireAuth } from '@/lib/services/user'
-import { createServerClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import { revalidatePath } from 'next/cache'
+return (
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)', fontFamily: '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif' }}>
+      <main style={{ maxWidth: 1080, margin: '0 auto', padding: '28px 28px 64px' }}>
 
-async function markAsRead(notificationId: string, userId: string) {
-  'use server'
-  const supabase = await createServerClient()
-  await supabase.from('notification_reads').upsert({
-    notification_id: notificationId,
-    user_id: userId,
-    read_at: new Date().toISOString(),
-  }, { onConflict: 'notification_id,user_id' })
-  revalidatePath('/notifications')
-}
-
-export default async function NotificationsPage() {
-  const supabase = await createServerClient()
-
-  const profile = await requireAuth()
-
-  // ── Auto-generate subscription expiry notifications ──
-  const { data: activeSubs } = await supabase
-    .from('subject_subscriptions')
-    .select('id, subject_id, end_date, subjects(name)')
-    .eq('user_id', profile.id)
-    .eq('status', 'active')
-
-  if (activeSubs && activeSubs.length > 0) {
-    // Step 1: compute days left and build all potential sources
-    const allSources: string[] = []
-    const subsWithMeta = activeSubs.map(sub => {
-      const daysLeft = Math.ceil(
-        (new Date(sub.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-      )
-      const subjectName = (sub.subjects as { name: string } | null)?.name ?? 'Subject'
-      for (const days of [7, 3, 1]) {
-        if (daysLeft === days) allSources.push(`sub_expiry_${sub.id}_${days}d`)
-      }
-      if (daysLeft <= 0) allSources.push(`sub_expired_${sub.id}`)
-      return { sub, daysLeft, subjectName }
-    })
-
-    // Step 2: ONE query to find all already-sent notifications
-    const existingSet = new Set<string>()
-    if (allSources.length > 0) {
-      const { data: found } = await supabase
-        .from('notifications')
-        .select('notification_source')
-        .in('notification_source', allSources)
-      for (const n of found ?? []) {
-        if (n.notification_source) existingSet.add(n.notification_source)
-      }
-    }
-
-    // Step 3: insert only missing notifications
-    for (const { sub, daysLeft, subjectName } of subsWithMeta) {
-      for (const days of [7, 3, 1]) {
-        if (daysLeft === days) {
-          const source = `sub_expiry_${sub.id}_${days}d`
-          if (!existingSet.has(source)) {
-            const { data: notif } = await supabase
-              .from('notifications')
-              .insert({
-                title: `Subscription expiring in ${days} day${days > 1 ? 's' : ''}`,
-                message: `Your subscription to ${subjectName} expires in ${days} day${days > 1 ? 's' : ''}. Renew to keep access.`,
-                notification_source: source,
-                target_type: 'user',
-                priority: days === 1 ? 'critical' : days === 3 ? 'important' : 'normal',
-                user_id: profile.id,
-              })
-              .select('id')
-              .single()
-            if (notif) {
-              await supabase.from('notification_reads').insert({
-                notification_id: notif.id,
-                user_id: profile.id,
-              })
-            }
-          }
-        }
-      }
-      if (daysLeft <= 0) {
-        const source = `sub_expired_${sub.id}`
-        if (!existingSet.has(source)) {
-          await supabase.from('notifications').insert({
-            title: 'Subscription expired',
-            message: `Your subscription to ${subjectName} has expired. Contact support to renew.`,
-            notification_source: source,
-            target_type: 'user',
-            priority: 'critical',
-            user_id: profile.id,
-          })
-          await supabase
-            .from('subject_subscriptions')
-            .update({ status: 'expired' })
-            .eq('id', sub.id)
-        }
-      }
-    }
-  }
-
-  // ── Fetch all relevant notifications ──
-  const universityId = profile.default_university_id
-
-  let query = supabase
-    .from('notifications')
-    .select('*, notification_reads(id, user_id)')
-    .is('archived_at', null)
-    .order('created_at', { ascending: false })
-    .limit(50)
-
-  let orFilter = `target_type.eq.all`
-  orFilter += `,and(target_type.eq.user,user_id.eq.${profile.id})`
-  if (universityId) {
-    orFilter += `,and(target_type.eq.university,university_id.eq.${universityId})`
-  }
-
-  const { data: notifications } = await query.or(orFilter)
-
-  const unreadCount = notifications?.filter(n => {
-    const reads = n.notification_reads as { user_id: string }[] ?? []
-    return !reads.some(r => r.user_id === profile.id)
-  }).length ?? 0
-
-  const PRIORITY_CONFIG: Record<string, { bg: string; border: string; icon: string; badge: string; badgeText: string }> = {
-    normal:    { bg: '#fff',     border: '#E2E8F0', icon: '🔔', badge: '#EFF6FF', badgeText: '#2563EB' },
-    important: { bg: '#FFFBEB', border: '#FDE68A', icon: '⚠️', badge: '#FEF3C7', badgeText: '#D97706' },
-    critical:  { bg: '#FEF2F2', border: '#FECACA', icon: '🚨', badge: '#FEE2E2', badgeText: '#DC2626' },
-  }
-
-  function formatDate(dateStr: string | null) {
-    if (!dateStr) return ''
-    const d = new Date(dateStr)
-    const now = new Date()
-    const diff = Math.floor((now.getTime() - d.getTime()) / 1000)
-    if (diff < 60) return 'Just now'
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  }
-
-  const TARGET_LABELS: Record<string, string> = {
-    all: 'Platform', university: 'University', subject: 'Subject', user: 'Personal',
-  }
-
-  return (
-    <div style={{ background: '#F5F6FA', minHeight: '100%', padding: '28px 32px 80px', fontFamily: 'inherit' }}>
-
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>
+        {/* Header */}
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 28, fontWeight: 800, letterSpacing: '-0.025em' }}>
             Notifications
           </h1>
-          <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#64748B' }}>
+          <div style={{ color: 'var(--ink-2)', fontSize: 14.5, display: 'flex', alignItems: 'center', gap: 8 }}>
             {notifications?.length ?? 0} notifications
             {unreadCount > 0 && (
-              <span style={{ marginLeft: '8px', padding: '2px 8px', borderRadius: '20px', background: '#EFF6FF', color: '#2563EB', fontSize: '12px', fontWeight: 700 }}>
+              <span style={{ padding: '2px 10px', borderRadius: 20, background: 'rgba(47,107,255,0.12)', color: 'var(--primary)', fontSize: 12, fontWeight: 700 }}>
                 {unreadCount} unread
               </span>
             )}
-          </p>
+          </div>
         </div>
-      </div>
 
-      {/* Empty state */}
-      {(!notifications || notifications.length === 0) && (
-        <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '64px 24px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔔</div>
-          <p style={{ fontSize: '17px', fontWeight: 700, color: '#1E293B', margin: '0 0 8px' }}>No notifications yet</p>
-          <p style={{ fontSize: '14px', color: '#94A3B8', margin: 0 }}>You will be notified of important updates here.</p>
-        </div>
-      )}
+        {/* Empty State */}
+        {(!notifications || notifications.length === 0) && (
+          <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, boxShadow: 'var(--shadow)', padding: '64px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 12 }}>
+            <div style={{ width: 64, height: 64, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(216,154,6,0.13)', color: 'var(--warn)' }}>
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>No notifications yet</div>
+            <div style={{ fontSize: 14, color: 'var(--ink-2)', maxWidth: 360 }}>
+              You'll be notified of important updates, new lectures and subscription reminders right here.
+            </div>
+          </div>
+        )}
 
-      {/* Notifications list */}
-      {notifications && notifications.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '720px' }}>
-          {notifications.map(notif => {
-            const reads = notif.notification_reads as { user_id: string }[] ?? []
-            const isRead = reads.some(r => r.user_id === profile.id)
-            const cfg = PRIORITY_CONFIG[notif.priority] ?? PRIORITY_CONFIG.normal
+        {/* Notifications List */}
+        {notifications && notifications.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {notifications.map(notif => {
+              const reads = notif.notification_reads as { user_id: string }[] ?? []
+              const isRead = reads.some(r => r.user_id === profile.id)
 
-            return (
-              <div
-                key={notif.id}
-                style={{
-                  background: isRead ? '#fff' : cfg.bg,
-                  borderRadius: '16px',
-                  border: `1px solid ${isRead ? '#E2E8F0' : cfg.border}`,
-                  borderLeft: !isRead ? `4px solid ${cfg.badgeText}` : `1px solid #E2E8F0`,
+              const priorityConfig: Record<string, { color: string; bg: string; border: string; label: string }> = {
+                normal:    { color: 'var(--primary)',  bg: 'rgba(47,107,255,0.1)',  border: 'var(--primary)',  label: 'Normal'    },
+                important: { color: 'var(--warn)',     bg: 'rgba(216,154,6,0.12)', border: 'var(--warn)',     label: 'Important' },
+                critical:  { color: 'var(--danger)',   bg: 'rgba(220,72,66,0.1)',  border: 'var(--danger)',   label: 'Critical'  },
+              }
+              const cfg = priorityConfig[notif.priority] ?? priorityConfig.normal
+
+              return (
+                <div key={notif.id} style={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--line)',
+                  borderLeft: !isRead ? `4px solid ${cfg.color}` : '1px solid var(--line)',
+                  borderRadius: 16,
+                  boxShadow: 'var(--shadow)',
                   padding: '16px 20px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
                   display: 'flex',
                   alignItems: 'flex-start',
-                  gap: '14px',
-                }}
-              >
-                <div style={{ fontSize: '22px', flexShrink: 0, marginTop: '2px' }}>{cfg.icon}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
-                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>{notif.title}</p>
-                    <span style={{ padding: '2px 8px', borderRadius: '6px', background: cfg.badge, color: cfg.badgeText, fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      {notif.priority}
-                    </span>
-                    <span style={{ padding: '2px 8px', borderRadius: '6px', background: '#F1F5F9', color: '#64748B', fontSize: '10px', fontWeight: 600 }}>
-                      {TARGET_LABELS[notif.target_type] ?? notif.target_type}
-                    </span>
-                    {!isRead && (
-                      <span style={{ padding: '2px 8px', borderRadius: '6px', background: '#EFF6FF', color: '#2563EB', fontSize: '10px', fontWeight: 700 }}>
-                        NEW
-                      </span>
-                    )}
+                  gap: 14,
+                }}>
+                  {/* Icon */}
+                  <div style={{ width: 42, height: 42, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: cfg.bg, color: cfg.color }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                    </svg>
                   </div>
-                  <p style={{ margin: '0 0 8px', fontSize: '13.5px', color: '#475569', lineHeight: 1.6 }}>{notif.message}</p>
-                  <p style={{ margin: 0, fontSize: '11px', color: '#94A3B8' }}>{formatDate(notif.created_at)}</p>
+
+                  {/* Content */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{notif.title}</span>
+                      <span style={{ padding: '2px 8px', borderRadius: 6, background: cfg.bg, color: cfg.color, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        {cfg.label}
+                      </span>
+                      <span style={{ padding: '2px 8px', borderRadius: 6, background: 'var(--bg-2)', color: 'var(--ink-3)', fontSize: 10, fontWeight: 600 }}>
+                        {TARGET_LABELS[notif.target_type] ?? notif.target_type}
+                      </span>
+                      {!isRead && (
+                        <span style={{ padding: '2px 8px', borderRadius: 6, background: 'rgba(47,107,255,0.12)', color: 'var(--primary)', fontSize: 10, fontWeight: 700 }}>
+                          NEW
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ margin: '0 0 8px', fontSize: 13.5, color: 'var(--ink-2)', lineHeight: 1.6 }}>{notif.message}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: 'var(--ink-3)' }}>{formatDate(notif.created_at)}</p>
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+              )
+            })}
+          </div>
+        )}
+
+      </main>
     </div>
   )
 }

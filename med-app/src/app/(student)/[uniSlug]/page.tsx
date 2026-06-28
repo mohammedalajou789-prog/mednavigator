@@ -21,7 +21,7 @@ export default async function UniversityPage({ params }: PageProps) {
 
   const { data: subjects } = await supabase
     .from('subjects')
-    .select('id, name, subject_type, category, access_mode, description')
+    .select('id, name, slug, subject_type, category, access_mode, description')
     .eq('university_id', university.id)
     .eq('is_published', true)
     .order('name') as any
@@ -127,7 +127,7 @@ export default async function UniversityPage({ params }: PageProps) {
                     const grad = gradients[section.key]
 
                     return (
-                      <Link key={subject.id} href={`/${uniSlug}/${subject.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+                      <Link key={subject.id} href={`/${uniSlug}/${(subject as any).slug ?? subject.id}`} style={{ textDecoration: 'none', display: 'block' }}>
                         <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, boxShadow: 'var(--shadow)', overflow: 'hidden', cursor: 'pointer', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
                           <div style={{ height: 6, background: grad }} />

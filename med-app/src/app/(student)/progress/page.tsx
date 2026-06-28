@@ -1,4 +1,4 @@
-import { requireAuth } from '@/lib/services/user'
+﻿import { requireAuth } from '@/lib/services/user'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -125,14 +125,14 @@ export default async function ProgressPage() {
   }
 
   return (
-    <div style={{ background: '#F5F6FA', minHeight: '100%', padding: '28px 32px 80px', fontFamily: 'inherit' }}>
+    <div style={{ background: 'var(--bg)', minHeight: '100%', padding: '28px 32px 80px', fontFamily: 'inherit' }}>
 
       {/* Header */}
       <div style={{ marginBottom: '28px' }}>
-        <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>
+        <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.025em' }}>
           My Progress
         </h1>
-        <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#64748B' }}>
+        <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--ink-2)' }}>
           Track your learning across all subjects
         </p>
       </div>
@@ -193,15 +193,15 @@ export default async function ProgressPage() {
 
         {/* Subject Progress */}
         <div>
-          <h2 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 700, color: '#1E293B' }}>
+          <h2 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 700, color: 'var(--ink)' }}>
             Progress by Subject
           </h2>
 
           {subjects.length === 0 ? (
-            <div style={{ background: '#fff', borderRadius: '18px', border: '1px solid #E2E8F0', padding: '48px 24px', textAlign: 'center' }}>
+            <div style={{ background: 'var(--card)', borderRadius: '18px', border: '1px solid var(--line)', padding: '48px 24px', textAlign: 'center' }}>
               <div style={{ fontSize: '40px', marginBottom: '12px' }}>📚</div>
-              <p style={{ fontSize: '15px', fontWeight: 600, color: '#374151', margin: '0 0 8px' }}>No progress yet</p>
-              <p style={{ fontSize: '13px', color: '#94A3B8', margin: '0 0 20px' }}>Start reading lectures to track your progress</p>
+              <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--ink-2)', margin: '0 0 8px' }}>No progress yet</p>
+              <p style={{ fontSize: '13px', color: 'var(--ink-3)', margin: '0 0 20px' }}>Start reading lectures to track your progress</p>
               <Link href="/home" prefetch={false} style={{ padding: '10px 24px', background: '#2563EB', color: '#fff', borderRadius: '10px', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
                 Browse Subjects
               </Link>
@@ -215,20 +215,20 @@ export default async function ProgressPage() {
                 const completedInSubject = subject.lectures.filter(l => l.completed).length
 
                 return (
-                  <div key={subject.id} style={{ background: '#fff', borderRadius: '18px', border: '1px solid #E2E8F0', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                  <div key={subject.id} style={{ background: 'var(--card)', borderRadius: '18px', border: '1px solid var(--line)', padding: '20px', boxShadow: 'var(--shadow)' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' }}>
                       <div>
-                        <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1E293B' }}>{subject.name}</p>
-                        <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94A3B8' }}>{subject.universityName}</p>
+                        <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--ink)' }}>{subject.name}</p>
+                        <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'var(--ink-3)' }}>{subject.universityName}</p>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <p style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#2563EB' }}>{subjectProgress}%</p>
-                        <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#94A3B8' }}>{completedInSubject}/{subject.lectures.length} done</p>
+                        <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--ink-3)' }}>{completedInSubject}/{subject.lectures.length} done</p>
                       </div>
                     </div>
 
                     {/* Progress bar */}
-                    <div style={{ height: '6px', background: '#EEF0F4', borderRadius: '999px', marginBottom: '14px', overflow: 'hidden' }}>
+                    <div style={{ height: '6px', background: 'var(--bg-2)', borderRadius: '999px', marginBottom: '14px', overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${subjectProgress}%`, background: subjectProgress === 100 ? '#16A34A' : 'linear-gradient(90deg,#3B82F6,#2563EB)', borderRadius: '999px', transition: 'width 0.3s ease' }} />
                     </div>
 
@@ -239,15 +239,15 @@ export default async function ProgressPage() {
                           key={lecture.id}
                           href={`/${subject.universityId}/${subject.id}/${lecture.id}`}
                           prefetch={false}
-                          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '10px', background: '#F8FAFC', textDecoration: 'none', transition: 'background 0.15s' }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '10px', background: 'var(--bg-2)', textDecoration: 'none', transition: 'background 0.15s' }}
                         >
                           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: lecture.completed ? '#16A34A' : lecture.progress > 0 ? '#2563EB' : '#CBD5E1', flexShrink: 0 }} />
-                          <span style={{ flex: 1, fontSize: '13px', fontWeight: 500, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lecture.title}</span>
+                          <span style={{ flex: 1, fontSize: '13px', fontWeight: 500, color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lecture.title}</span>
                           <span style={{ fontSize: '12px', fontWeight: 700, color: lecture.completed ? '#16A34A' : '#2563EB', flexShrink: 0 }}>{lecture.progress}%</span>
                         </Link>
                       ))}
                       {subject.lectures.length > 5 && (
-                        <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8', textAlign: 'center' }}>
+                        <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--ink-3)', textAlign: 'center' }}>
                           +{subject.lectures.length - 5} more lectures
                         </p>
                       )}
@@ -263,7 +263,7 @@ export default async function ProgressPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
           {/* Summary card */}
-          <div style={{ background: '#fff', borderRadius: '18px', border: '1px solid #E2E8F0', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <div style={{ background: 'var(--card)', borderRadius: '18px', border: '1px solid var(--line)', padding: '20px', boxShadow: 'var(--shadow)' }}>
             <p style={{ margin: '0 0 16px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Summary</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <SummaryRow label="Total Progress" value={`${totalProgress}%`} color="#2563EB" percent={totalProgress} />
@@ -274,24 +274,24 @@ export default async function ProgressPage() {
           </div>
 
           {/* Recent Activity */}
-          <div style={{ background: '#fff', borderRadius: '18px', border: '1px solid #E2E8F0', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <div style={{ background: 'var(--card)', borderRadius: '18px', border: '1px solid var(--line)', padding: '20px', boxShadow: 'var(--shadow)' }}>
             <p style={{ margin: '0 0 14px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Recent Activity</p>
             {recentActivity.length === 0 ? (
-              <p style={{ fontSize: '13px', color: '#94A3B8', textAlign: 'center', padding: '16px 0' }}>No activity yet</p>
+              <p style={{ fontSize: '13px', color: 'var(--ink-3)', textAlign: 'center', padding: '16px 0' }}>No activity yet</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {recentActivity.map((p, i) => {
                   const lecture = p.lectures as any
-                  const typeStyle = CONTENT_TYPE_COLORS[p.content_type] ?? { bg: '#F1F5F9', color: '#64748B' }
+                  const typeStyle = CONTENT_TYPE_COLORS[p.content_type] ?? { bg: '#F1F5F9', color: 'var(--ink-2)' }
                   return (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', background: typeStyle.bg, color: typeStyle.color, flexShrink: 0 }}>
                         {CONTENT_TYPE_LABELS[p.content_type] ?? p.content_type}
                       </span>
-                      <span style={{ flex: 1, fontSize: '12px', color: '#374151', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <span style={{ flex: 1, fontSize: '12px', color: 'var(--ink-2)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {lecture?.title ?? 'Lecture'}
                       </span>
-                      <span style={{ fontSize: '11px', color: '#94A3B8', flexShrink: 0 }}>
+                      <span style={{ fontSize: '11px', color: 'var(--ink-3)', flexShrink: 0 }}>
                         {formatDate(p.last_accessed_at)}
                       </span>
                     </div>
@@ -315,13 +315,13 @@ function KpiCard({ icon, label, value, sub, color, bg }: {
   bg: string
 }) {
   return (
-    <div style={{ background: '#fff', borderRadius: '18px', border: '1px solid #E2E8F0', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+    <div style={{ background: 'var(--card)', borderRadius: '18px', border: '1px solid var(--line)', padding: '20px', boxShadow: 'var(--shadow)' }}>
       <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: bg, color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
         {icon}
       </div>
-      <p style={{ margin: '0 0 2px', fontSize: '26px', fontWeight: 800, color: '#0F172A', lineHeight: 1 }}>{value}</p>
-      <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 600, color: '#374151' }}>{label}</p>
-      <p style={{ margin: 0, fontSize: '11px', color: '#94A3B8' }}>{sub}</p>
+      <p style={{ margin: '0 0 2px', fontSize: '26px', fontWeight: 800, color: 'var(--ink)', lineHeight: 1 }}>{value}</p>
+      <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 600, color: 'var(--ink-2)' }}>{label}</p>
+      <p style={{ margin: 0, fontSize: '11px', color: 'var(--ink-3)' }}>{sub}</p>
     </div>
   )
 }
@@ -329,10 +329,10 @@ function SummaryRow({ label, value, color, percent }: { label: string; value: st
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-        <span style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>{label}</span>
+        <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--ink-2)' }}>{label}</span>
         <span style={{ fontSize: '13px', fontWeight: 700, color }}>{value}</span>
       </div>
-      <div style={{ height: '5px', background: '#EEF0F4', borderRadius: '999px', overflow: 'hidden' }}>
+      <div style={{ height: '5px', background: 'var(--bg-2)', borderRadius: '999px', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${percent}%`, background: color, borderRadius: '999px', transition: 'width 0.3s ease' }} />
       </div>
     </div>

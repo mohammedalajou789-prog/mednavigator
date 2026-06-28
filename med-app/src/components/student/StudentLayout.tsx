@@ -236,8 +236,8 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '12px', borderRadius: '13px', background: 'rgba(255,255,255,0.05)', border: `1px solid ${SIDEBAR_BORDER}` }}>
               {/* Avatar */}
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#2563EB', color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {initials}
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(140deg, rgb(91, 140, 255), rgb(47, 107, 255))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="8.6" r="3.9"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0z"/></svg>
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#F1F5F9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.full_name ?? 'Student'}</div>
@@ -460,8 +460,8 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
 
               {/* Profile chip */}
               <Link href="/profile" prefetch={false} style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '40px', padding: '0 8px 0 5px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', cursor: 'pointer', textDecoration: 'none', flexShrink: 0 }}>
-                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#2563EB', color: '#fff', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {initials}
+                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(140deg, rgb(91, 140, 255), rgb(47, 107, 255))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="8.6" r="3.9"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0z"/></svg>
                 </div>
                 <svg style={{ color: '#94A3B8' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </Link>

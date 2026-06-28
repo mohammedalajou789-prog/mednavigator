@@ -105,16 +105,7 @@ export default async function ExplorePage() {
               )
             })}
 
-            {/* More universities soon */}
-            <div style={{ border: '1px dashed var(--line)', borderRadius: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 8, padding: 30, color: 'var(--ink-3)', minHeight: 150 }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="16"/>
-                <line x1="8" y1="12" x2="16" y2="12"/>
-              </svg>
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-2)' }}>More universities soon</div>
-              <div style={{ fontSize: 12.5 }}>New institutions are being added.</div>
-            </div>
+            
           </div>
         )}
 

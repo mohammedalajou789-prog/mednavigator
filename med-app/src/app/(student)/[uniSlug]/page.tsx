@@ -11,7 +11,6 @@ export default async function UniversityPage({ params }: PageProps) {
 
   const supabase = await createServerClient()
 
-  // resolve slug â†’ university
   const { data: university } = await supabase
     .from('universities')
     .select('id, name, logo_url')
@@ -20,7 +19,6 @@ export default async function UniversityPage({ params }: PageProps) {
 
   if (!university) notFound()
 
-  // fetch all published subjects for this university
   const { data: subjects } = await supabase
     .from('subjects')
     .select('id, name, subject_type, category, access_mode, description')
@@ -37,151 +35,153 @@ export default async function UniversityPage({ params }: PageProps) {
     description: string | null
   }>
 
-  // group by category
   const preclinical   = subjectList.filter(s => s.category === 'preclinical')
   const clinicalMajor = subjectList.filter(s => s.category === 'clinical_major')
   const clinicalMinor = subjectList.filter(s => s.category === 'clinical_minor')
   const other         = subjectList.filter(s => !['preclinical','clinical_major','clinical_minor'].includes(s.category ?? ''))
 
   const sections = [
-    { key: 'preclinical',    label: 'Pre-Clinical',     list: preclinical,   color: 'bg-blue-600' },
-    { key: 'clinical_major', label: 'Clinical â€” Major', list: clinicalMajor, color: 'bg-violet-600' },
-    { key: 'clinical_minor', label: 'Clinical â€” Minor', list: clinicalMinor, color: 'bg-teal-600' },
-    { key: 'other',          label: 'General',          list: other,         color: 'bg-slate-500' },
+    { key: 'preclinical',    label: 'Pre-Clinical',     list: preclinical,   barColor: '#2F6BFF' },
+    { key: 'clinical_major', label: 'Clinical - Major', list: clinicalMajor, barColor: '#6E6BD8' },
+    { key: 'clinical_minor', label: 'Clinical - Minor', list: clinicalMinor, barColor: '#138A5A' },
+    { key: 'other',          label: 'General',          list: other,         barColor: '#9AA3B2' },
   ].filter(s => s.list.length > 0)
 
-  const typeColor: Record<string, { text: string; bg: string; dot: string }> = {
-    standard: { text: 'text-blue-700 dark:text-blue-400',     bg: 'bg-blue-50 dark:bg-blue-900/30',     dot: 'bg-blue-500' },
-    system:   { text: 'text-violet-700 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-900/30', dot: 'bg-violet-500' },
-    clinical: { text: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30', dot: 'bg-emerald-500' },
+  const typeStyle: Record<string, { color: string; bg: string }> = {
+    standard: { color: '#2F6BFF', bg: 'rgba(47,107,255,0.11)'  },
+    system:   { color: '#6E6BD8', bg: 'rgba(110,107,216,0.11)' },
+    clinical: { color: '#138A5A', bg: 'rgba(19,138,90,0.11)'   },
   }
 
-  const accessColor: Record<string, { text: string; bg: string }> = {
-    free:    { text: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
-    mixed:   { text: 'text-amber-700 dark:text-amber-400',     bg: 'bg-amber-50 dark:bg-amber-900/30' },
-    premium: { text: 'text-rose-700 dark:text-rose-400',       bg: 'bg-rose-50 dark:bg-rose-900/30' },
+  const accessStyle: Record<string, { color: string; bg: string }> = {
+    free:    { color: '#138A5A', bg: 'rgba(19,138,90,0.11)'  },
+    mixed:   { color: '#D89A06', bg: 'rgba(216,154,6,0.11)'  },
+    premium: { color: '#DC4842', bg: 'rgba(220,72,66,0.11)'  },
+  }
+
+  const gradients: Record<string, string> = {
+    preclinical:    'linear-gradient(90deg,#2F6BFF,#6E6BD8)',
+    clinical_major: 'linear-gradient(90deg,#6E6BD8,#2F6BFF)',
+    clinical_minor: 'linear-gradient(90deg,#138A5A,#2F6BFF)',
+    other:          'linear-gradient(90deg,#9AA3B2,#6E6BD8)',
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-      <main className="max-w-screen-xl mx-auto px-6 py-8 pb-16">
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)', fontFamily: '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif' }}>
+      <main style={{ maxWidth: 1080, margin: '0 auto', padding: '28px 28px 64px' }}>
 
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-[13px] text-slate-400 mb-6">
-          <Link href="/home" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+        <nav style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-3)', marginBottom: 18 }}>
+          <Link href="/home" style={{ fontWeight: 600, color: 'var(--ink-2)', textDecoration: 'none' }}>
             Home
           </Link>
-          <span className="text-slate-300 dark:text-slate-600">/</span>
-          <span className="text-slate-700 dark:text-slate-200 font-semibold">{university.name}</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+          <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{university.name}</span>
         </nav>
 
-        {/* University Header */}
-        <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-7 mb-8 shadow-sm">
-          <div className="flex items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-md overflow-hidden">
-              {university.logo_url ? (
-                <img src={university.logo_url} alt={university.name} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-[22px] font-bold text-white">
-                  {university.name.charAt(0)}
-                </span>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-[28px] font-bold tracking-tight text-slate-900 dark:text-white mb-1">
-                {university.name}
-              </h1>
-              <p className="text-[14px] text-slate-400">
-                {subjectList.length} {subjectList.length === 1 ? 'subject' : 'subjects'} available
-              </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+          <div style={{ width: 58, height: 58, borderRadius: '50%', border: '1px solid var(--line)', overflow: 'hidden', flexShrink: 0, background: 'var(--card)' }}>
+            {university.logo_url ? (
+              <img src={university.logo_url} alt={university.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2F6BFF', color: '#fff', fontSize: 22, fontWeight: 800 }}>
+                {university.name.charAt(0)}
+              </div>
+            )}
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>{university.name}</h1>
+            <div style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 2 }}>
+              {subjectList.length} {subjectList.length === 1 ? 'subject' : 'subjects'} available
             </div>
           </div>
-        </section>
+        </div>
 
-        {/* Subjects */}
         {subjectList.length === 0 ? (
-          <div className="text-center py-20 text-slate-400 text-[14px]">
+          <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--ink-3)', fontSize: 14 }}>
             No subjects available yet.
           </div>
         ) : (
-          <div className="flex flex-col gap-10">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
             {sections.map(section => (
               <div key={section.key}>
-                {/* category header */}
-                <div className="flex items-center gap-3 mb-5">
-                  <div className={`w-1 h-5 rounded-full ${section.color}`} />
-                  <h2 className="text-[13px] font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase">
-                    {section.label}
-                  </h2>
-                  <span className="text-[12px] text-slate-400 bg-slate-100 dark:bg-slate-700 px-2.5 py-0.5 rounded-full font-semibold">
-                    {section.list.length}
-                  </span>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                  <div style={{ width: 4, height: 18, borderRadius: 99, background: section.barColor }} />
+                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink-2)' }}>
+                    {section.label.toUpperCase()}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
+                    · {section.list.length} {section.list.length === 1 ? 'subject' : 'subjects'}
+                  </div>
                 </div>
 
-                {/* subject cards grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
                   {section.list.map(subject => {
-                    const typeStyle   = typeColor[subject.subject_type]  ?? typeColor.standard
-                    const accessStyle = accessColor[subject.access_mode] ?? accessColor.free
-                    const isLocked    = subject.access_mode === 'premium'
-
-                    const typeLabel   = subject.subject_type === 'system'   ? 'System'
-                      : subject.subject_type === 'clinical' ? 'Clinical' : 'Standard'
-                    const accessLabel = subject.access_mode === 'premium'   ? 'Premium'
-                      : subject.access_mode === 'mixed'    ? 'Mixed'    : 'Free'
+                    const ts  = typeStyle[subject.subject_type]  ?? typeStyle.standard
+                    const as_ = accessStyle[subject.access_mode] ?? accessStyle.free
+                    const isLocked   = subject.access_mode === 'premium'
+                    const typeLabel  = subject.subject_type === 'system' ? 'System' : subject.subject_type === 'clinical' ? 'Clinical' : 'Standard'
+                    const accessLabel = subject.access_mode === 'premium' ? 'Premium' : subject.access_mode === 'mixed' ? 'Mixed' : 'Free'
+                    const grad = gradients[section.key]
 
                     return (
-                      <Link
-                        key={subject.id}
-                        href={`/${uniSlug}/${subject.id}`}
-                        className="no-underline block group"
-                      >
-                        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm h-full flex flex-col gap-4 group-hover:border-blue-200 dark:group-hover:border-blue-800 group-hover:shadow-md transition-all duration-150">
+                      <Link key={subject.id} href={`/${uniSlug}/${subject.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+                        <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, boxShadow: 'var(--shadow)', overflow: 'hidden', cursor: 'pointer', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
-                          {/* badges row */}
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${typeStyle.text} ${typeStyle.bg}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${typeStyle.dot}`} />
-                              {typeLabel}
-                            </span>
-                            <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ${accessStyle.text} ${accessStyle.bg}`}>
-                              {isLocked && (
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <rect x="3" y="11" width="18" height="11" rx="2"/>
-                                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                          <div style={{ height: 6, background: grad }} />
+
+                          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', flex: 1 }}>
+
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 9px', borderRadius: 7, background: ts.bg, color: ts.color }}>
+                                  {typeLabel}
+                                </span>
+                                <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 9px', borderRadius: 7, background: as_.bg, color: as_.color, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                  {isLocked && (
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                      <rect x="3" y="11" width="18" height="11" rx="2"/>
+                                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                    </svg>
+                                  )}
+                                  {accessLabel}
+                                </span>
+                              </div>
+                              <div style={{ color: 'var(--ink-3)' }}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 2l2.4 7.4H22l-6 4.5 2.3 7.1-6.3-4.6L5.7 21 8 13.9 2 9.4h7.6z"/>
                                 </svg>
-                              )}
-                              {accessLabel}
-                            </span>
-                          </div>
+                              </div>
+                            </div>
 
-                          {/* subject name */}
-                          <div className="flex-1">
-                            <h3 className="text-[17px] font-bold text-slate-900 dark:text-white leading-snug mb-1.5">
+                            <h3 style={{ margin: '14px 0 6px', fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--ink)' }}>
                               {subject.name}
                             </h3>
-                            {subject.description && (
-                              <p className="text-[12.5px] text-slate-400 leading-relaxed line-clamp-2">
-                                {subject.description}
-                              </p>
-                            )}
-                          </div>
 
-                          {/* arrow */}
-                          <div className="flex items-center justify-end">
-                            <span className="text-[12px] font-semibold text-blue-600 dark:text-blue-400 group-hover:gap-2 flex items-center gap-1 transition-all">
-                              Open subject
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M9 6l6 6-6 6"/>
-                              </svg>
-                            </span>
-                          </div>
+                            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: 'var(--ink-2)', flex: 1 }}>
+                              {subject.description ?? 'No description available.'}
+                            </p>
 
+                            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: 13.5, fontWeight: 700, color: as_.color }}>
+                                {accessLabel === 'Free' ? 'Free access' : accessLabel === 'Mixed' ? 'Partial access' : 'Premium only'}
+                              </span>
+                              <div style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--bg-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-2)' }}>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="9 18 15 12 9 6"/>
+                                </svg>
+                              </div>
+                            </div>
+
+                          </div>
                         </div>
                       </Link>
                     )
                   })}
                 </div>
+
               </div>
             ))}
           </div>

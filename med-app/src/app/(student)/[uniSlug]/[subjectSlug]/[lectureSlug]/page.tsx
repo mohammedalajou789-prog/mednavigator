@@ -19,20 +19,28 @@ interface PageProps {
 export default async function LecturePage({ params }: PageProps) {
   const { uniSlug, subjectSlug, lectureSlug } = await params
 
-  // resolve slugs → ids
-  const supabaseSlug = await createServerClient()
-  const { data: uniRow } = await supabaseSlug.from('universities').select('id').eq('slug' as any, uniSlug).single()
-  const { data: subRow } = await supabaseSlug.from('subjects').select('id').eq('slug' as any, subjectSlug).single()
-  const { data: lecRow } = await supabaseSlug.from('lectures').select('id').eq('slug' as any, lectureSlug).single()
-  const resolvedLectureId = lecRow?.id ?? ''
-  const universityId = uniRow?.id ?? ''
-  const subjectId    = subRow?.id ?? ''
-  if (!universityId || !subjectId) redirect('/')
   const supabase = await createServerClient()
 
-  // Step 1: auth — must happen first to get userId
-  const { data: { user } } = await supabase.auth.getUser()
+  // ── Step 1: resolve slugs + auth in parallel ──
+  const [
+    { data: uniRow },
+    { data: subRow },
+    { data: lecRow },
+    { data: { user } },
+  ] = await Promise.all([
+    supabase.from('universities').select('id').eq('slug' as any, uniSlug).single(),
+    supabase.from('subjects').select('id').eq('slug' as any, subjectSlug).single(),
+    supabase.from('lectures').select('id').eq('slug' as any, lectureSlug).single(),
+    supabase.auth.getUser(),
+  ])
 
+  const universityId      = uniRow?.id ?? ''
+  const subjectId         = subRow?.id ?? ''
+  const resolvedLectureId = lecRow?.id ?? ''
+
+  if (!universityId || !subjectId || !resolvedLectureId) redirect('/')
+
+  // ── Step 2: get user profile ──
   let userId: string | null = null
   let userName: string | null = null
   if (user) {
@@ -41,36 +49,27 @@ export default async function LecturePage({ params }: PageProps) {
       .select('id, full_name')
       .eq('auth_user_id', user.id)
       .single()
-    userId = profile?.id ?? null
+    userId   = profile?.id ?? null
     userName = profile?.full_name ?? null
   }
 
-  // Step 2: fetch lecture, subject, and access check all in parallel
+  // ── Step 3: lecture + subject + access in parallel ──
   const [
     { data: lecture },
     { data: subject },
     accessResult,
   ] = await Promise.all([
-    supabase
-      .from('lectures')
-      .select('id, title, description, status')
-      .eq('id', resolvedLectureId)
-      .eq('status', 'published')
-      .single(),
-    supabase
-      .from('subjects')
-      .select('id, name, access_mode, is_free')
-      .eq('id', subjectId)
-      .single(),
+    supabase.from('lectures').select('id, title, description, status').eq('id', resolvedLectureId).eq('status', 'published').single(),
+    supabase.from('subjects').select('id, name, access_mode, is_free').eq('id', subjectId).single(),
     checkUserAccess(subjectId, userId),
   ])
 
-  if (!lecture) redirect(`/${universityId}/${subjectId}`)
-  if (!subject) redirect(`/${universityId}`)
+  if (!lecture) redirect(`/${uniSlug}/${subjectSlug}`)
+  if (!subject) redirect(`/${uniSlug}`)
 
   const accessAllowed = accessResult.allowed
 
-  // Step 3: fetch all content in parallel
+  // ── Step 4: all content in parallel ──
   const [
     sheetResult,
     summaryResult,
@@ -86,57 +85,34 @@ export default async function LecturePage({ params }: PageProps) {
     getFlashcardsByLectureId(resolvedLectureId, subjectId, userId, accessAllowed),
     getQuizQuestionsByLectureId(resolvedLectureId, subjectId, userId, accessAllowed),
     getPreviousYearQuestionsByLectureId(resolvedLectureId, subjectId, userId, accessAllowed),
-    supabase
-      .from('videos')
-      .select('id, title, description, video_url, is_preview, display_order')
-      .eq('lecture_id', resolvedLectureId)
-      .order('display_order'),
-    supabase
-      .from('sheets')
-      .select('id')
-      .eq('lecture_id', resolvedLectureId)
-      .maybeSingle(),
-    supabase
-      .from('summaries')
-      .select('id')
-      .eq('lecture_id', resolvedLectureId)
-      .maybeSingle(),
+    supabase.from('videos').select('id, title, description, video_url, is_preview, display_order').eq('lecture_id', resolvedLectureId).order('display_order'),
+    supabase.from('sheets').select('id').eq('lecture_id', resolvedLectureId).maybeSingle(),
+    supabase.from('summaries').select('id').eq('lecture_id', resolvedLectureId).maybeSingle(),
   ])
 
-  const sheetImageSlots: Record<number, string> = {}
+  // ── Step 5: image slots in parallel ──
+  const sheetImageSlots:   Record<number, string> = {}
   const summaryImageSlots: Record<number, string> = {}
 
-  if (sheetData?.id) {
-    const { data: slots } = await supabase
-      .from('image_slots')
-      .select('slot_number, media_library(file_url)')
-      .eq('entity_type', 'sheet')
-      .eq('entity_id', sheetData.id)
+  const [sheetSlots, summarySlots] = await Promise.all([
+    sheetData?.id
+      ? supabase.from('image_slots').select('slot_number, media_library(file_url)').eq('entity_type', 'sheet').eq('entity_id', sheetData.id)
+      : Promise.resolve({ data: null }),
+    summaryData?.id
+      ? supabase.from('image_slots').select('slot_number, media_library(file_url)').eq('entity_type', 'summary').eq('entity_id', summaryData.id)
+      : Promise.resolve({ data: null }),
+  ])
 
-    if (slots) {
-      for (const slot of slots) {
-        const media = slot.media_library as { file_url: string } | null
-        if (media?.file_url) {
-          sheetImageSlots[slot.slot_number] = media.file_url
-        }
-      }
+  if (sheetSlots.data) {
+    for (const slot of sheetSlots.data) {
+      const media = slot.media_library as { file_url: string } | null
+      if (media?.file_url) sheetImageSlots[slot.slot_number] = media.file_url
     }
   }
-
-  if (summaryData?.id) {
-    const { data: slots } = await supabase
-      .from('image_slots')
-      .select('slot_number, media_library(file_url)')
-      .eq('entity_type', 'summary')
-      .eq('entity_id', summaryData.id)
-
-    if (slots) {
-      for (const slot of slots) {
-        const media = slot.media_library as { file_url: string } | null
-        if (media?.file_url) {
-          summaryImageSlots[slot.slot_number] = media.file_url
-        }
-      }
+  if (summarySlots.data) {
+    for (const slot of summarySlots.data) {
+      const media = slot.media_library as { file_url: string } | null
+      if (media?.file_url) summaryImageSlots[slot.slot_number] = media.file_url
     }
   }
 

@@ -1,4 +1,4 @@
-import { createClient as createServerClient } from '@/lib/supabase/server'
+﻿import { createClient as createServerClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
@@ -11,7 +11,7 @@ export default async function UniversityPage({ params }: PageProps) {
 
   const supabase = await createServerClient()
 
-  // resolve slug → university
+  // resolve slug â†’ university
   const { data: university } = await supabase
     .from('universities')
     .select('id, name, logo_url')
@@ -45,8 +45,8 @@ export default async function UniversityPage({ params }: PageProps) {
 
   const sections = [
     { key: 'preclinical',    label: 'Pre-Clinical',     list: preclinical,   color: 'bg-blue-600' },
-    { key: 'clinical_major', label: 'Clinical — Major', list: clinicalMajor, color: 'bg-violet-600' },
-    { key: 'clinical_minor', label: 'Clinical — Minor', list: clinicalMinor, color: 'bg-teal-600' },
+    { key: 'clinical_major', label: 'Clinical â€” Major', list: clinicalMajor, color: 'bg-violet-600' },
+    { key: 'clinical_minor', label: 'Clinical â€” Minor', list: clinicalMinor, color: 'bg-teal-600' },
     { key: 'other',          label: 'General',          list: other,         color: 'bg-slate-500' },
   ].filter(s => s.list.length > 0)
 

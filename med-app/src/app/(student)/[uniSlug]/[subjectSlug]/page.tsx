@@ -152,489 +152,256 @@ export default async function SubjectPage({ params }: PageProps) {
 
   // ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-      <main className="max-w-screen-xl mx-auto px-6 py-8 pb-16">
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)', fontFamily: '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif' }}>
+      <main style={{ maxWidth: 1080, margin: '0 auto', padding: '28px 28px 64px' }}>
 
-        {/* ── Breadcrumb ── */}
-        <nav className="flex items-center gap-2 text-[13px] text-slate-400 mb-6">
-          <Link href="/" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Home</Link>
-          <span className="text-slate-300 dark:text-slate-600">/</span>
-          <Link href={`/${uniSlug}`} className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">{university.name}</Link>
-          <span className="text-slate-300 dark:text-slate-600">/</span>
-          <span className="text-slate-700 dark:text-slate-200 font-semibold">{subject.name}</span>
-        </nav>
+        {/* Breadcrumb */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-3)', marginBottom: 18 }}>
+          <Link href="/home" style={{ fontWeight: 600, color: 'var(--ink-2)', textDecoration: 'none' }}>Home</Link>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <Link href={`/${uniSlug}`} style={{ fontWeight: 600, color: 'var(--ink-2)', textDecoration: 'none' }}>{university.name}</Link>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{subject.name}</span>
+        </div>
 
-        {/* ── HERO HEADER ── */}
-        <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-7 flex gap-8 items-center shadow-sm mb-7">
-
-          {/* left: info */}
-          <div className="flex-1 min-w-0">
-
-            {/* type + access badges */}
-            <div className="flex items-center gap-2 mb-4 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold tracking-wide text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                {typeBadge}
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold tracking-wide text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-3 py-1 rounded-full">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2l2.6 6.3L21 9l-4.8 4.3L17.6 20 12 16.5 6.4 20l1.4-6.7L3 9l6.4-.7z"/>
-                </svg>
-                {accessBadge}
-              </span>
-            </div>
-
-            {/* subject name */}
-            <h1 className="text-[34px] font-bold tracking-tight text-slate-900 dark:text-white mb-2 leading-none">
-              {subject.name}
-            </h1>
-
-            {/* description */}
-            {subject.description && (
-              <p className="text-[15px] text-slate-500 dark:text-slate-400 mb-5 max-w-xl leading-relaxed">
-                {subject.description}
-              </p>
-            )}
-
-            {/* stat pills */}
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-3.5 py-2 rounded-xl">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 3h11l4 4v14H5z"/><path d="M16 3v4h4"/><path d="M9 13h7M9 17h5"/>
-                </svg>
-                {totalLectures} Lectures
-              </span>
-              <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-3.5 py-2 rounded-xl">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.9">
-                  <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H20v16H5.5A1.5 1.5 0 0 1 4 18.5z"/>
-                  <path d="M4 4v16"/>
-                </svg>
-                {groups.length} {isSystem ? 'Sub-Subjects' : 'Chapters'}
-              </span>
-              <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-3.5 py-2 rounded-xl">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/>
-                </svg>
-                Sheet · Summary · Quiz
-              </span>
-            </div>
-          </div>
-
-          {/* right: progress ring */}
-          <div className="flex-shrink-0 flex flex-col items-center gap-2 pl-7 border-l border-slate-100 dark:border-slate-700">
-            <div className="relative w-[104px] h-[104px]">
-              <svg width="104" height="104" viewBox="0 0 104 104">
-                <circle cx="52" cy="52" r="34" fill="none" stroke="#e2e8f0" strokeWidth="9" className="dark:stroke-slate-700" />
-                <circle
-                  cx="52" cy="52" r="34"
-                  fill="none"
-                  stroke="#2563eb"
-                  strokeWidth="9"
-                  strokeLinecap="round"
-                  strokeDasharray={ringC}
-                  strokeDashoffset={ringOffset}
-                  transform="rotate(-90 52 52)"
-                  style={{ transition: 'stroke-dashoffset 0.4s ease' }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[24px] font-bold text-slate-900 dark:text-white leading-none">
-                  {progressPercent}%
+        {/* Hero Banner */}
+        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '32px 34px', marginBottom: 18, background: 'linear-gradient(120deg,#16234A 0%,#1E3A8A 50%,#2F6BFF 100%)', boxShadow: 'rgba(31,58,138,0.75) 0px 22px 44px -22px' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(440px 280px at 90% -25%,rgba(236,118,150,0.4),transparent 70%),radial-gradient(380px 260px at 8% 125%,rgba(124,92,252,0.36),transparent 70%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 30 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '5px 13px', borderRadius: 999, background: 'rgba(255,255,255,0.15)', color: '#EAF0FF' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#5BE0A8' }} />
+                  {typeBadge}
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '5px 13px', borderRadius: 999, background: 'rgba(255,255,255,0.15)', color: '#FFE6A6' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15 9 22 9 16.5 13.5 18.5 21 12 16.5 5.5 21 7.5 13.5 2 9 9 9"/></svg>
+                  {accessBadge}
                 </span>
               </div>
-            </div>
-            <span className="text-[12.5px] text-slate-400 font-medium">
-              {completedCount} of {totalLectures} done
-            </span>
-          </div>
-        </section>
-
-        {/* ── TWO-COLUMN GRID ── */}
-        <div className="flex flex-wrap gap-7 items-start">
-
-          {/* ╠╠ LEFT: LECTURES ╠╠ */}
-          <div className="flex-[3_1_540px] min-w-0">
-
-            {/* section header */}
-            <div className="flex items-center gap-3 mb-5">
-              <h2 className="text-[22px] font-bold tracking-tight text-slate-900 dark:text-white">
-                Lectures
-              </h2>
-              <span className="text-[12.5px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-0.5 rounded-full">
-                {totalLectures} units
-              </span>
-            </div>
-
-            {/* ── CONTINUE READING CARD ── */}
-            {continueLecture && (
-              <Link
-                href={`/${uniSlug}/${subjectSlug}/${(continueLecture as any).slug ?? continueLecture.id}`}
-                className="block mb-6 no-underline"
-              >
-                <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 flex gap-6 items-center shadow-lg shadow-slate-900/20 hover:shadow-xl hover:shadow-slate-900/30 transition-shadow">
-
-                  {/* sheet mockup thumbnail */}
-                  <div className="relative w-36 h-40 flex-shrink-0">
-                    <div className="absolute inset-0 bg-white rounded-xl rotate-[-5deg] shadow-xl opacity-40" />
-                    <div className="absolute inset-0 bg-white rounded-xl shadow-xl p-4 flex flex-col gap-1.5">
-                      <div className="h-2 w-3/5 rounded bg-slate-900" />
-                      <div className="h-1.5 w-full rounded bg-slate-100" />
-                      <div className="h-1.5 w-11/12 rounded bg-slate-100" />
-                      <div className="h-1.5 w-3/4 rounded bg-blue-50" />
-                      <div className="h-1.5 w-full rounded bg-slate-100" />
-                      <div className="h-1.5 w-3/5 rounded bg-amber-50" />
-                      <div className="h-1.5 w-10/12 rounded bg-slate-100" />
-                      <div className="mt-auto">
-                        <span className="text-[9.5px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">SHEET</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* text side */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-bold tracking-[0.14em] text-slate-400 mb-2 uppercase">
-                      {continueLabel}
-                    </p>
-                    <h3 className="text-[22px] font-semibold text-white tracking-tight mb-1 truncate">
-                      {continueLecture.title}
-                    </h3>
-                    <p className="text-[13px] text-slate-400 mb-4">
-                      {continueGroup?.title ?? ''} · Sheet
-                    </p>
-
-                    {/* progress bar */}
-                    <div className="flex items-center gap-4 mb-5">
-                      <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-500 rounded-full"
-                          style={{ width: `${continueProgress}%` }}
-                        />
-                      </div>
-                      <span className="text-[12px] font-semibold text-slate-400 min-w-[56px]">
-                        {continueProgress}% read
-                      </span>
-                    </div>
-
-                    {/* CTA row */}
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <span className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-[14px] font-bold px-5 py-2.5 rounded-xl transition-colors">
-                        {continueCta}
-                      </span>
-                      <div className="flex gap-2">
-                        {(['Summary', 'Flashcards', 'Quiz'] as const).map(label => (
-                          <span key={label} className="text-[12px] font-semibold text-slate-400 bg-white/8 px-3 py-1.5 rounded-lg">
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+              <h1 style={{ margin: '0 0 10px', fontSize: 40, fontWeight: 800, letterSpacing: '-0.035em', color: '#fff' }}>{subject.name}</h1>
+              {subject.description && (
+                <p style={{ margin: '0 0 22px', fontSize: 14.5, lineHeight: 1.55, color: 'rgba(234,240,255,0.82)', maxWidth: 460 }}>{subject.description}</p>
+              )}
+              <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(234,240,255,.65)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{totalLectures}</span>
+                  <span style={{ fontSize: 13, color: 'rgba(234,240,255,0.7)' }}>Lecture{totalLectures !== 1 ? 's' : ''}</span>
                 </div>
-              </Link>
-            )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(234,240,255,.65)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{groups.length}</span>
+                  <span style={{ fontSize: 13, color: 'rgba(234,240,255,0.7)' }}>{isSystem ? 'Sub-Subjects' : 'Chapter'}{groups.length !== 1 ? 's' : ''}</span>
+                </div>
+              </div>
+            </div>
+            {/* Progress Ring */}
+            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+              <div style={{ position: 'relative', width: 124, height: 124 }}>
+                <svg width="124" height="124" viewBox="0 0 124 124" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx="62" cy="62" r="54" fill="none" stroke="rgba(255,255,255,.16)" strokeWidth="10"/>
+                  <circle cx="62" cy="62" r="54" fill="none" stroke="#fff" strokeWidth="10" strokeLinecap="round"
+                    strokeDasharray="339.3" strokeDashoffset={339.3 * (1 - progressPercent / 100)}/>
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', letterSpacing: '-0.03em' }}>{progressPercent}%</div>
+                  <div style={{ fontSize: 11, color: 'rgba(234,240,255,0.7)', fontWeight: 600 }}>{completedCount} of {totalLectures} done</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-            {/* ── LECTURE CARDS grouped by chapter/sub-subject ── */}
+        {/* Content Type Shortcuts */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 28 }}>
+          {[
+            { label: 'Sheet',          color: 'var(--primary)',  bg: 'rgba(47,107,255,0.13)',  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
+            { label: 'Summary',        color: 'var(--success)',  bg: 'rgba(19,138,90,0.13)',   icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> },
+            { label: 'Flashcards',     color: 'var(--violet)',   bg: 'rgba(110,107,216,0.13)', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> },
+            { label: 'Quiz',           color: 'var(--warn)',     bg: 'rgba(216,154,6,0.13)',   icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
+            { label: 'Previous Years', color: '#0E8A8A',         bg: 'rgba(14,138,138,0.13)',  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+          ].map(item => (
+            <div key={item.label} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow-sm)', padding: '18px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 11, cursor: 'pointer' }}>
+              <div style={{ width: 46, height: 46, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', background: item.bg, color: item.color }}>
+                {item.icon}
+              </div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>{item.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Two Column Layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 24, alignItems: 'start' }}>
+
+          {/* LEFT: Lectures */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em' }}>Lectures</h2>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>{totalLectures} units</span>
+            </div>
+
             {groups.map(group => {
               const groupLectures = lectureList.filter((l: any) =>
                 isSystem ? l.sub_subject_id === group.id : l.chapter_id === group.id)
               if (groupLectures.length === 0) return null
-
               return (
-                <div key={group.id} className="mb-7">
-                  {/* group label */}
-                  <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400 uppercase mb-3 pl-0.5">
-                    {group.title}
-                  </p>
-
-                  <div className="flex flex-col gap-3.5">
-                    {groupLectures.map((lecture: any) => {
-                      const lp       = progressByLecture[lecture.id]
-                      const isDone   = lp?.completed ?? false
-                      const pct      = lp?.progress_percentage ?? 0
-                      const isReading = !isDone && pct > 0
-                      const isNew     = !isDone && pct === 0
-
+                <div key={group.id} style={{ marginTop: 18 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--ink-3)', marginBottom: 12 }}>
+                    {group.title.toUpperCase()}
+                  </div>
+                  <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, boxShadow: 'var(--shadow)', overflow: 'hidden' }}>
+                    {groupLectures.map((lecture: any, idx: number) => {
+                      const lp     = progressByLecture[lecture.id]
+                      const isDone = lp?.completed ?? false
+                      const pct    = lp?.progress_percentage ?? 0
                       const hasSheet   = sheetMap[lecture.id]   ?? false
                       const hasSummary = summaryMap[lecture.id] ?? false
                       const hasFl      = (flashMap[lecture.id]  ?? 0) > 0
                       const hasQuiz    = (quizMap[lecture.id]   ?? 0) > 0
                       const hasPYQ     = (pyqMap[lecture.id]    ?? 0) > 0
-
-                      const isContinue = lecture.id === continueLecture?.id
+                      const lectureSlug = (lecture as any).slug ?? lecture.id
+                      const statusLabel = isDone ? 'Completed' : pct > 0 ? `${pct}%` : 'Not started'
+                      const statusColor = isDone ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--ink-3)'
+                      const statusBg    = isDone ? 'rgba(19,138,90,0.11)' : pct > 0 ? 'rgba(216,154,6,0.11)' : 'var(--bg-2)'
 
                       return (
-                        <Link
-                          key={lecture.id}
-                          href={`/${uniSlug}/${subjectSlug}/${(lecture as any).slug ?? lecture.id}`}
-                          className="no-underline block group"
-                        >
-                          <div className={`
-                            bg-white dark:bg-slate-800 rounded-[18px] p-5 shadow-sm
-                            border transition-all duration-150
-                            group-hover:shadow-md group-hover:border-blue-200 dark:group-hover:border-blue-800
-                            ${isContinue
-                              ? 'border-blue-200 dark:border-blue-800'
-                              : 'border-slate-200 dark:border-slate-700'}
-                          `}>
-
-                            {/* header row */}
-                            <div className="flex items-center gap-4">
-
-                              {/* icon */}
-                              <div className={`
-                                w-11 h-11 flex-shrink-0 rounded-[13px] flex items-center justify-center
-                                ${isDone ? 'bg-emerald-50 dark:bg-emerald-900/30' : 'bg-blue-50 dark:bg-blue-900/30'}
-                              `}>
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                                  stroke={isDone ? '#16a34a' : '#2563eb'}
-                                  strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M6 3h9l4 4v14H6z"/>
-                                  <path d="M15 3v4h4"/>
-                                  <path d="M9 12h6M9 16h4"/>
-                                </svg>
+                        <div key={lecture.id}>
+                          {idx > 0 && <div style={{ height: 1, background: 'var(--line)', margin: '0 20px' }} />}
+                          <div style={{ padding: '18px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                              <div style={{ width: 46, height: 46, borderRadius: 13, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDone ? 'rgba(19,138,90,0.11)' : 'rgba(47,107,255,0.11)', color: isDone ? 'var(--success)' : 'var(--primary)' }}>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>
                               </div>
-
-                              {/* title + meta */}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-[16px] font-bold text-slate-900 dark:text-white truncate">
-                                  {lecture.title}
-                                </p>
-                                <p className="text-[12.5px] text-slate-400 mt-0.5">
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 16, fontWeight: 700 }}>{lecture.title}</div>
+                                <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginTop: 2 }}>
                                   {group.title}
                                   {(flashMap[lecture.id] ?? 0) > 0 && ` · ${flashMap[lecture.id]} flashcards`}
-                                  {(quizMap[lecture.id] ?? 0) > 0  && ` · ${quizMap[lecture.id]} questions`}
-                                </p>
+                                  {(quizMap[lecture.id] ?? 0) > 0 && ` · ${quizMap[lecture.id]} questions`}
+                                </div>
                               </div>
-
-                              {/* status badge */}
-                              {isDone && (
-                                <span className="flex-shrink-0 inline-flex items-center gap-1.5 text-[11.5px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-full">
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M20 6L9 17l-5-5"/>
-                                  </svg>
-                                  Completed
-                                </span>
-                              )}
-                              {isReading && (
-                                <span className="flex-shrink-0 text-[11.5px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-3 py-1.5 rounded-full">
-                                  {pct}% read
-                                </span>
-                              )}
-                              {isNew && (
-                                <span className="flex-shrink-0 text-[11.5px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-full">
-                                  Not started
-                                </span>
-                              )}
+                              <span style={{ fontSize: 11.5, fontWeight: 700, color: statusColor, padding: '5px 11px', borderRadius: 8, background: statusBg }}>
+                                {statusLabel}
+                              </span>
                             </div>
-
-                            {/* progress bar */}
-                            <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden my-4">
-                              <div
-                                className={`h-full rounded-full transition-all duration-300 ${isDone ? 'bg-emerald-500' : 'bg-blue-600'}`}
-                                style={{ width: `${pct}%` }}
-                              />
+                            <div style={{ height: 4, background: 'var(--bg-2)', margin: '14px 0', borderRadius: 99 }}>
+                              <div style={{ height: '100%', width: `${pct}%`, background: isDone ? 'var(--success)' : 'var(--primary)', borderRadius: 99 }} />
                             </div>
-
-                            {/* content chips */}
-                            <div className="flex flex-wrap gap-2">
+                            <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
                               {hasSheet && (
-                                <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 px-3 py-1.5 rounded-[10px]">
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 12h6M9 16h4"/>
-                                  </svg>
+                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid color-mix(in srgb,var(--primary) 30%,var(--line))', background: 'rgba(47,107,255,0.09)', color: 'var(--primary)', fontSize: 13.5, fontWeight: 700, textDecoration: 'none' }}>
+                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                                   Sheet
-                                </span>
+                                </Link>
                               )}
                               {hasSummary && (
-                                <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-1.5 rounded-[10px]">
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M4 6h16M4 12h16M4 18h10"/>
-                                  </svg>
+                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
+                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                                   Summary
-                                </span>
+                                </Link>
                               )}
                               {hasFl && (
-                                <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-1.5 rounded-[10px]">
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="3" y="6" width="13" height="13" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v11"/>
-                                  </svg>
+                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
+                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                                   Flashcards
-                                </span>
+                                </Link>
                               )}
                               {hasQuiz && (
-                                <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-1.5 rounded-[10px]">
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4 1.8c0 1.7-2.5 2-2.5 3.7"/><path d="M12 18h.01"/>
-                                  </svg>
+                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
+                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                                   Quiz
-                                </span>
+                                </Link>
                               )}
                               {hasPYQ && (
-                                <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-1.5 rounded-[10px]">
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>
-                                  </svg>
+                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
+                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                   Previous Years
-                                </span>
+                                </Link>
                               )}
                             </div>
-
                           </div>
-                        </Link>
+                        </div>
                       )
                     })}
                   </div>
                 </div>
               )
             })}
+          </div>
 
-            {groups.length === 0 && (
-              <div className="text-center py-16 text-slate-400 text-[14px]">
-                No lectures available yet.
+          {/* RIGHT: Sidebar */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--ink-3)' }}>MORE IN THIS SUBJECT</div>
+
+            {/* Videos */}
+            {videos && videos.length > 0 && (
+              <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow)', overflow: 'hidden' }}>
+                <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 13 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(47,107,255,0.11)', color: 'var(--primary)' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 700 }}>Video Lectures</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{videos[0]?.title ?? ''}{videos.length > 1 ? ` · +${videos.length - 1} more` : ''}</div>
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)' }}>{videos.length}</span>
+                </div>
+                {videos.slice(0, 2).map((v, i) => (
+                  <div key={v.id}>
+                    <div style={{ height: 1, background: 'var(--line)', margin: '0 18px' }} />
+                    <a href={v.video_url} target="_blank" rel="noopener noreferrer" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.title}</span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Previous Years */}
+            <Link href={`/${uniSlug}/${subjectSlug}/previous-years`} style={{ textDecoration: 'none', display: 'block' }}>
+              <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow)', padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 13, cursor: 'pointer' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(110,107,216,0.11)', color: 'var(--violet)' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 700 }}>Previous Years</div>
+                  <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Past papers &amp; MCQ bank</div>
+                </div>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+            </Link>
+
+            {/* Clinical Modules */}
+            {clinicalModules && clinicalModules.length > 0 && (
+              <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow)', overflow: 'hidden' }}>
+                <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 13 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(19,138,90,0.11)', color: 'var(--success)' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2a.3.3 0 0 0-.2.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><path d="M16 11V3"/><path d="M8 2v3a4 4 0 0 0 8 0V2"/></svg>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 700 }}>OSCE &amp; Oral</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Clinical examination</div>
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--success)' }}>{clinicalModules.length}</span>
+                </div>
+                {clinicalModules.map(mod => (
+                  <div key={mod.id}>
+                    <div style={{ height: 1, background: 'var(--line)', margin: '0 18px' }} />
+                    <Link href={`/${uniSlug}/${subjectSlug}/clinical/${mod.id}`} style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>{moduleLabels[mod.module_type] ?? mod.module_type}</span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </Link>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-
-          {/* ╠╠ RIGHT: SECONDARY RAIL ╠╠ */}
-          <aside className="flex-[1_1_300px] min-w-0 max-w-[336px]">
-
-            <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400 uppercase mb-3 pl-1">
-              More in this subject
-            </p>
-
-            <div className="flex flex-col gap-3">
-
-              {/* Video Lectures */}
-              {videos && videos.length > 0 && (
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[15px] overflow-hidden shadow-sm">
-                  <div className="flex items-center gap-3 p-4">
-                    <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.8">
-                        <rect x="3" y="5" width="18" height="14" rx="2.5"/>
-                        <path d="M10 9l4 3-4 3z" fill="#2563eb" stroke="none"/>
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-bold text-slate-800 dark:text-white">Video Lectures</p>
-                      <p className="text-[12px] text-slate-400">{videos[0]?.title ?? ''}{videos.length > 1 ? ` · +${videos.length - 1} more` : ''}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300">{videos.length}</span>
-                      <ChevronRight />
-                    </div>
-                  </div>
-                  <div className="border-t border-slate-100 dark:border-slate-700 p-1.5">
-                    {videos.slice(0, 3).map(v => (
-                      <a key={v.id} href={v.video_url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors no-underline">
-                        <span className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0" />
-                        <span className="flex-1 text-[13px] font-semibold text-slate-600 dark:text-slate-300 truncate">{v.title}</span>
-                        <ChevronRight />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Previous Years Bank */}
-              <Link href={`/${uniSlug}/${subjectSlug}/previous-years`} className="no-underline block group">
-                <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[15px] shadow-sm hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-md transition-all">
-                  <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="4" width="18" height="17" rx="2"/>
-                      <path d="M3 9h18M8 2v4M16 2v4"/>
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-bold text-slate-800 dark:text-white">Previous Years</p>
-                    <p className="text-[12px] text-slate-400">Past papers &amp; MCQ bank</p>
-                  </div>
-                  <ChevronRight />
-                </div>
-              </Link>
-
-              {/* OSCE / Clinical Modules */}
-              {clinicalModules && clinicalModules.length > 0 && (
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[15px] overflow-hidden shadow-sm">
-                  <div className="flex items-center gap-3 p-4">
-                    <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
-                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M6 3v6a4 4 0 0 0 8 0V3"/>
-                        <path d="M10 13v3a5 5 0 0 0 10 0v-2"/>
-                        <circle cx="20" cy="11" r="2"/>
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-bold text-slate-800 dark:text-white">OSCE &amp; Oral</p>
-                      <p className="text-[12px] text-slate-400">Clinical examination</p>
-                    </div>
-                    <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 rounded-full">
-                      {clinicalModules.length}
-                    </span>
-                  </div>
-                  <div className="border-t border-slate-100 dark:border-slate-700 p-1.5">
-                    {clinicalModules.map(mod => (
-                      <Link key={mod.id} href={`/${uniSlug}/${subjectSlug}/clinical/${mod.id}`}
-                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors no-underline">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                        <span className="flex-1 text-[13px] font-semibold text-slate-600 dark:text-slate-300">
-                          {moduleLabels[mod.module_type] ?? mod.module_type}
-                        </span>
-                        <ChevronRight />
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Recently Completed */}
-              {recentlyCompleted.length > 0 && (
-                <>
-                  <p className="text-[11px] font-bold tracking-[0.12em] text-slate-400 uppercase mt-2 pl-1">
-                    Recently Completed
-                  </p>
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[15px] p-2 shadow-sm">
-                    {recentlyCompleted.map(prog => {
-                      const lec = lectureList.find((l: any) => l.id === prog.lecture_id)
-                      if (!lec) return null
-                      const iconBg     = prog.content_type === 'quiz' ? 'bg-amber-50 dark:bg-amber-900/20' : prog.content_type === 'flashcard' ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20'
-                      const iconStroke = prog.content_type === 'quiz' ? '#d97706' : prog.content_type === 'flashcard' ? '#2563eb' : '#16a34a'
-                      return (
-                        <Link key={`${prog.lecture_id}-${prog.content_type}`}
-                          href={`/${uniSlug}/${subjectSlug}/${(lectureList.find((l: any) => l.id === prog.lecture_id) as any)?.slug ?? prog.lecture_id}`}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors no-underline">
-                          <div className={`w-8 h-8 flex-shrink-0 rounded-[9px] flex items-center justify-center ${iconBg}`}>
-                            {prog.content_type === 'quiz' ? (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={iconStroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4 1.8c0 1.7-2.5 2-2.5 3.7"/><path d="M12 18h.01"/>
-                              </svg>
-                            ) : prog.content_type === 'flashcard' ? (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={iconStroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="6" width="13" height="13" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v11"/>
-                              </svg>
-                            ) : (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={iconStroke} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M20 6L9 17l-5-5"/>
-                              </svg>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-semibold text-slate-800 dark:text-white truncate">
-                              {lec.title} — {prog.content_type.replace(/_/g, ' ')}
-                            </p>
-                            <p className="text-[11.5px] text-slate-400">Completed</p>
-                          </div>
-                        </Link>
-                      )
-                    })}
-                  </div>
-                </>
-              )}
-
-            </div>
-          </aside>
-
         </div>
+
       </main>
     </div>
   )

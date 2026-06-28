@@ -130,7 +130,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
     handleResize()
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [setSidebarOpen])
+  }, [])
 
   useEffect(() => {
     const onUniPage = universities.some(u => pathname.startsWith(`/${u.slug ?? u.id}`))

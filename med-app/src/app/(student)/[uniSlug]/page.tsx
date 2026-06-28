@@ -23,7 +23,7 @@ export default async function UniversityPage({ params }: PageProps) {
   // fetch all published subjects for this university
   const { data: subjects } = await supabase
     .from('subjects')
-    .select('id, name, subject_type, category, access_mode, description, slug')
+    .select('id, name, subject_type, category, access_mode, description')
     .eq('university_id', university.id)
     .eq('is_published', true)
     .order('name') as any
@@ -133,7 +133,7 @@ export default async function UniversityPage({ params }: PageProps) {
                     return (
                       <Link
                         key={subject.id}
-                        href={`/${uniSlug}/${(subject as any).slug ?? subject.id}`}
+                        href={`/${uniSlug}/${subject.id}`}
                         className="no-underline block group"
                       >
                         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm h-full flex flex-col gap-4 group-hover:border-blue-200 dark:group-hover:border-blue-800 group-hover:shadow-md transition-all duration-150">

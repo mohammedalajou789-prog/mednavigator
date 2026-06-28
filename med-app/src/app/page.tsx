@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
 import type { University } from '@/types/database'
 import LandingNavbar from '@/components/student/LandingNavbar'
 import UniversityCard from '@/components/student/UniversityCard'
@@ -25,12 +24,7 @@ const FEATURES = [
 ]
 
 export default async function LandingPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    const { redirect } = await import('next/navigation')
-    redirect('/home')
-  }
+  
 
   const universities = await getActiveUniversities()
 

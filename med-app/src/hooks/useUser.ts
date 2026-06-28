@@ -31,7 +31,7 @@ export function useUser() {
     if (query.isLoading) { setLoading(true); return }
     setLoading(false)
     setUser(query.data ?? null)
-  }, [query.data, query.isLoading, setUser, setLoading])
+  }, [query.data, query.isLoading])
   return {
     user,
     isLoading: isLoading || query.isLoading,

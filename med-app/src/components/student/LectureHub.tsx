@@ -510,29 +510,9 @@ useEffect(() => {
               </div>
             </div>
 
-            {(activeTab === 'sheet' || activeTab === 'summary') && (
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '16px', marginTop: '22px' }}>
-                <div style={{ position: 'relative', width: '54px', height: '54px', flexShrink: 0 }}>
-                  <svg width="54" height="54" viewBox="0 0 64 64">
-                    <circle cx="32" cy="32" r="26" fill="none" stroke="#D6E2FB" strokeWidth="7"/>
-                    <circle cx="32" cy="32" r="26" fill="none" stroke="#2F6BFF" strokeWidth="7" strokeLinecap="round"
-                      strokeDasharray="163.36"
-                      strokeDashoffset={163.36 - (163.36 * progressPercent / 100)}
-                      transform="rotate(-90 32 32)"
-                      style={{ transition: 'stroke-dashoffset 0.4s ease' }}
-                    />
-                  </svg>
-                  <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 800, color: '#2F6BFF' }}>{progressPercent}%</span>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12.5px', fontWeight: 700, letterSpacing: '.04em', color: '#6B7689', textTransform: 'uppercase' }}>Reading Progress</span>
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#2F6BFF' }}>{progressPercent}% read</span>
-                  </div>
-                  <div style={{ height: '8px', borderRadius: '6px', background: '#D9E3F8', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${progressPercent}%`, borderRadius: '6px', background: 'linear-gradient(90deg,#3B79FF,#2F6BFF)', transition: 'width .25s ease' }} />
-                  </div>
-                </div>
+            {lecture.description && (
+              <div style={{ marginTop: '16px', padding: '12px 16px', background: 'rgba(47,107,255,0.06)', borderRadius: '12px', borderLeft: '3px solid #2F6BFF' }}>
+                <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.6, color: '#3C4661' }}>{lecture.description}</p>
               </div>
             )}
           </div>

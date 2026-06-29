@@ -113,6 +113,8 @@ export async function POST(request: NextRequest) {
       success: true,
       url: publicUrl,
       media_id: mediaRecord?.id ?? null,
+      slot_saved: !!(entityType && entityId && slotNumber && mediaRecord),
+      debug: { entityType, entityId, slotNumber, mediaId: mediaRecord?.id },
     })
 
   } catch (err) {

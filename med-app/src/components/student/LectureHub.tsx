@@ -819,7 +819,7 @@ useEffect(() => {
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
           }}>
             {sidebarCollapsed ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center' }}>
                 {tocSections.filter(s => s.level <= 2).map((section) => {
                   const isMain = section.level === 1
                   const label = isMain
@@ -831,11 +831,12 @@ useEffect(() => {
                       onClick={() => handleTocClick(section.id)}
                       title={section.label}
                       style={{
-                        width: '36px', height: '24px', borderRadius: '8px', border: 'none',
-                        background: isMain ? '#2563EB' : '#EEF3FF',
-                        color: isMain ? '#fff' : '#2563EB',
-                        fontSize: isMain ? '11px' : '10px', fontWeight: 700,
+                        width: '32px', height: '20px', borderRadius: '6px', border: 'none',
+                        background: isMain ? '#2563EB' : 'transparent',
+                        color: isMain ? '#fff' : '#94A3B8',
+                        fontSize: '10px', fontWeight: isMain ? 700 : 500,
                         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        lineHeight: 1,
                       }}
                     >
                       {label}

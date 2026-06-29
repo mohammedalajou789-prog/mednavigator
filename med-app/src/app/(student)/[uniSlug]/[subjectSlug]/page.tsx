@@ -165,9 +165,9 @@ export default async function SubjectPage({ params }: PageProps) {
         </div>
 
         {/* Hero Banner */}
-        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '32px 34px', marginBottom: 18, background: 'linear-gradient(120deg,rgb(232,240,255) 0%,rgb(239,244,255) 46%,rgb(250,251,255) 100%)', border: '1px solid rgb(223,232,251)', boxShadow: 'none' }}>
+        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: 'clamp(18px, 4vw, 32px) clamp(18px, 4vw, 34px)', marginBottom: 18, background: 'linear-gradient(120deg,rgb(232,240,255) 0%,rgb(239,244,255) 46%,rgb(250,251,255) 100%)', border: '1px solid rgb(223,232,251)', boxShadow: 'none' }}>
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 320, height: 160, background: 'radial-gradient(rgba(249,168,212,0.3) 0%,rgba(216,180,254,0.15) 55%,transparent 75%)', pointerEvents: 'none', borderRadius: '50%', filter: 'blur(24px)', zIndex: 0 }} />
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 30, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 30, flexWrap: 'wrap-reverse' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '5px 13px', borderRadius: 999, background: 'rgb(239,244,255)', border: '1px solid rgb(213,226,255)', color: '#2F6BFF' }}>
@@ -197,7 +197,7 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             </div>
             {/* Progress Ring */}
-            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, marginLeft: 'auto' }}>
               <div style={{ position: 'relative', width: 160, height: 160 }}>
                 <svg width="160" height="160" viewBox="0 0 124 124" style={{ transform: 'rotate(-90deg)' }}>
                   <circle cx="62" cy="62" r="54" fill="none" stroke="rgba(47,107,255,0.18)" strokeWidth="10"/>

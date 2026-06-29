@@ -31,11 +31,11 @@ export default async function ExplorePage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)', fontFamily: '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif' }}>
-      <main style={{ maxWidth: 1080, margin: '0 auto', padding: '28px 28px 64px' }}>
+      <main style={{ maxWidth: 1080, margin: '0 auto', padding: 'clamp(16px, 4vw, 28px) clamp(16px, 4vw, 28px) 64px' }}>
 
         {/* Header */}
         <div style={{ marginBottom: 28 }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: 28, fontWeight: 800, letterSpacing: '-0.025em' }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 'clamp(22px, 5vw, 28px)', fontWeight: 800, letterSpacing: '-0.025em' }}>
             Explore Universities
           </h1>
           <div style={{ color: 'var(--ink-2)', fontSize: 14.5 }}>
@@ -50,7 +50,7 @@ export default async function ExplorePage() {
             <div style={{ fontSize: 14 }}>No universities available yet.</div>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: 'clamp(12px, 3vw, 18px)' }}>
             {unis.map((uni) => {
               const subjectCount = countMap[uni.id] ?? 0
               return (

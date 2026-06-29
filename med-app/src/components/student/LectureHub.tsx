@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useUserStore } from '@/stores/userStore'
@@ -11,6 +11,8 @@ import QuizViewer from '@/components/student/QuizViewer'
 import PreviousYearsViewer from '@/components/student/PreviousYearsViewer'
 import LockedContentCard from '@/components/student/LockedContentCard'
 import { useQuery } from '@tanstack/react-query'
+
+// ── Types ──────────────────────────────────────────────────────────────────
 
 interface Lecture {
   id: string
@@ -126,6 +128,8 @@ interface LectureHubProps {
   summaryImageSlots: Record<number, string>
 }
 
+// ── Tab Config ─────────────────────────────────────────────────────────────
+
 const TAB_CONFIG: Record<string, { label: string; icon: React.ReactNode }> = {
   sheet: {
     label: 'Sheet',
@@ -181,6 +185,8 @@ const TAB_CONFIG: Record<string, { label: string; icon: React.ReactNode }> = {
 
 const ALL_TABS = ['sheet', 'summary', 'flashcards', 'quiz', 'previous_years']
 
+// ── TOC Extractor ──────────────────────────────────────────────────────────
+
 export function extractToc(content: string): TocSection[] {
   const lines = content.split('\n')
   const toc: TocSection[] = []
@@ -194,7 +200,7 @@ export function extractToc(content: string): TocSection[] {
 
     if (h1) {
       h1Counter++
-      h2Counter = 0 // reset sub-counter on new h1
+      h2Counter = 0
       const label = h1[1].trim()
       const id = `section-${label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
       toc.push({ id, level: 1, label, h1Num: h1Counter, h2Num: null })
@@ -202,7 +208,6 @@ export function extractToc(content: string): TocSection[] {
       h2Counter++
       const label = h2[1].trim()
       const id = `section-${label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
-      // If no h1 parent yet, treat h2 as h1-level for numbering
       if (h1Counter === 0) {
         h1Counter++
         h2Counter = 0
@@ -218,6 +223,8 @@ export function extractToc(content: string): TocSection[] {
   })
   return toc
 }
+
+// ── LectureHub Component ───────────────────────────────────────────────────
 
 export default function LectureHub({
   lecture,
@@ -243,6 +250,9 @@ export default function LectureHub({
   const { user } = useUserStore()
   const supabase = createClient()
 
+  // FIX 5: removed unused `sidebarOpen` from destructuring
+  const { setSidebarOpen } = useUIStore()
+
   const availableTabs = ALL_TABS.filter((t) => {
     if (t === 'sheet')          return !!sheet || sheetLocked
     if (t === 'summary')        return !!summary || summaryLocked
@@ -252,19 +262,13 @@ export default function LectureHub({
     return false
   })
 
-  const { sidebarOpen, setSidebarOpen } = useUIStore()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
-  const [activeSectionId, setActiveSectionId] = useState<string>('')
+  const [activeSectionId, setActiveSectionId]   = useState<string>('')
+  const [activeTab, setActiveTab]               = useState(availableTabs[0] ?? 'sheet')
+  const [progressPercent, setProgressPercent]   = useState(0)
+  const [isCompleted, setIsCompleted]           = useState(false)
+  const [isBookmarked, setIsBookmarked]         = useState(false)
 
-const [activeTab, setActiveTab]           = useState(availableTabs[0] ?? 'sheet')
-
-useEffect(() => {
-  setSidebarOpen(false)
-  return () => setSidebarOpen(true)
-}, [])
-  const [progressPercent, setProgressPercent] = useState(0)
-  const [isCompleted, setIsCompleted]       = useState(false)
-  const [isBookmarked, setIsBookmarked]     = useState(false)
   const [flashcardStats, setFlashcardStats] = useState<FlashcardStats>({
     total: flashcards.length, easy: 0, medium: 0, hard: 0, current: 1, important: 0,
   })
@@ -275,9 +279,13 @@ useEffect(() => {
     total: previousYearQuestions.length, important: 0, answered: 0,
   })
 
-  const tocSections: TocSection[] =
-    activeTab === 'sheet'   ? extractToc(sheet?.content ?? '') :
-    activeTab === 'summary' ? extractToc(summary?.content ?? '') : []
+  // FIX 4: memoize tocSections so the scroll useEffect does not
+  // re-register the listener on every render
+  const tocSections: TocSection[] = useMemo(() => {
+    if (activeTab === 'sheet')   return extractToc(sheet?.content ?? '')
+    if (activeTab === 'summary') return extractToc(summary?.content ?? '')
+    return []
+  }, [activeTab, sheet?.content, summary?.content])
 
   const isCurrentTabLocked =
     (activeTab === 'sheet'          && sheetLocked)     ||
@@ -286,8 +294,15 @@ useEffect(() => {
     (activeTab === 'quiz'           && quizLocked)       ||
     (activeTab === 'previous_years' && pyqLocked)
 
+  // FIX 3: added setSidebarOpen to dependency array
+  useEffect(() => {
+    setSidebarOpen(false)
+    return () => setSidebarOpen(true)
+  }, [setSidebarOpen])
+
+  // FIX 1: added activeTab to queryKey so each tab gets its own cache entry
   const { data: progressData } = useQuery({
-    queryKey: ['progress', user?.id, lecture.id],
+    queryKey: ['progress', user?.id, lecture.id, activeTab],
     queryFn: async () => {
       const { data } = await supabase
         .from('user_progress')
@@ -327,49 +342,8 @@ useEffect(() => {
     setIsBookmarked(!!bookmarkData)
   }, [bookmarkData])
 
-  function handleTocClick(id: string) {
-    const el = document.getElementById(id)
-    const scrollContainer = document.getElementById('lecture-content-scroll')
-    if (el && scrollContainer) {
-      const elTop = el.getBoundingClientRect().top
-      const containerTop = scrollContainer.getBoundingClientRect().top
-      const offset = elTop - containerTop + scrollContainer.scrollTop - 120
-      scrollContainer.scrollTo({ top: offset, behavior: 'smooth' })
-    } else if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }
-
-  async function handleMarkComplete() {
-    if (!user) return
-    const next = !isCompleted
-    setIsCompleted(next)
-    setProgressPercent(next ? 100 : progressPercent)
-    await supabase.from('user_progress').upsert({
-      user_id: user.id,
-      lecture_id: lecture.id,
-      content_type: activeTab,
-      progress_percentage: next ? 100 : progressPercent,
-      completed: next,
-      last_accessed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,lecture_id,content_type' })
-  }
-
-  async function handleToggleBookmark() {
-    if (!user) return
-    if (isBookmarked) {
-      await supabase.from('bookmarks').delete()
-        .eq('user_id', user.id).eq('lecture_id', lecture.id).eq('bookmark_type', 'lecture')
-      setIsBookmarked(false)
-    } else {
-      await supabase.from('bookmarks').insert({
-        user_id: user.id, lecture_id: lecture.id, bookmark_type: 'lecture',
-      })
-      setIsBookmarked(true)
-    }
-  }
-
+  // FIX 4 (continued): tocSections is now stable from useMemo,
+  // so this effect only re-runs when the content actually changes
   useEffect(() => {
     if (tocSections.length === 0) return
     const scrollContainer = document.getElementById('lecture-content-scroll')
@@ -393,28 +367,68 @@ useEffect(() => {
     return () => scrollContainer.removeEventListener('scroll', handleScroll)
   }, [tocSections])
 
+  function handleTocClick(id: string) {
+    const el = document.getElementById(id)
+    const scrollContainer = document.getElementById('lecture-content-scroll')
+    if (el && scrollContainer) {
+      const elTop        = el.getBoundingClientRect().top
+      const containerTop = scrollContainer.getBoundingClientRect().top
+      const offset       = elTop - containerTop + scrollContainer.scrollTop - 120
+      scrollContainer.scrollTo({ top: offset, behavior: 'smooth' })
+    } else if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  async function handleMarkComplete() {
+    if (!user) return
+    const next = !isCompleted
+    setIsCompleted(next)
+    setProgressPercent(next ? 100 : progressPercent)
+    await supabase.from('user_progress').upsert({
+      user_id:             user.id,
+      lecture_id:          lecture.id,
+      content_type:        activeTab,
+      progress_percentage: next ? 100 : progressPercent,
+      completed:           next,
+      last_accessed_at:    new Date().toISOString(),
+      updated_at:          new Date().toISOString(),
+    }, { onConflict: 'user_id,lecture_id,content_type' })
+  }
+
+  async function handleToggleBookmark() {
+    if (!user) return
+    if (isBookmarked) {
+      await supabase.from('bookmarks').delete()
+        .eq('user_id', user.id)
+        .eq('lecture_id', lecture.id)
+        .eq('bookmark_type', 'lecture')
+      setIsBookmarked(false)
+    } else {
+      await supabase.from('bookmarks').insert({
+        user_id: user.id, lecture_id: lecture.id, bookmark_type: 'lecture',
+      })
+      setIsBookmarked(true)
+    }
+  }
+
   function handleProgressUpdate(pct: number) {
     setProgressPercent(pct)
     if (!user) return
     supabase.from('user_progress').upsert({
-      user_id: user.id,
-      lecture_id: lecture.id,
-      content_type: activeTab,
+      user_id:             user.id,
+      lecture_id:          lecture.id,
+      content_type:        activeTab,
       progress_percentage: pct,
-      completed: pct >= 100,
-      last_accessed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      completed:           pct >= 100,
+      last_accessed_at:    new Date().toISOString(),
+      updated_at:          new Date().toISOString(),
     }, { onConflict: 'user_id,lecture_id,content_type' })
   }
 
   const displayName = userName ?? user?.full_name ?? ''
 
-  const lectureStats = {
-    flashcards: flashcards.length,
-    quiz: quizQuestions.length,
-    pyq: previousYearQuestions.length,
-    sections: tocSections.filter(t => t.level === 1 || t.level === 2).length,
-  }
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="flex" style={{ height: 'calc(100vh - 72px)', overflow: 'hidden', position: 'relative' }}>
@@ -425,29 +439,23 @@ useEffect(() => {
         className="flex-1 min-w-0"
         style={{ overflowY: 'auto', height: 'calc(100vh - 72px)', background: '#F5F6FA' }}
       >
-        {/* Mobile tabs — visible only on mobile */}
+        {/* Mobile tabs */}
         <div className="lg:hidden flex gap-1 px-4 pt-3 pb-2 bg-white border-b border-slate-100 overflow-x-auto" style={{ flexShrink: 0 }}>
           {availableTabs.map((tabId) => {
-            const cfg = TAB_CONFIG[tabId]
+            const cfg      = TAB_CONFIG[tabId]
             const isActive = activeTab === tabId
             return (
               <button
                 key={tabId}
                 onClick={() => setActiveTab(tabId)}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 14px',
-                  borderRadius: '20px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '13px',
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '7px 14px', borderRadius: '20px', border: 'none',
+                  cursor: 'pointer', fontSize: '13px',
                   fontWeight: isActive ? 600 : 500,
                   background: isActive ? '#EEF3FF' : '#F3F4F6',
                   color: isActive ? '#2563EB' : '#6B7280',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
+                  whiteSpace: 'nowrap', flexShrink: 0,
                 }}
               >
                 {cfg.icon}
@@ -460,7 +468,10 @@ useEffect(() => {
         {/* Hero card */}
         <div style={{ padding: 'clamp(12px, 3vw, 22px) clamp(12px, 3vw, 26px) 0', background: '#F5F6FA' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#7A8499', fontWeight: 500, marginBottom: '18px' }}>
-            <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
             <Link href={`/${universityId}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>Subjects</Link>
             <span style={{ color: '#C5CBD6' }}>/</span>
             <Link href={`/${universityId}/${subjectSlug ?? subject.id}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>{subject.name}</Link>
@@ -471,14 +482,16 @@ useEffect(() => {
           <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '16px', padding: 'clamp(14px, 4vw, 28px) clamp(14px, 4vw, 30px) clamp(12px, 3vw, 24px)', marginBottom: '16px', background: 'linear-gradient(120deg,#E8F0FF 0%,#EFF4FF 46%,#FAFBFF 100%)', border: '1px solid #DFE8FB', boxShadow: '0 1px 2px rgba(16,24,40,.04),0 22px 46px -30px rgba(40,90,200,.4)' }}>
             {/* Pink glow */}
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '320px', height: '160px', background: 'radial-gradient(ellipse at center, rgba(249,168,212,0.3) 0%, rgba(216,180,254,0.15) 55%, transparent 75%)', pointerEvents: 'none', borderRadius: '50%', filter: 'blur(24px)', zIndex: 0 }} />
+
+            {/* Desktop badges */}
             <div className="hidden sm:flex" style={{ position: 'absolute', top: '24px', right: '28px', flexDirection: 'column', alignItems: 'flex-end', gap: '9px' }}>
               {isCompleted ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius:'20px', background: '#E7F7EF', border: '1px solid #C7EBD8', color: '#138A5A', fontSize: '12.5px', fontWeight: 700 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', background: '#E7F7EF', border: '1px solid #C7EBD8', color: '#138A5A', fontSize: '12.5px', fontWeight: 700 }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                   Completed
                 </span>
               ) : (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius:'20px', background: '#EFF4FF', border: '1px solid #D5E2FF', color: '#2F6BFF', fontSize: '12.5px', fontWeight: 700 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', background: '#EFF4FF', border: '1px solid #D5E2FF', color: '#2F6BFF', fontSize: '12.5px', fontWeight: 700 }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   In Progress
                 </span>
@@ -489,19 +502,20 @@ useEffect(() => {
               </span>
             </div>
 
-            {/* Mobile badges row */}
+            {/* Mobile badges */}
             <div className="flex sm:hidden gap-2 mb-3 flex-wrap">
               {isCompleted ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius:'20px', background: '#E7F7EF', border: '1px solid #C7EBD8', color: '#138A5A', fontSize: '11px', fontWeight: 700 }}>✓ Completed</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#E7F7EF', border: '1px solid #C7EBD8', color: '#138A5A', fontSize: '11px', fontWeight: 700 }}>✓ Completed</span>
               ) : (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius:'20px', background: '#EFF4FF', border: '1px solid #D5E2FF', color: '#2F6BFF', fontSize: '11px', fontWeight: 700 }}>In Progress</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#EFF4FF', border: '1px solid #D5E2FF', color: '#2F6BFF', fontSize: '11px', fontWeight: 700 }}>In Progress</span>
               )}
               <span style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#FFF6E0', border: '1px solid #F3E1AE', color: '#A1730A', fontSize: '11px', fontWeight: 700 }}>
                 ★ {subject.access_mode === 'free' ? 'Free' : 'Premium'}
               </span>
             </div>
+
             <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: '18px' }}>
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '54px', height:'54px', borderRadius: '15px', background: 'linear-gradient(150deg,#3B79FF,#2F6BFF)', color: '#fff', flexShrink: 0, boxShadow: '0 10px 22px -8px rgba(47,107,255,.7)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '54px', height: '54px', borderRadius: '15px', background: 'linear-gradient(150deg,#3B79FF,#2F6BFF)', color: '#fff', flexShrink: 0, boxShadow: '0 10px 22px -8px rgba(47,107,255,.7)' }}>
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
               </span>
               <div style={{ paddingTop: '2px' }}>
@@ -575,14 +589,14 @@ useEffect(() => {
         id="lecture-right-sidebar"
         className="hidden lg:flex"
         style={{
-          width: sidebarCollapsed ? '64px' : '272px',
-          height: 'calc(100vh - 72px)',
-          overflowY: 'auto',
+          width:      sidebarCollapsed ? '64px' : '272px',
+          height:     'calc(100vh - 72px)',
+          overflowY:  'auto',
           borderLeft: '1px solid #EEF0F4',
           background: '#F7F8FA',
           flexDirection: 'column',
-          gap: '12px',
-          padding: sidebarCollapsed ? '16px 8px' : '16px 12px',
+          gap:        '12px',
+          padding:    sidebarCollapsed ? '16px 8px' : '16px 12px',
           flexShrink: 0,
           transition: 'width 0.25s ease, padding 0.25s ease',
         }}
@@ -598,19 +612,14 @@ useEffect(() => {
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             {sidebarCollapsed
-              ? <><polyline points="15 18 9 12 15 6"/></>
-              : <><polyline points="9 18 15 12 9 6"/></>
+              ? <polyline points="15 18 9 12 15 6"/>
+              : <polyline points="9 18 15 12 9 6"/>
             }
           </svg>
         </button>
-        {/* ── CONTENT CARD ── */}
-        <div style={{
-          background: '#fff',
-          borderRadius: '16px',
-          border: '1px solid #EAEDF2',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          overflow: 'hidden',
-        }}>
+
+        {/* ── CONTENT TABS CARD ── */}
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
           <div style={{ padding: sidebarCollapsed ? '8px' : '14px 16px 10px' }}>
             {!sidebarCollapsed && (
               <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
@@ -619,7 +628,7 @@ useEffect(() => {
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               {availableTabs.map((tabId) => {
-                const cfg = TAB_CONFIG[tabId]
+                const cfg      = TAB_CONFIG[tabId]
                 const isActive = activeTab === tabId
                 return (
                   <button
@@ -627,18 +636,13 @@ useEffect(() => {
                     onClick={() => setActiveTab(tabId)}
                     title={cfg.label}
                     style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
+                      width: '100%', display: 'flex', alignItems: 'center',
                       justifyContent: sidebarCollapsed ? 'center' : 'space-between',
                       padding: sidebarCollapsed ? '10px' : '10px 12px',
-                      borderRadius: '10px',
-                      border: 'none',
-                      cursor: 'pointer',
+                      borderRadius: '10px', border: 'none', cursor: 'pointer',
                       background: isActive ? '#EEF3FF' : 'transparent',
                       color: isActive ? '#2563EB' : '#6B7280',
-                      transition: 'all 0.15s ease',
-                      textAlign: 'left',
+                      transition: 'all 0.15s ease', textAlign: 'left',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: sidebarCollapsed ? 0 : '10px' }}>
@@ -671,13 +675,7 @@ useEffect(() => {
 
         {/* ── READING PROGRESS CARD ── */}
         {(activeTab === 'sheet' || activeTab === 'summary') && (
-          <div style={{
-            background: '#fff',
-            borderRadius: '16px',
-            border: '1px solid #EAEDF2',
-            padding: sidebarCollapsed ? '12px 8px' : '14px 16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          }}>
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {sidebarCollapsed ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                 <div style={{ position: 'relative', width: '44px', height: '44px' }}>
@@ -735,13 +733,7 @@ useEffect(() => {
 
         {/* ── FLASHCARD STATS CARD ── */}
         {!sidebarCollapsed && activeTab === 'flashcards' && (
-          <div style={{
-            background: '#fff',
-            borderRadius: '16px',
-            border: '1px solid #EAEDF2',
-            padding: '14px 16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          }}>
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Progress
             </p>
@@ -766,7 +758,7 @@ useEffect(() => {
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <StatPill label="Total" value={flashcardStats.total} color="blue" />
+              <StatPill label="Total"     value={flashcardStats.total}     color="blue"  />
               <StatPill label="Important" value={flashcardStats.important} color="amber" />
             </div>
           </div>
@@ -774,20 +766,14 @@ useEffect(() => {
 
         {/* ── QUIZ STATS CARD ── */}
         {!sidebarCollapsed && activeTab === 'quiz' && (
-          <div style={{
-            background: '#fff',
-            borderRadius: '16px',
-            border: '1px solid #EAEDF2',
-            padding: '14px 16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          }}>
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Quiz Progress
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <StatPill label="Total" value={quizStats.total} color="blue" />
-              <StatPill label="Correct" value={quizStats.correct} color="green" />
-              <StatPill label="Answered" value={quizStats.answered} color="slate" />
+              <StatPill label="Total"     value={quizStats.total}     color="blue"  />
+              <StatPill label="Correct"   value={quizStats.correct}   color="green" />
+              <StatPill label="Answered"  value={quizStats.answered}  color="slate" />
               <StatPill label="Important" value={quizStats.important} color="amber" />
             </div>
           </div>
@@ -795,38 +781,26 @@ useEffect(() => {
 
         {/* ── PYQ STATS CARD ── */}
         {!sidebarCollapsed && activeTab === 'previous_years' && (
-          <div style={{
-            background: '#fff',
-            borderRadius: '16px',
-            border: '1px solid #EAEDF2',
-            padding: '14px 16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          }}>
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Previous Years
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-              <StatPill label="Total" value={pyqStats.total} color="blue" />
+              <StatPill label="Total"     value={pyqStats.total}     color="blue"  />
               <StatPill label="Important" value={pyqStats.important} color="amber" />
-              <StatPill label="Answered" value={pyqStats.answered} color="green" />
+              <StatPill label="Answered"  value={pyqStats.answered}  color="green" />
             </div>
           </div>
         )}
 
         {/* ── TABLE OF CONTENTS CARD ── */}
         {tocSections.length > 0 && (
-          <div style={{
-            background: '#fff',
-            borderRadius: '16px',
-            border: '1px solid #EAEDF2',
-            padding: sidebarCollapsed ? '10px 6px' : '14px 16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          }}>
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '10px 6px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {sidebarCollapsed ? (
               <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', scrollbarWidth: 'none' }}>
                 {tocSections.filter(s => s.level <= 2).map((section) => {
                   const isMain = section.level === 1
-                  const label = isMain
+                  const label  = isMain
                     ? `${section.h1Num}`
                     : `${section.h1Num}${String.fromCharCode(96 + section.h2Num!)}`
                   return (
@@ -910,97 +884,66 @@ useEffect(() => {
         {!sidebarCollapsed && <NotesPanel lectureId={lecture.id} />}
 
         {/* ── ACTIONS CARD ── */}
-        {!sidebarCollapsed && <div style={{
-          background: '#fff',
-          borderRadius: '16px',
-          border: '1px solid #EAEDF2',
-          padding: '14px 16px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-        }}>
-          <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-            Actions
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button
-              onClick={handleMarkComplete}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '10px',
-                borderRadius: '10px',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: 600,
-                background: isCompleted ? '#16A34A' : '#EEF3FF',
-                color: isCompleted ? '#fff' : '#2563EB',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                {isCompleted
-                  ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>
-                  : <circle cx="12" cy="12" r="10"/>
-                }
-              </svg>
-              {isCompleted ? 'Completed' : 'Mark as Completed'}
-            </button>
-            <button
-              onClick={handleToggleBookmark}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '10px',
-                borderRadius: '10px',
-                border: '1px solid #EAEDF2',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: 500,
-                background: isBookmarked ? '#FFF7ED' : '#fff',
-                color: isBookmarked ? '#D97706' : '#6B7280',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? '#D97706' : 'none'} stroke={isBookmarked ? '#D97706' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-              </svg>
-              {isBookmarked ? 'Bookmarked' : 'Bookmark'}
-            </button>
-            <Link
-              href={`/${universityId}/${subjectSlug ?? subject.id}`}
-              prefetch={false}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '10px',
-                borderRadius: '10px',
-                border: '1px solid #EAEDF2',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#6B7280',
-                background: '#fff',
-                textDecoration: 'none',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 18 9 12 15 6"/>
-              </svg>
-              Back to Subject
-            </Link>
+        {!sidebarCollapsed && (
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Actions
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                onClick={handleMarkComplete}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: '8px', padding: '10px', borderRadius: '10px', border: 'none',
+                  cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                  background: isCompleted ? '#16A34A' : '#EEF3FF',
+                  color: isCompleted ? '#fff' : '#2563EB',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  {isCompleted
+                    ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>
+                    : <circle cx="12" cy="12" r="10"/>
+                  }
+                </svg>
+                {isCompleted ? 'Completed' : 'Mark as Completed'}
+              </button>
+              <button
+                onClick={handleToggleBookmark}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: '8px', padding: '10px', borderRadius: '10px', border: '1px solid #EAEDF2',
+                  cursor: 'pointer', fontSize: '13px', fontWeight: 500,
+                  background: isBookmarked ? '#FFF7ED' : '#fff',
+                  color: isBookmarked ? '#D97706' : '#6B7280',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? '#D97706' : 'none'} stroke={isBookmarked ? '#D97706' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                </svg>
+                {isBookmarked ? 'Bookmarked' : 'Bookmark'}
+              </button>
+              <Link
+                href={`/${universityId}/${subjectSlug ?? subject.id}`}
+                prefetch={false}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: '8px', padding: '10px', borderRadius: '10px', border: '1px solid #EAEDF2',
+                  fontSize: '13px', fontWeight: 500, color: '#6B7280', background: '#fff',
+                  textDecoration: 'none', transition: 'all 0.15s ease',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+                Back to Subject
+              </Link>
+            </div>
           </div>
-        </div>}
+        )}
 
-        {/* bottom spacing */}
         <div style={{ height: '8px' }} />
       </aside>
     </div>
@@ -1009,10 +952,18 @@ useEffect(() => {
 
 // ── Stat Pill ──────────────────────────────────────────────────────────────
 
-function StatPill({ label, value, color }: { label: string; value: number; color: 'blue' | 'green' | 'amber' | 'slate' }) {
-  const bg    = color === 'blue' ? '#EFF6FF' : color === 'green' ? '#F0FDF4' : color === 'amber' ? '#FFFBEB' : '#F8FAFC'
-  const text  = color === 'blue' ? '#2563EB' : color === 'green' ? '#16A34A' : color === 'amber' ? '#D97706' : '#64748B'
-  const sub   = color === 'blue' ? '#3B82F6' : color === 'green' ? '#22C55E' : color === 'amber' ? '#F59E0B' : '#94A3B8'
+function StatPill({
+  label,
+  value,
+  color,
+}: {
+  label: string
+  value: number
+  color: 'blue' | 'green' | 'amber' | 'slate'
+}) {
+  const bg   = color === 'blue' ? '#EFF6FF' : color === 'green' ? '#F0FDF4' : color === 'amber' ? '#FFFBEB' : '#F8FAFC'
+  const text = color === 'blue' ? '#2563EB' : color === 'green' ? '#16A34A' : color === 'amber' ? '#D97706' : '#64748B'
+  const sub  = color === 'blue' ? '#3B82F6' : color === 'green' ? '#22C55E' : color === 'amber' ? '#F59E0B' : '#94A3B8'
   return (
     <div style={{ background: bg, borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
       <p style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: text }}>{value}</p>
@@ -1024,12 +975,12 @@ function StatPill({ label, value, color }: { label: string; value: number; color
 // ── Notes Panel ────────────────────────────────────────────────────────────
 
 function NotesPanel({ lectureId }: { lectureId: string }) {
-  const { user } = useUserStore()
-  const supabase = createClient()
-  const [note, setNote]     = useState('')
-  const [saved, setSaved]   = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [noteId, setNoteId] = useState<string | null>(null)
+  const { user }   = useUserStore()
+  const supabase   = createClient()
+  const [note, setNote]         = useState('')
+  const [saved, setSaved]       = useState(false)
+  const [loading, setLoading]   = useState(true)
+  const [noteId, setNoteId]     = useState<string | null>(null)
   const saveTimer = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -1063,7 +1014,8 @@ function NotesPanel({ lectureId }: { lectureId: string }) {
     } else {
       const { data } = await supabase.from('user_notes')
         .insert({ user_id: user.id, lecture_id: lectureId, note_content: content })
-        .select('id').maybeSingle()
+        .select('id')
+        .maybeSingle()
       if (data) setNoteId(data.id)
     }
     setSaved(true)
@@ -1072,23 +1024,13 @@ function NotesPanel({ lectureId }: { lectureId: string }) {
   if (!user) return null
 
   return (
-    <div style={{
-      background: '#fff',
-      borderRadius: '16px',
-      border: '1px solid #EAEDF2',
-      padding: '14px 16px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-    }}>
+    <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
         <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           My Notes
         </p>
-        {saved && (
-          <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 600 }}>✓ Saved</span>
-        )}
-        {!saved && note.length > 0 && (
-          <span style={{ fontSize: '10px', color: '#94A3B8' }}>Saving...</span>
-        )}
+        {saved && <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 600 }}>✓ Saved</span>}
+        {!saved && note.length > 0 && <span style={{ fontSize: '10px', color: '#94A3B8' }}>Saving...</span>}
       </div>
       {loading ? (
         <div style={{ height: '80px', background: '#F1F5F9', borderRadius: '10px' }} />
@@ -1099,17 +1041,10 @@ function NotesPanel({ lectureId }: { lectureId: string }) {
           placeholder="Write your notes here..."
           rows={4}
           style={{
-            width: '100%',
-            fontSize: '12.5px',
-            color: '#374151',
-            background: '#FEFCE8',
-            border: '1px solid #FDE68A',
-            borderRadius: '10px',
-            padding: '10px',
-            resize: 'none',
-            outline: 'none',
-            lineHeight: 1.6,
-            fontFamily: 'inherit',
+            width: '100%', fontSize: '12.5px', color: '#374151',
+            background: '#FEFCE8', border: '1px solid #FDE68A',
+            borderRadius: '10px', padding: '10px', resize: 'none',
+            outline: 'none', lineHeight: 1.6, fontFamily: 'inherit',
             boxSizing: 'border-box',
           }}
         />

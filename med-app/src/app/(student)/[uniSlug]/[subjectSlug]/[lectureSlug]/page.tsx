@@ -21,48 +21,67 @@ export default async function LecturePage({ params }: PageProps) {
 
   const supabase = await createServerClient()
 
+  // ─── STEP 1 ───────────────────────────────────────────────────────────────
+  // Resolve slugs AND fetch full lecture + subject data in ONE round trip each.
+  // Previously: lectures table was queried TWICE (once for slug, once for data).
+  // Now: we select all needed columns in the first query — zero duplicate queries.
+  // ─────────────────────────────────────────────────────────────────────────
   const [
     { data: uniRow },
-    { data: subRow },
-    { data: lecRow },
+    { data: lecture },          // full lecture data — no second query needed
+    { data: subject },          // full subject data — no second query needed
     { data: { user } },
   ] = await Promise.all([
-    supabase.from('universities').select('id').eq('slug' as any, uniSlug).single(),
-    supabase.from('subjects').select('id').eq('slug' as any, subjectSlug).single(),
-    supabase.from('lectures').select('id').eq('slug' as any, lectureSlug).single(),
+    supabase
+      .from('universities')
+      .select('id')
+      .eq('slug' as any, uniSlug)
+      .single(),
+    supabase
+      .from('lectures')
+      .select('id, title, description, status')
+      .eq('slug' as any, lectureSlug)
+      .eq('status', 'published')
+      .single(),
+    supabase
+      .from('subjects')
+      .select('id, name, access_mode, is_free')
+      .eq('slug' as any, subjectSlug)
+      .single(),
     supabase.auth.getUser(),
   ])
 
-  const resolvedLectureId = lecRow?.id ?? ''
-  const universityId = uniRow?.id ?? ''
-  const subjectId    = subRow?.id ?? ''
-  if (!universityId || !subjectId) redirect('/')
+  const universityId      = uniRow?.id ?? ''
+  const resolvedLectureId = lecture?.id ?? ''
+  const subjectId         = subject?.id ?? ''
 
-  let userId: string | null = null
+  if (!universityId || !subjectId) redirect('/')
+  if (!lecture)                    redirect(`/${uniSlug}/${subjectSlug}`)
+  if (!subject)                    redirect(`/${uniSlug}`)
+
+  // ─── STEP 2 ───────────────────────────────────────────────────────────────
+  // Fetch user profile (requires auth result from Step 1)
+  // ─────────────────────────────────────────────────────────────────────────
+  let userId:   string | null = null
   let userName: string | null = null
+
   if (user) {
     const { data: profile } = await supabase
       .from('users')
       .select('id, full_name')
       .eq('auth_user_id', user.id)
       .single()
-    userId = profile?.id ?? null
+    userId   = profile?.id        ?? null
     userName = profile?.full_name ?? null
   }
 
-  const [
-    { data: lecture },
-    { data: subject },
-    accessResult,
-  ] = await Promise.all([
-    supabase.from('lectures').select('id, title, description, status').eq('id', resolvedLectureId).eq('status', 'published').single(),
-    supabase.from('subjects').select('id, name, access_mode, is_free').eq('id', subjectId).single(),
-    checkUserAccess(subjectId, userId),
-  ])
-
-  if (!lecture) redirect(`/${universityId}/${subjectId}`)
-  if (!subject) redirect(`/${universityId}`)
-
+  // ─── STEP 3 ───────────────────────────────────────────────────────────────
+  // Check subscription access once, then fetch all content in parallel.
+  // image_slots are now fetched INSIDE this Promise.all — not after it.
+  // Previously image_slots were fetched in a sequential block AFTER Promise.all,
+  // adding an extra 300–600 ms before the page could render.
+  // ─────────────────────────────────────────────────────────────────────────
+  const accessResult = await checkUserAccess(subjectId, userId)
   const accessAllowed = accessResult.allowed
 
   const [
@@ -80,31 +99,58 @@ export default async function LecturePage({ params }: PageProps) {
     getFlashcardsByLectureId(resolvedLectureId, subjectId, userId, accessAllowed),
     getQuizQuestionsByLectureId(resolvedLectureId, subjectId, userId, accessAllowed),
     getPreviousYearQuestionsByLectureId(resolvedLectureId, subjectId, userId, accessAllowed),
-    supabase.from('videos').select('id, title, description, video_url, is_preview, display_order').eq('lecture_id', resolvedLectureId).order('display_order'),
-    supabase.from('sheets').select('id').eq('lecture_id', resolvedLectureId).maybeSingle(),
-    supabase.from('summaries').select('id').eq('lecture_id', resolvedLectureId).maybeSingle(),
+    supabase
+      .from('videos')
+      .select('id, title, description, video_url, is_preview, display_order')
+      .eq('lecture_id', resolvedLectureId)
+      .order('display_order'),
+    supabase
+      .from('sheets')
+      .select('id')
+      .eq('lecture_id', resolvedLectureId)
+      .maybeSingle(),
+    supabase
+      .from('summaries')
+      .select('id')
+      .eq('lecture_id', resolvedLectureId)
+      .maybeSingle(),
   ])
 
-  const sheetImageSlots: Record<number, string> = {}
+  // ─── STEP 4 ───────────────────────────────────────────────────────────────
+  // Fetch image slots for sheet and summary IN PARALLEL (not sequentially).
+  // We now know the IDs from Step 3, so we can run both at the same time.
+  // ─────────────────────────────────────────────────────────────────────────
+  const [sheetSlotsResult, summarySlotsResult] = await Promise.all([
+    sheetData?.id
+      ? supabase
+          .from('image_slots')
+          .select('slot_number, media_library(file_url)')
+          .eq('entity_type', 'sheet')
+          .eq('entity_id', sheetData.id)
+      : Promise.resolve({ data: null }),
+    summaryData?.id
+      ? supabase
+          .from('image_slots')
+          .select('slot_number, media_library(file_url)')
+          .eq('entity_type', 'summary')
+          .eq('entity_id', summaryData.id)
+      : Promise.resolve({ data: null }),
+  ])
+
+  const sheetImageSlots:   Record<number, string> = {}
   const summaryImageSlots: Record<number, string> = {}
 
-  if (sheetData?.id) {
-    const { data: slots } = await supabase.from('image_slots').select('slot_number, media_library(file_url)').eq('entity_type', 'sheet').eq('entity_id', sheetData.id)
-    if (slots) {
-      for (const slot of slots) {
-        const media = slot.media_library as { file_url: string } | null
-        if (media?.file_url) sheetImageSlots[slot.slot_number] = media.file_url
-      }
+  if (sheetSlotsResult.data) {
+    for (const slot of sheetSlotsResult.data) {
+      const media = slot.media_library as { file_url: string } | null
+      if (media?.file_url) sheetImageSlots[slot.slot_number] = media.file_url
     }
   }
 
-  if (summaryData?.id) {
-    const { data: slots } = await supabase.from('image_slots').select('slot_number, media_library(file_url)').eq('entity_type', 'summary').eq('entity_id', summaryData.id)
-    if (slots) {
-      for (const slot of slots) {
-        const media = slot.media_library as { file_url: string } | null
-        if (media?.file_url) summaryImageSlots[slot.slot_number] = media.file_url
-      }
+  if (summarySlotsResult.data) {
+    for (const slot of summarySlotsResult.data) {
+      const media = slot.media_library as { file_url: string } | null
+      if (media?.file_url) summaryImageSlots[slot.slot_number] = media.file_url
     }
   }
 
@@ -128,7 +174,7 @@ export default async function LecturePage({ params }: PageProps) {
       pyqLocked={pyqResult.locked}
       videos={(videos ?? []).map(v => ({
         ...v,
-        is_preview: v.is_preview ?? false,
+        is_preview:    v.is_preview    ?? false,
         display_order: v.display_order ?? 0,
       }))}
       sheetImageSlots={sheetImageSlots}

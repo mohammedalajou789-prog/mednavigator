@@ -45,7 +45,7 @@ export default function PreviousYearsViewer({ questions, userName, onStatsChange
   })
 
   const { data: bookmarkData, isLoading: bookmarkLoading } = useQuery({
-    queryKey: ['bookmarks', 'question', user?.id],
+    queryKey: ['bookmarks', 'pyq', user?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('bookmarks')

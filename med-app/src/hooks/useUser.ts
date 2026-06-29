@@ -8,7 +8,9 @@ import type { UserProfile } from '@/types/app'
 
 async function fetchCurrentUser(): Promise<UserProfile | null> {
   const supabase = createClient()
-  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const [{ data: { user: authUser } }, ] = await Promise.all([
+    supabase.auth.getUser(),
+  ])
   if (!authUser) return null
   const { data, error } = await supabase
     .from('users')

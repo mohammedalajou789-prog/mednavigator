@@ -10,16 +10,20 @@ interface PageProps {
 export default async function SubjectPage({ params }: PageProps) {
   const { uniSlug, subjectSlug } = await params
 
-  // ── resolve slug → id ────────────────────────────────────────────
-  const supabase0 = await createServerClient()
-  const { data: uniRow } = await supabase0.from('universities').select('id').eq('slug' as any, uniSlug).single()
-  const { data: subRow } = await supabase0.from('subjects').select('id').eq('slug' as any, subjectSlug).single()
+  // ── resolve slugs + auth in parallel ─────────────────────────────
+  const supabase = await createServerClient()
+  const [
+    { data: uniRow },
+    { data: subRow },
+    authUser,
+  ] = await Promise.all([
+    supabase.from('universities').select('id').eq('slug' as any, uniSlug).single(),
+    supabase.from('subjects').select('id').eq('slug' as any, subjectSlug).single(),
+    getAuthUser(),
+  ])
   const universityId = uniRow?.id ?? ''
   const subjectId    = subRow?.id ?? ''
   if (!universityId || !subjectId) notFound()
-
-  const supabase  = await createServerClient()
-  const authUser  = await getAuthUser()
 
   let userId: string | null = null
   if (authUser) {
@@ -28,7 +32,7 @@ export default async function SubjectPage({ params }: PageProps) {
     userId = profile?.id ?? null
   }
 
-  // ── base data ──────────────────────────────────────────────────────
+  // ── base data (fetched by id now that slugs are resolved) ──────────
   const [{ data: university }, { data: subject }] = await Promise.all([
     supabase.from('universities').select('id,name').eq('id', universityId).single(),
     supabase.from('subjects').select('*').eq('id', subjectId).eq('is_published', true).single(),
@@ -143,12 +147,7 @@ export default async function SubjectPage({ params }: PageProps) {
     osce: 'OSCE Stations', mini_osce: 'Mini-OSCE', oral_exam: 'Oral Exam',
   }
 
-  // shared chevron icon
-  const ChevronRight = () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 6l6 6-6 6"/>
-    </svg>
-  )
+  
 
   // ─────────────────────────────────────────────────────────────────
   return (

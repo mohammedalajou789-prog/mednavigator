@@ -19,17 +19,24 @@ interface PageProps {
 export default async function LecturePage({ params }: PageProps) {
   const { uniSlug, subjectSlug, lectureSlug } = await params
 
-  const supabaseSlug = await createServerClient()
-  const { data: uniRow } = await supabaseSlug.from('universities').select('id').eq('slug' as any, uniSlug).single()
-  const { data: subRow } = await supabaseSlug.from('subjects').select('id').eq('slug' as any, subjectSlug).single()
-  const { data: lecRow } = await supabaseSlug.from('lectures').select('id').eq('slug' as any, lectureSlug).single()
+  const supabase = await createServerClient()
+
+  const [
+    { data: uniRow },
+    { data: subRow },
+    { data: lecRow },
+    { data: { user } },
+  ] = await Promise.all([
+    supabase.from('universities').select('id').eq('slug' as any, uniSlug).single(),
+    supabase.from('subjects').select('id').eq('slug' as any, subjectSlug).single(),
+    supabase.from('lectures').select('id').eq('slug' as any, lectureSlug).single(),
+    supabase.auth.getUser(),
+  ])
+
   const resolvedLectureId = lecRow?.id ?? ''
   const universityId = uniRow?.id ?? ''
   const subjectId    = subRow?.id ?? ''
   if (!universityId || !subjectId) redirect('/')
-  const supabase = await createServerClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
 
   let userId: string | null = null
   let userName: string | null = null

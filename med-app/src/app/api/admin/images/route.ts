@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     console.log('Uploading to storage:', filePath)
 
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('logos')
+      .from('sheet-images')
       .upload(filePath, buffer, {
         contentType: file.type,
         upsert: false,
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     console.log('Upload success:', uploadData)
 
     const { data: urlData } = supabase.storage
-      .from('logos')
+      .from('sheet-images')
       .getPublicUrl(filePath)
 
     const publicUrl = urlData.publicUrl

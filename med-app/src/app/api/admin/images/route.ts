@@ -87,7 +87,8 @@ export async function POST(request: NextRequest) {
     console.log('Media record created:', mediaRecord?.id)
 
     if (entityType && entityId && slotNumber && mediaRecord) {
-      const { error: slotError } = await supabase
+      console.log('Attempting image_slots upsert:', { entityType, entityId, slotNumber, mediaId: mediaRecord.id })
+      const { data: slotData, error: slotError } = await supabase
         .from('image_slots')
         .upsert({
           entity_type: entityType,
@@ -97,10 +98,15 @@ export async function POST(request: NextRequest) {
         }, {
           onConflict: 'entity_type,entity_id,slot_number',
         })
+        .select()
 
       if (slotError) {
         console.error('Image slot error:', slotError)
+        return NextResponse.json({ error: `Slot error: ${slotError.message}` }, { status: 500 })
       }
+      console.log('Slot saved:', slotData)
+    } else {
+      console.log('Missing params for slot:', { entityType, entityId, slotNumber, mediaRecord: !!mediaRecord })
     }
 
     return NextResponse.json({

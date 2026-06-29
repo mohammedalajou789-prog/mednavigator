@@ -254,6 +254,7 @@ export default function LectureHub({
 
   const { sidebarOpen, setSidebarOpen } = useUIStore()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const [activeSectionId, setActiveSectionId] = useState<string>('')
 
 const [activeTab, setActiveTab]           = useState(availableTabs[0] ?? 'sheet')
 
@@ -368,6 +369,29 @@ useEffect(() => {
       setIsBookmarked(true)
     }
   }
+
+  useEffect(() => {
+    if (tocSections.length === 0) return
+    const scrollContainer = document.getElementById('lecture-content-scroll')
+    if (!scrollContainer) return
+
+    function handleScroll() {
+      let current = tocSections[0]?.id ?? ''
+      for (const section of tocSections) {
+        const el = document.getElementById(section.id)
+        if (!el) continue
+        const top = el.getBoundingClientRect().top - scrollContainer!.getBoundingClientRect().top
+        if (top <= 140) current = section.id
+      }
+      setActiveSectionId(current)
+      const activeBtn = document.getElementById(`toc-btn-${current}`)
+      if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
+    return () => scrollContainer.removeEventListener('scroll', handleScroll)
+  }, [tocSections])
 
   function handleProgressUpdate(pct: number) {
     setProgressPercent(pct)
@@ -819,7 +843,7 @@ useEffect(() => {
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
           }}>
             {sidebarCollapsed ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center' }}>
+              <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', scrollbarWidth: 'none' }}>
                 {tocSections.filter(s => s.level <= 2).map((section) => {
                   const isMain = section.level === 1
                   const label = isMain
@@ -828,15 +852,16 @@ useEffect(() => {
                   return (
                     <button
                       key={section.id}
+                      id={`toc-btn-${section.id}`}
                       onClick={() => handleTocClick(section.id)}
                       title={section.label}
                       style={{
                         width: '32px', height: '20px', borderRadius: '6px', border: 'none',
-                        background: isMain ? '#2563EB' : 'transparent',
-                        color: isMain ? '#fff' : '#94A3B8',
+                        background: activeSectionId === section.id ? '#2563EB' : isMain ? '#EEF3FF' : 'transparent',
+                        color: activeSectionId === section.id ? '#fff' : isMain ? '#2563EB' : '#94A3B8',
                         fontSize: '10px', fontWeight: isMain ? 700 : 500,
                         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        lineHeight: 1,
+                        lineHeight: 1, transition: 'background 0.2s, color 0.2s',
                       }}
                     >
                       {label}

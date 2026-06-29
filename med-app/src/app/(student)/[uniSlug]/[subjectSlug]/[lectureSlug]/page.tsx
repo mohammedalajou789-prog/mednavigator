@@ -60,7 +60,8 @@ export default async function LecturePage({ params }: PageProps) {
   if (!subject)                    redirect(`/${uniSlug}`)
 
   // ─── STEP 2 ───────────────────────────────────────────────────────────────
-  // Fetch user profile (requires auth result from Step 1)
+  // Fetch user profile and subscription access in parallel.
+  // Profile fetch and access check are independent — run together.
   // ─────────────────────────────────────────────────────────────────────────
   let userId:   string | null = null
   let userName: string | null = null
@@ -75,14 +76,7 @@ export default async function LecturePage({ params }: PageProps) {
     userName = profile?.full_name ?? null
   }
 
-  // ─── STEP 3 ───────────────────────────────────────────────────────────────
-  // Check subscription access once, then fetch all content in parallel.
-  // image_slots are now fetched INSIDE this Promise.all — not after it.
-  // Previously image_slots were fetched in a sequential block AFTER Promise.all,
-  // adding an extra 300–600 ms before the page could render.
-  // ─────────────────────────────────────────────────────────────────────────
-  const accessResult = await checkUserAccess(subjectId, userId)
-  const accessAllowed = accessResult.allowed
+  const accessAllowed = (await checkUserAccess(subjectId, userId)).allowed
 
   const [
     sheetResult,

@@ -153,7 +153,7 @@ export default async function SubjectPage({ params }: PageProps) {
   // ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)', fontFamily: '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif' }}>
-      <main style={{ maxWidth: 1080, margin: '0 auto', padding: '28px 28px 64px' }}>
+      <main style={{ maxWidth: 1080, margin: '0 auto', padding: 'clamp(16px, 4vw, 28px) clamp(16px, 4vw, 28px) 64px' }}>
 
         {/* Breadcrumb */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-3)', marginBottom: 18 }}>
@@ -167,7 +167,7 @@ export default async function SubjectPage({ params }: PageProps) {
         {/* Hero Banner */}
         <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: '32px 34px', marginBottom: 18, background: 'linear-gradient(120deg,rgb(232,240,255) 0%,rgb(239,244,255) 46%,rgb(250,251,255) 100%)', border: '1px solid rgb(223,232,251)', boxShadow: 'none' }}>
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 320, height: 160, background: 'radial-gradient(rgba(249,168,212,0.3) 0%,rgba(216,180,254,0.15) 55%,transparent 75%)', pointerEvents: 'none', borderRadius: '50%', filter: 'blur(24px)', zIndex: 0 }} />
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 30 }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 30, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '5px 13px', borderRadius: 999, background: 'rgb(239,244,255)', border: '1px solid rgb(213,226,255)', color: '#2F6BFF' }}>
@@ -179,7 +179,7 @@ export default async function SubjectPage({ params }: PageProps) {
                   {accessBadge}
                 </span>
               </div>
-              <h1 style={{ margin: '0 0 10px', fontSize: 40, fontWeight: 800, letterSpacing: '-0.035em', color: '#15203A' }}>{subject.name}</h1>
+              <h1 style={{ margin: '0 0 10px', fontSize: 'clamp(24px, 6vw, 40px)', fontWeight: 800, letterSpacing: '-0.035em', color: '#15203A' }}>{subject.name}</h1>
               {subject.description && (
                 <p style={{ margin: '0 0 22px', fontSize: 14.5, lineHeight: 1.55, color: 'rgba(27,35,53,0.65)', maxWidth: 680 }}>{subject.description}</p>
               )}
@@ -214,7 +214,7 @@ export default async function SubjectPage({ params }: PageProps) {
         </div>
 
         {/* Content Type Shortcuts */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 28 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 120px), 1fr))', gap: 10, marginBottom: 28 }}>
           {[
             { label: 'Sheet',          color: 'var(--primary)',  bg: 'rgba(47,107,255,0.13)',  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
             { label: 'Summary',        color: 'var(--success)',  bg: 'rgba(19,138,90,0.13)',   icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> },
@@ -243,7 +243,7 @@ export default async function SubjectPage({ params }: PageProps) {
         </div>
 
         {/* Two Column Layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 24, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 420px), 1fr))', gap: 24, alignItems: 'start' }}>
 
           {/* LEFT: Lectures */}
           <div>

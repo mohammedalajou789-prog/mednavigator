@@ -345,14 +345,13 @@ export default function ContentBuilder({
     { label: 'Table',         syntax: '\n[TABLE]\n| Column 1 | Column 2 |\n|----------|----------|\n| Value 1  | Value 2  |\n[/TABLE]\n' },
   ]
 
-  // Auto-increment image slot number based on existing slots in content
+  const currentContent = activeTab === 'sheet' ? sheetContent : summaryContent
+
   function insertImageSlot() {
     const existing = getImageSlots(currentContent)
     const nextSlot = existing.length > 0 ? Math.max(...existing) + 1 : 1
     insertAtCursor(`\n[IMAGE_SLOT:${nextSlot}]\n`)
   }
-
-  const currentContent = activeTab === 'sheet' ? sheetContent : summaryContent
 
   return (
     <div className="space-y-4">
@@ -412,14 +411,22 @@ export default function ContentBuilder({
             <div className="flex flex-wrap gap-1.5">
               {/* CHANGE 3 — Insert at cursor buttons */}
               {!studentPreview && syntaxButtons.map((item) => (
-                <button
-                  key={item.label}
-                  onClick={() => insertAtCursor(item.syntax)}
-                  className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  + {item.label}
-                </button>
-              ))}
+              <button
+                key={item.label}
+                onClick={() => insertAtCursor(item.syntax)}
+                className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                + {item.label}
+              </button>
+            ))}
+            {!studentPreview && (
+              <button
+                onClick={insertImageSlot}
+                className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                + Image Slot
+              </button>
+            )}
             </div>
             <button
               onClick={() => setStudentPreview(p => !p)}

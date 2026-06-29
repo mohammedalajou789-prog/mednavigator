@@ -213,34 +213,7 @@ export default async function SubjectPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Content Type Shortcuts */}
-        <div className="hidden sm:grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 120px), 1fr))', gap: 10, marginBottom: 28 }}>
-          {[
-            { label: 'Sheet',          color: 'var(--primary)',  bg: 'rgba(47,107,255,0.13)',  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
-            { label: 'Summary',        color: 'var(--success)',  bg: 'rgba(19,138,90,0.13)',   icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> },
-            { label: 'Flashcards',     color: 'var(--violet)',   bg: 'rgba(110,107,216,0.13)', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> },
-            { label: 'Quiz',           color: 'var(--warn)',     bg: 'rgba(216,154,6,0.13)',   icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
-            { label: 'Previous Years', color: '#0E8A8A',         bg: 'rgba(14,138,138,0.13)',  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
-          ].map(item => (
-            <Link
-              key={item.label}
-              href={`/${uniSlug}/${subjectSlug}`}
-              className="group"
-              style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 11, background: 'var(--card)', border: '2px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow-sm)', padding: '18px 12px', cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s, transform 0.15s' }}
-            >
-              <div style={{ width: 46, height: 46, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', background: item.bg, color: item.color }}>
-                {item.icon}
-              </div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, textAlign: 'center', lineHeight: 1.2, color: 'var(--ink)' }}>
-                {item.label}
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-                  Open
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+        
 
         {/* Two Column Layout */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 420px), 1fr))', gap: 24, alignItems: 'start' }}>

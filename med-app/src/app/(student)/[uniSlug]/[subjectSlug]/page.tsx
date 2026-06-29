@@ -222,12 +222,28 @@ export default async function SubjectPage({ params }: PageProps) {
             { label: 'Quiz',           color: 'var(--warn)',     bg: 'rgba(216,154,6,0.13)',   icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
             { label: 'Previous Years', color: '#0E8A8A',         bg: 'rgba(14,138,138,0.13)',  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
           ].map(item => (
-            <div key={item.label} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow-sm)', padding: '18px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 11, cursor: 'pointer' }}>
+            <Link
+              key={item.label}
+              href={`/${uniSlug}/${subjectSlug}`}
+              style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 11, background: 'var(--card)', border: '2px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow-sm)', padding: '18px 12px', cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s, transform 0.15s' }}
+              onMouseEnter={e => {
+                const el = e.currentTarget as HTMLElement
+                el.style.borderColor = item.color
+                el.style.boxShadow = `0 4px 16px ${item.bg}`
+                el.style.transform = 'translateY(-2px)'
+              }}
+              onMouseLeave={e => {
+                const el = e.currentTarget as HTMLElement
+                el.style.borderColor = 'var(--line)'
+                el.style.boxShadow = 'var(--shadow-sm)'
+                el.style.transform = 'translateY(0)'
+              }}
+            >
               <div style={{ width: 46, height: 46, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', background: item.bg, color: item.color }}>
                 {item.icon}
               </div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>{item.label}</div>
-            </div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, textAlign: 'center', lineHeight: 1.2, color: 'var(--ink)' }}>{item.label}</div>
+            </Link>
           ))}
         </div>
 
@@ -269,7 +285,12 @@ export default async function SubjectPage({ params }: PageProps) {
                         <div key={lecture.id}>
                           {idx > 0 && <div style={{ height: 1, background: 'var(--line)', margin: '0 20px' }} />}
                           <div style={{ padding: '18px 20px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                            <Link
+                              href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`}
+                              style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit', borderRadius: 12, padding: '6px 8px', margin: '-6px -8px', transition: 'background 0.15s' }}
+                              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(47,107,255,0.05)'}
+                              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                            >
                               <div style={{ width: 46, height: 46, borderRadius: 13, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDone ? 'rgba(19,138,90,0.11)' : 'rgba(47,107,255,0.11)', color: isDone ? 'var(--success)' : 'var(--primary)' }}>
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>
                               </div>
@@ -284,7 +305,7 @@ export default async function SubjectPage({ params }: PageProps) {
                               <span style={{ fontSize: 11.5, fontWeight: 700, color: statusColor, padding: '5px 11px', borderRadius: 8, background: statusBg }}>
                                 {statusLabel}
                               </span>
-                            </div>
+                            </Link>
                             <div style={{ height: 4, background: 'var(--bg-2)', margin: '14px 0', borderRadius: 99 }}>
                               <div style={{ height: '100%', width: `${pct}%`, background: isDone ? 'var(--success)' : 'var(--primary)', borderRadius: 99 }} />
                             </div>

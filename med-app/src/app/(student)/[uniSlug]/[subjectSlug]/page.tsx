@@ -253,7 +253,7 @@ export default async function SubjectPage({ params }: PageProps) {
                           {idx > 0 && <div style={{ height: 1, background: 'var(--line)', margin: '0 20px' }} />}
                           <div style={{ padding: '18px 20px' }}>
                             <Link
-                              href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`}
+                              href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} prefetch={false}
                               style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit', borderRadius: 12, padding: '6px 8px', margin: '-6px -8px', transition: 'background 0.15s', background: 'rgba(47,107,255,0.03)', border: '1px solid rgba(47,107,255,0.08)' }}
                             >
                               <div style={{ width: 46, height: 46, borderRadius: 13, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDone ? 'rgba(19,138,90,0.11)' : 'rgba(47,107,255,0.11)', color: isDone ? 'var(--success)' : 'var(--primary)' }}>
@@ -276,31 +276,31 @@ export default async function SubjectPage({ params }: PageProps) {
                             </div>
                             <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
                               {hasSheet && (
-                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid color-mix(in srgb,var(--primary) 30%,var(--line))', background: 'rgba(47,107,255,0.09)', color: 'var(--primary)', fontSize: 13.5, fontWeight: 700, textDecoration: 'none' }}>
+                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} prefetch={false} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid color-mix(in srgb,var(--primary) 30%,var(--line))', background: 'rgba(47,107,255,0.09)', color: 'var(--primary)', fontSize: 13.5, fontWeight: 700, textDecoration: 'none' }}>
                                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                                   Sheet
                                 </Link>
                               )}
                               {hasSummary && (
-                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
+                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} prefetch={false} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
                                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                                   Summary
                                 </Link>
                               )}
                               {hasFl && (
-                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
+                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} prefetch={false} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
                                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                                   Flashcards
                                 </Link>
                               )}
                               {hasQuiz && (
-                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
+                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} prefetch={false} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
                                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                                   Quiz
                                 </Link>
                               )}
                               {hasPYQ && (
-                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
+                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} prefetch={false} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
                                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                   Previous Years
                                 </Link>

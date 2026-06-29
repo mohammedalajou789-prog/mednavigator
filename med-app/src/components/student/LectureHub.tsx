@@ -253,6 +253,7 @@ export default function LectureHub({
   })
 
   const { sidebarOpen, setSidebarOpen } = useUIStore()
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
 
 const [activeTab, setActiveTab]           = useState(availableTabs[0] ?? 'sheet')
 
@@ -570,28 +571,48 @@ useEffect(() => {
         id="lecture-right-sidebar"
         className="hidden lg:flex"
         style={{
-          width: '272px',
+          width: sidebarCollapsed ? '64px' : '272px',
           height: 'calc(100vh - 72px)',
           overflowY: 'auto',
           borderLeft: '1px solid #EEF0F4',
           background: '#F7F8FA',
           flexDirection: 'column',
           gap: '12px',
-          padding: '16px 12px',
+          padding: sidebarCollapsed ? '16px 8px' : '16px 12px',
           flexShrink: 0,
+          transition: 'width 0.25s ease, padding 0.25s ease',
         }}
       >
+        {/* Toggle Button */}
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '100%', height: 36, borderRadius: 10, border: '1px solid #EAEDF2',
+            background: '#fff', cursor: 'pointer', color: '#6B7280', flexShrink: 0,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {sidebarCollapsed
+              ? <><polyline points="15 18 9 12 15 6"/></>
+              : <><polyline points="9 18 15 12 9 6"/></>
+            }
+          </svg>
+        </button>
         {/* ── CONTENT CARD ── */}
         <div style={{
           background: '#fff',
           borderRadius: '16px',
           border: '1px solid #EAEDF2',
           boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          overflow: 'hidden',
         }}>
-          <div style={{ padding: '14px 16px 10px' }}>
-            <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
-              Content
-            </p>
+          <div style={{ padding: sidebarCollapsed ? '8px' : '14px 16px 10px' }}>
+            {!sidebarCollapsed && (
+              <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Content
+              </p>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               {availableTabs.map((tabId) => {
                 const cfg = TAB_CONFIG[tabId]
@@ -600,12 +621,13 @@ useEffect(() => {
                   <button
                     key={tabId}
                     onClick={() => setActiveTab(tabId)}
+                    title={cfg.label}
                     style={{
                       width: '100%',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '10px 12px',
+                      justifyContent: sidebarCollapsed ? 'center' : 'space-between',
+                      padding: sidebarCollapsed ? '10px' : '10px 12px',
                       borderRadius: '10px',
                       border: 'none',
                       cursor: 'pointer',
@@ -615,37 +637,27 @@ useEffect(() => {
                       textAlign: 'left',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: sidebarCollapsed ? 0 : '10px' }}>
                       <span style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '8px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '32px', height: '32px', borderRadius: '8px',
                         background: isActive ? '#DBEAFE' : '#F3F4F6',
                         color: isActive ? '#2563EB' : '#9CA3AF',
-                        flexShrink: 0,
-                        transition: 'all 0.15s ease',
+                        flexShrink: 0, transition: 'all 0.15s ease',
                       }}>
                         {cfg.icon}
                       </span>
-                      <span style={{ fontSize: '13.5px', fontWeight: isActive ? 600 : 500 }}>
-                        {cfg.label}
-                      </span>
+                      {!sidebarCollapsed && (
+                        <span style={{ fontSize: '13.5px', fontWeight: isActive ? 600 : 500 }}>
+                          {cfg.label}
+                        </span>
+                      )}
                     </div>
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke={isActive ? '#2563EB' : '#D1D5DB'}
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="9 18 15 12 9 6"/>
-                    </svg>
+                    {!sidebarCollapsed && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isActive ? '#2563EB' : '#D1D5DB'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                      </svg>
+                    )}
                   </button>
                 )
               })}
@@ -654,7 +666,7 @@ useEffect(() => {
         </div>
 
         {/* ── READING PROGRESS CARD ── */}
-        {(activeTab === 'sheet' || activeTab === 'summary') && (
+        {!sidebarCollapsed && (activeTab === 'sheet' || activeTab === 'summary') && (
           <div style={{
             background: '#fff',
             borderRadius: '16px',
@@ -710,7 +722,7 @@ useEffect(() => {
         )}
 
         {/* ── FLASHCARD STATS CARD ── */}
-        {activeTab === 'flashcards' && (
+        {!sidebarCollapsed && activeTab === 'flashcards' && (
           <div style={{
             background: '#fff',
             borderRadius: '16px',
@@ -749,7 +761,7 @@ useEffect(() => {
         )}
 
         {/* ── QUIZ STATS CARD ── */}
-        {activeTab === 'quiz' && (
+        {!sidebarCollapsed && activeTab === 'quiz' && (
           <div style={{
             background: '#fff',
             borderRadius: '16px',
@@ -770,7 +782,7 @@ useEffect(() => {
         )}
 
         {/* ── PYQ STATS CARD ── */}
-        {activeTab === 'previous_years' && (
+        {!sidebarCollapsed && activeTab === 'previous_years' && (
           <div style={{
             background: '#fff',
             borderRadius: '16px',
@@ -790,7 +802,7 @@ useEffect(() => {
         )}
 
         {/* ── TABLE OF CONTENTS CARD ── */}
-        {tocSections.length > 0 && (
+        {!sidebarCollapsed && tocSections.length > 0 && (
           <div style={{
             background: '#fff',
             borderRadius: '16px',
@@ -877,10 +889,10 @@ useEffect(() => {
         )}
 
         {/* ── NOTES CARD ── */}
-        <NotesPanel lectureId={lecture.id} />
+        {!sidebarCollapsed && <NotesPanel lectureId={lecture.id} />}
 
         {/* ── ACTIONS CARD ── */}
-        <div style={{
+        {!sidebarCollapsed && <div style={{
           background: '#fff',
           borderRadius: '16px',
           border: '1px solid #EAEDF2',
@@ -968,7 +980,7 @@ useEffect(() => {
               Back to Subject
             </Link>
           </div>
-        </div>
+        </div>}
 
         {/* bottom spacing */}
         <div style={{ height: '8px' }} />

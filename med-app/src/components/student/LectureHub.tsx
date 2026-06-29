@@ -666,58 +666,66 @@ useEffect(() => {
         </div>
 
         {/* ── READING PROGRESS CARD ── */}
-        {!sidebarCollapsed && (activeTab === 'sheet' || activeTab === 'summary') && (
+        {(activeTab === 'sheet' || activeTab === 'summary') && (
           <div style={{
             background: '#fff',
             borderRadius: '16px',
             border: '1px solid #EAEDF2',
-            padding: '14px 16px',
+            padding: sidebarCollapsed ? '12px 8px' : '14px 16px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
           }}>
-            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Reading Progress
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' }}>
-              {/* Circle */}
-              <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
-                <svg width="56" height="56" viewBox="0 0 56 56">
-                  <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
-                  <circle
-                    cx="28" cy="28" r="22"
-                    fill="none"
-                    stroke="#2563EB"
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    strokeDasharray="138.23"
-                    strokeDashoffset={138.23 - (138.23 * progressPercent / 100)}
-                    transform="rotate(-90 28 28)"
-                    style={{ transition: 'stroke-dashoffset 0.4s ease' }}
-                  />
-                </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB' }}>{progressPercent}%</span>
+            {sidebarCollapsed ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                <div style={{ position: 'relative', width: '44px', height: '44px' }}>
+                  <svg width="44" height="44" viewBox="0 0 56 56">
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#2563EB" strokeWidth="5" strokeLinecap="round"
+                      strokeDasharray="138.23"
+                      strokeDashoffset={138.23 - (138.23 * progressPercent / 100)}
+                      transform="rotate(-90 28 28)"
+                      style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#2563EB' }}>{progressPercent}%</span>
+                  </div>
                 </div>
+                <span style={{ fontSize: '9px', fontWeight: 600, color: '#A0A8B8', letterSpacing: '0.04em' }}>READ</span>
               </div>
-              {/* Text */}
-              <div>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>
-                  {progressPercent >= 100 ? 'Finished!' : progressPercent > 0 ? 'Keep reading' : 'Keep reading'}
+            ) : (
+              <>
+                <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Reading Progress
                 </p>
-                <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94A3B8', fontWeight: 500 }}>
-                  {progressPercent >= 100 ? 'Great job!' : progressPercent > 0 ? `${progressPercent}% done` : 'Not started'}
-                </p>
-              </div>
-            </div>
-            {/* Progress bar */}
-            <div style={{ height: '6px', borderRadius: '999px', background: '#EEF0F4', overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                width: `${progressPercent}%`,
-                borderRadius: '999px',
-                background: 'linear-gradient(90deg, #3B82F6, #2563EB)',
-                transition: 'width 0.3s ease',
-              }} />
-            </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' }}>
+                  <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
+                    <svg width="56" height="56" viewBox="0 0 56 56">
+                      <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
+                      <circle cx="28" cy="28" r="22" fill="none" stroke="#2563EB" strokeWidth="5" strokeLinecap="round"
+                        strokeDasharray="138.23"
+                        strokeDashoffset={138.23 - (138.23 * progressPercent / 100)}
+                        transform="rotate(-90 28 28)"
+                        style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+                      />
+                    </svg>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB' }}>{progressPercent}%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>
+                      {progressPercent >= 100 ? 'Finished!' : 'Keep reading'}
+                    </p>
+                    <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94A3B8', fontWeight: 500 }}>
+                      {progressPercent >= 100 ? 'Great job!' : progressPercent > 0 ? `${progressPercent}% done` : 'Not started'}
+                    </p>
+                  </div>
+                </div>
+                <div style={{ height: '6px', borderRadius: '999px', background: '#EEF0F4', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${progressPercent}%`, borderRadius: '999px', background: 'linear-gradient(90deg, #3B82F6, #2563EB)', transition: 'width 0.3s ease' }} />
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -802,89 +810,93 @@ useEffect(() => {
         )}
 
         {/* ── TABLE OF CONTENTS CARD ── */}
-        {!sidebarCollapsed && tocSections.length > 0 && (
+        {tocSections.length > 0 && (
           <div style={{
             background: '#fff',
             borderRadius: '16px',
             border: '1px solid #EAEDF2',
-            padding: '14px 16px',
+            padding: sidebarCollapsed ? '10px 6px' : '14px 16px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
           }}>
-            <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Table of Contents
-            </p>
-            <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '260px', overflowY: 'auto' }}>
-              {tocSections
-  .filter(s => s.level <= 3)
-  .map((section) => {
-    // Build the number label
-    let numLabel = ''
-    if (section.h1Num > 0 && section.h2Num === null) {
-      // Pure h1 with no parent: "1", "2", "3"
-      numLabel = `${section.h1Num}`
-    } else if (section.level === 1) {
-      numLabel = `${section.h1Num}`
-    } else if (section.level === 2) {
-      const letter = String.fromCharCode(96 + section.h2Num!) // a, b, c...
-      if (section.h1Num > 0) {
-        numLabel = `${section.h1Num}${letter}` // 1a, 1b, 2a...
-      } else {
-        numLabel = `${section.h2Num}` // standalone: 1, 2, 3
-      }
-    } else if (section.level === 3) {
-      numLabel = '·'
-    }
-
-    const isMainHeading = section.level === 1
-
-    return (
-      <button
-        key={section.id}
-        onClick={() => handleTocClick(section.id)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          padding: isMainHeading ? '9px 10px' : '6px 10px 6px 18px',
-          borderRadius: '10px',
-          border: 'none',
-          background: 'transparent',
-          cursor: 'pointer',
-          textAlign: 'left',
-          transition: 'background 0.12s',
-        }}
-        onMouseEnter={e => (e.currentTarget.style.background = '#F5F7FF')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-      >
-        <span style={{
-          minWidth: '26px',
-          height: '26px',
-          borderRadius: '50%',
-          background: isMainHeading ? '#2563EB' : '#EEF3FF',
-          color: isMainHeading ? '#fff' : '#2563EB',
-          fontSize: isMainHeading ? '11px' : '10px',
-          fontWeight: 700,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          padding: '0 4px',
-        }}>
-          {numLabel}
-        </span>
-        <span style={{
-          fontSize: isMainHeading ? '13px' : '12px',
-          fontWeight: isMainHeading ? 700 : 500,
-          color: isMainHeading ? '#1E293B' : '#475569',
-          lineHeight: 1.4,
-        }}>
-          {section.label}
-        </span>
-      </button>
-    )
-  })}
-            </nav>
+            {sidebarCollapsed ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                {tocSections.filter(s => s.level <= 2).map((section) => {
+                  const isMain = section.level === 1
+                  const label = isMain
+                    ? `${section.h1Num}`
+                    : `${section.h1Num}${String.fromCharCode(96 + section.h2Num!)}`
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => handleTocClick(section.id)}
+                      title={section.label}
+                      style={{
+                        width: '36px', height: '24px', borderRadius: '8px', border: 'none',
+                        background: isMain ? '#2563EB' : '#EEF3FF',
+                        color: isMain ? '#fff' : '#2563EB',
+                        fontSize: isMain ? '11px' : '10px', fontWeight: 700,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Table of Contents
+                </p>
+                <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '260px', overflowY: 'auto' }}>
+                  {tocSections.filter(s => s.level <= 3).map((section) => {
+                    let numLabel = ''
+                    if (section.level === 1) {
+                      numLabel = `${section.h1Num}`
+                    } else if (section.level === 2) {
+                      const letter = String.fromCharCode(96 + section.h2Num!)
+                      numLabel = section.h1Num > 0 ? `${section.h1Num}${letter}` : `${section.h2Num}`
+                    } else {
+                      numLabel = '·'
+                    }
+                    const isMainHeading = section.level === 1
+                    return (
+                      <button
+                        key={section.id}
+                        onClick={() => handleTocClick(section.id)}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                          padding: isMainHeading ? '9px 10px' : '6px 10px 6px 18px',
+                          borderRadius: '10px', border: 'none', background: 'transparent',
+                          cursor: 'pointer', textAlign: 'left', transition: 'background 0.12s',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = '#F5F7FF')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <span style={{
+                          minWidth: '26px', height: '26px', borderRadius: '50%',
+                          background: isMainHeading ? '#2563EB' : '#EEF3FF',
+                          color: isMainHeading ? '#fff' : '#2563EB',
+                          fontSize: isMainHeading ? '11px' : '10px', fontWeight: 700,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0, padding: '0 4px',
+                        }}>
+                          {numLabel}
+                        </span>
+                        <span style={{
+                          fontSize: isMainHeading ? '13px' : '12px',
+                          fontWeight: isMainHeading ? 700 : 500,
+                          color: isMainHeading ? '#1E293B' : '#475569',
+                          lineHeight: 1.4,
+                        }}>
+                          {section.label}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </nav>
+              </>
+            )}
           </div>
         )}
 

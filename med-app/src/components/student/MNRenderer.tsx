@@ -304,11 +304,11 @@ function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: 
   return (
     <div key={key} className="my-6 flex justify-center">
       {imageUrl ? (
-        <figure className="space-y-2 w-full max-w-[240px] sm:max-w-sm md:max-w-md">
+        <figure className="space-y-2 w-full max-w-[320px] sm:max-w-md md:max-w-lg">
   <img
     src={imageUrl}
     alt={block.slotDescription ?? `Image ${slotNum}`}
-    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 object-contain max-h-[200px] sm:max-h-[260px] md:max-h-[320px] bg-slate-50 dark:bg-slate-900"
+    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 object-contain max-h-[260px] sm:max-h-[300px] md:max-h-[340px] bg-slate-50 dark:bg-slate-900"
   />
           {block.slotDescription && (
             <figcaption className="text-center text-xs text-slate-500 dark:text-slate-400 italic">

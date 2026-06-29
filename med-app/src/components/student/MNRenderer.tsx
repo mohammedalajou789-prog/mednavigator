@@ -299,23 +299,23 @@ function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: 
   switch (block.type) {
 
     case 'image_slot': {
-      const slotNum = block.slotNumber ?? 0
-      const imageUrl = imageSlots[slotNum]
-      return (
-        <div key={key} className="my-6">
-          {imageUrl ? (
-            <figure className="space-y-2">
-              <img
-                src={imageUrl}
-                alt={block.slotDescription ?? `Image ${slotNum}`}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 object-contain max-h-[500px] bg-slate-50 dark:bg-slate-900"
-              />
-              {block.slotDescription && (
-                <figcaption className="text-center text-xs text-slate-500 dark:text-slate-400 italic">
-                  {block.slotDescription}
-                </figcaption>
-              )}
-            </figure>
+  const slotNum = block.slotNumber ?? 0
+  const imageUrl = imageSlots[slotNum]
+  return (
+    <div key={key} className="my-6 flex justify-center">
+      {imageUrl ? (
+        <figure className="space-y-2 w-full max-w-lg">
+          <img
+            src={imageUrl}
+            alt={block.slotDescription ?? `Image ${slotNum}`}
+            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 object-contain max-h-[380px] bg-slate-50 dark:bg-slate-900"
+          />
+          {block.slotDescription && (
+            <figcaption className="text-center text-xs text-slate-500 dark:text-slate-400 italic">
+              {block.slotDescription}
+            </figcaption>
+          )}
+        </figure>
           ) : (
             <div className="flex items-center justify-center gap-3 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-8 bg-slate-50 dark:bg-slate-900">
               <svg className="w-6 h-6 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -75,9 +75,9 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
                   {String(h1Counter).padStart(2, '0')}
                 </span>
                 <div style={{ width: '1px', height: '20px', background: '#DBEAFE', flexShrink: 0 }} />
-                <h1 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#1E293B', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
-                  {section.heading.content}
-                </h1>
+                <h1 className="text-[0.8rem] sm:text-[0.95rem] md:text-[1.05rem]" style={{ margin: 0, fontWeight: 700, color: '#1E293B', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
+  {section.heading.content}
+</h1>
               </div>
 
               {subSections.map((sub, subIdx) => {
@@ -304,12 +304,12 @@ function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: 
   return (
     <div key={key} className="my-6 flex justify-center">
       {imageUrl ? (
-        <figure className="space-y-2 w-full max-w-lg">
-          <img
-            src={imageUrl}
-            alt={block.slotDescription ?? `Image ${slotNum}`}
-            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 object-contain max-h-[380px] bg-slate-50 dark:bg-slate-900"
-          />
+        <figure className="space-y-2 w-full max-w-[240px] sm:max-w-sm md:max-w-md">
+  <img
+    src={imageUrl}
+    alt={block.slotDescription ?? `Image ${slotNum}`}
+    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 object-contain max-h-[200px] sm:max-h-[260px] md:max-h-[320px] bg-slate-50 dark:bg-slate-900"
+  />
           {block.slotDescription && (
             <figcaption className="text-center text-xs text-slate-500 dark:text-slate-400 italic">
               {block.slotDescription}

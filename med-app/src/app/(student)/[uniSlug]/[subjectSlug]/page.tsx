@@ -197,7 +197,7 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             </div>
             {/* Progress Ring */}
-            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, marginLeft: 'auto' }}>
+            <div className="hidden sm:flex" style={{ flexShrink: 0, flexDirection: 'column', alignItems: 'center', gap: 16 }}>
               <div style={{ position: 'relative', width: 160, height: 160 }}>
                 <svg width="160" height="160" viewBox="0 0 124 124" style={{ transform: 'rotate(-90deg)' }}>
                   <circle cx="62" cy="62" r="54" fill="none" stroke="rgba(47,107,255,0.18)" strokeWidth="10"/>

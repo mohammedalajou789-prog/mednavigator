@@ -226,18 +226,7 @@ export default async function SubjectPage({ params }: PageProps) {
               key={item.label}
               href={`/${uniSlug}/${subjectSlug}`}
               style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 11, background: 'var(--card)', border: '2px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow-sm)', padding: '18px 12px', cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s, transform 0.15s' }}
-              onMouseEnter={e => {
-                const el = e.currentTarget as HTMLElement
-                el.style.borderColor = item.color
-                el.style.boxShadow = `0 4px 16px ${item.bg}`
-                el.style.transform = 'translateY(-2px)'
-              }}
-              onMouseLeave={e => {
-                const el = e.currentTarget as HTMLElement
-                el.style.borderColor = 'var(--line)'
-                el.style.boxShadow = 'var(--shadow-sm)'
-                el.style.transform = 'translateY(0)'
-              }}
+              
             >
               <div style={{ width: 46, height: 46, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', background: item.bg, color: item.color }}>
                 {item.icon}
@@ -288,8 +277,7 @@ export default async function SubjectPage({ params }: PageProps) {
                             <Link
                               href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`}
                               style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit', borderRadius: 12, padding: '6px 8px', margin: '-6px -8px', transition: 'background 0.15s' }}
-                              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(47,107,255,0.05)'}
-                              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                              
                             >
                               <div style={{ width: 46, height: 46, borderRadius: 13, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDone ? 'rgba(19,138,90,0.11)' : 'rgba(47,107,255,0.11)', color: isDone ? 'var(--success)' : 'var(--primary)' }}>
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>

@@ -68,7 +68,7 @@ export default async function UniversityPage({ params }: PageProps) {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)', fontFamily: '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif' }}>
-      <main style={{ maxWidth: 1080, margin: '0 auto', padding: '28px 28px 64px' }}>
+      <main style={{ maxWidth: 1080, margin: '0 auto', padding: 'clamp(16px, 4vw, 28px) clamp(16px, 4vw, 28px) 64px' }}>
 
         <nav style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-3)', marginBottom: 18 }}>
           <Link href="/home" style={{ fontWeight: 600, color: 'var(--ink-2)', textDecoration: 'none' }}>
@@ -91,7 +91,7 @@ export default async function UniversityPage({ params }: PageProps) {
             )}
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>{university.name}</h1>
+            <h1 style={{ margin: 0, fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: 800, letterSpacing: '-0.02em' }}>{university.name}</h1>
             <div style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 2 }}>
               {subjectList.length} {subjectList.length === 1 ? 'subject' : 'subjects'} available
             </div>
@@ -117,7 +117,7 @@ export default async function UniversityPage({ params }: PageProps) {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 'clamp(12px, 3vw, 18px)' }}>
                   {section.list.map(subject => {
                     const ts  = typeStyle[subject.subject_type]  ?? typeStyle.standard
                     const as_ = accessStyle[subject.access_mode] ?? accessStyle.free

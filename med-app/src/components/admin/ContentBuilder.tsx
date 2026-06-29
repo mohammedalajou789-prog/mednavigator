@@ -716,7 +716,7 @@ export default function ContentBuilder({
                       <div>
                         <label className="text-xs font-medium text-gray-600 mb-1 block">Exam Year</label>
                         <input type="number" value={q.exam_year}
-                          onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, exam_year: e.target.value ? parseInt(e.target.value) : '' } : item))}
+                          onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, exam_year: e.target.value ? parseInt(e.target.value) : '' as const } : item))}
                           placeholder="2024"
                           className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                       </div>

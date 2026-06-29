@@ -38,7 +38,22 @@ export async function GET(req: NextRequest) {
       .eq('lecture_id', lectureId)
       .eq('status', 'published')
       .maybeSingle()
-    return NextResponse.json({ locked: false, data })
+
+    const imageSlots: Record<number, string> = {}
+    if (data?.id) {
+      const { data: slots } = await supabase
+        .from('image_slots')
+        .select('slot_number, media_library(file_url)')
+        .eq('entity_type', 'sheet')
+        .eq('entity_id', data.id)
+      if (slots) {
+        for (const slot of slots) {
+          const media = slot.media_library as { file_url: string } | null
+          if (media?.file_url) imageSlots[slot.slot_number] = media.file_url
+        }
+      }
+    }
+    return NextResponse.json({ locked: false, data, imageSlots })
   }
 
   if (tab === 'summary') {

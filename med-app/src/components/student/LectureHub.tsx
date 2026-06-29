@@ -323,6 +323,7 @@ export default function LectureHub({
   // Extract content from payloads
   const sheet:              Sheet | null              = sheetPayload?.data ?? null
   const sheetLocked:        boolean                   = sheetPayload?.locked ?? !accessAllowed
+  const sheetImageSlots:    Record<number, string>    = sheetPayload?.imageSlots ?? {}
   const summary:            Summary | null            = summaryPayload?.data ?? null
   const summaryLocked:      boolean                   = summaryPayload?.locked ?? !accessAllowed
   const flashcards:         Flashcard[]               = flashcardsPayload?.data ?? []
@@ -620,6 +621,7 @@ export default function LectureHub({
                   onProgressUpdate={handleProgressUpdate}
                   userName={displayName}
                   tocSections={tocSections}
+                  imageSlots={sheetImageSlots}
                 />
               )}
               {activeTab === 'summary' && summary && (

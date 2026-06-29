@@ -225,13 +225,19 @@ export default async function SubjectPage({ params }: PageProps) {
             <Link
               key={item.label}
               href={`/${uniSlug}/${subjectSlug}`}
+              className="group"
               style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 11, background: 'var(--card)', border: '2px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow-sm)', padding: '18px 12px', cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s, transform 0.15s' }}
-              
             >
               <div style={{ width: 46, height: 46, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', background: item.bg, color: item.color }}>
                 {item.icon}
               </div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, textAlign: 'center', lineHeight: 1.2, color: 'var(--ink)' }}>{item.label}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, textAlign: 'center', lineHeight: 1.2, color: 'var(--ink)' }}>
+                {item.label}
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                  Open
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+              </div>
             </Link>
           ))}
         </div>
@@ -276,8 +282,7 @@ export default async function SubjectPage({ params }: PageProps) {
                           <div style={{ padding: '18px 20px' }}>
                             <Link
                               href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`}
-                              style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit', borderRadius: 12, padding: '6px 8px', margin: '-6px -8px', transition: 'background 0.15s' }}
-                              
+                              style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit', borderRadius: 12, padding: '6px 8px', margin: '-6px -8px', transition: 'background 0.15s', background: 'rgba(47,107,255,0.03)', border: '1px solid rgba(47,107,255,0.08)' }}
                             >
                               <div style={{ width: 46, height: 46, borderRadius: 13, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDone ? 'rgba(19,138,90,0.11)' : 'rgba(47,107,255,0.11)', color: isDone ? 'var(--success)' : 'var(--primary)' }}>
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>

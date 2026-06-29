@@ -6,7 +6,6 @@ const faqs = [
   { q: 'How do I track my progress?', a: 'Your progress is tracked automatically as you read sheets and complete quizzes. Visit My Progress from the sidebar.' },
   { q: 'What is the difference between Sheet and Summary?', a: 'A Sheet is the full detailed content for a lecture. A Summary is a condensed version of the same content.' },
   { q: 'How do I bookmark a lecture?', a: 'Open any lecture and click the bookmark icon in the top bar. All bookmarks are saved in the Bookmarks page.' },
-  { q: 'My university is not listed. What do I do?', a: 'During registration, select "My university is not listed" and submit a request. The platform owner will review it.' },
 ]
 
 const guides = [
@@ -20,39 +19,51 @@ const guides = [
 
 export default function HelpPage() {
   return (
-    <div className="p-6 max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Help Center</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Guides and support resources for using MedNavigator.</p>
-      </div>
-      <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-5">
-        <p className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Need help? Contact Support</p>
-        <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">For device resets, subscription issues, or technical problems.</p>
-        <a href="https://wa.me/962799999999" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">WhatsApp Support</a>
-      </div>
-      <div>
-        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-4">Quick Guides</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {guides.map((g) => (
-            <div key={g.title} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">{g.title}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{g.desc}</p>
-            </div>
-          ))}
+    <div style={{ background: 'var(--bg)', minHeight: '100%', padding: 'clamp(16px, 4vw, 28px) clamp(16px, 4vw, 28px) 64px' }}>
+      <div style={{ maxWidth: 860, margin: '0 auto' }}>
+
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 28, fontWeight: 800, color: 'var(--ink)' }}>Help Center</h1>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-2)' }}>Guides and support resources for using MedNavigator.</p>
         </div>
-      </div>
-      <div>
-        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-4">Frequently Asked Questions</h2>
-        <div className="space-y-3">
-          {faqs.map((faq, i) => (
-            <div key={i} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-              <p className="text-sm font-semibold text-slate-900 dark:text-white mb-2">{faq.q}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{faq.a}</p>
-            </div>
-          ))}
+
+        <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 18, padding: '22px 24px', marginBottom: 24 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4, color: 'var(--ink)' }}>Need help? Contact Support</div>
+          <div style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 16 }}>For device resets, subscription issues, or technical problems.</div>
+          <a href="https://wa.me/962799999999" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', height: 44, padding: '0 20px', borderRadius: 12, background: '#25D366', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
+            WhatsApp Support
+          </a>
         </div>
+
+        <div style={{ marginBottom: 28 }}>
+          <h2 style={{ margin: '0 0 14px', fontSize: 17, fontWeight: 700, color: 'var(--ink)' }}>Quick Guides</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))', gap: 14 }}>
+            {guides.map((g) => (
+              <div key={g.title} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, color: 'var(--ink)' }}>{g.title}</div>
+                <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>{g.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ margin: '0 0 14px', fontSize: 17, fontWeight: 700, color: 'var(--ink)' }}>Frequently Asked Questions</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {faqs.map((faq, i) => (
+              <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 18 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 5, color: 'var(--ink)' }}>{faq.q}</div>
+                <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55 }}>{faq.a}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Link href="/home" style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>
+          Back to Dashboard
+        </Link>
+
       </div>
-      <Link href="/home" className="inline-flex text-sm text-blue-600 dark:text-blue-400 hover:underline">Back to Dashboard</Link>
     </div>
   )
 }

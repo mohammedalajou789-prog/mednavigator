@@ -87,6 +87,8 @@ interface Props {
   existingVideos?: Video[]
   isClinic?: boolean
   existingModules?: ClinicalModule[]
+  existingSheetImages?: Record<number, string>
+  existingSummaryImages?: Record<number, string>
 }
 
 type TabType = 'videos' | 'sheet' | 'summary' | 'flashcards' | 'quiz' | 'previous_years' | 'osce'
@@ -104,6 +106,8 @@ export default function ContentBuilder({
   existingVideos = [],
   isClinic = false,
   existingModules = [],
+  existingSheetImages = {},
+  existingSummaryImages = {},
 }: Props) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<TabType>('sheet')
@@ -113,6 +117,8 @@ export default function ContentBuilder({
 
   // CHANGE 2 — Student preview mode
   const [studentPreview, setStudentPreview] = useState(false)
+  const [sheetImageSlots, setSheetImageSlots] = useState<Record<number, string>>(existingSheetImages)
+const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string>>(existingSummaryImages)
 
   const [flashcardsMode, setFlashcardsMode] = useState<EditorMode>('manual')
   const [quizMode, setQuizMode] = useState<EditorMode>('manual')
@@ -452,7 +458,7 @@ export default function ContentBuilder({
               </div>
               <div className="p-5 overflow-y-auto max-h-[800px]">
                 {currentContent ? (
-                  <MNRenderer content={currentContent} showWatermark={true} userName="Preview User" />
+                  <MNRenderer content={currentContent} showWatermark={true} userName="Preview User" imageSlots={activeTab === 'sheet' ? sheetImageSlots : summaryImageSlots} />
                 ) : (
                   <p className="text-sm text-gray-400 text-center py-12">No content to preview.</p>
                 )}
@@ -525,7 +531,7 @@ export default function ContentBuilder({
                     className="p-5 overflow-y-auto max-h-[700px]"
                   >
                     {currentContent ? (
-                      <MNRenderer content={currentContent} showWatermark={false} />
+                      <MNRenderer content={currentContent} showWatermark={false} imageSlots={activeTab === 'sheet' ? sheetImageSlots : summaryImageSlots} />
                     ) : (
                       <p className="text-sm text-gray-400 text-center py-12">Start typing to see preview.</p>
                     )}
@@ -547,13 +553,19 @@ export default function ContentBuilder({
                     <div className="grid grid-cols-2 gap-4">
                       {uniqueSlots.map(slot => (
                         <ImageUploader
-                          key={slot}
-                          entityType={activeTab}
-                          entityId={existingId}
-                          slotNumber={slot}
-                          onUploadSuccess={(url, slotNumber) => {
-                            showMessage('success', `Image uploaded for slot ${slotNumber}!`)
-                          }}
+  key={slot}
+  entityType={activeTab}
+  entityId={existingId}
+  slotNumber={slot}
+  existingUrl={activeTab === 'sheet' ? (sheetImageSlots[slot] ?? null) : (summaryImageSlots[slot] ?? null)}
+  onUploadSuccess={(url, slotNumber) => {
+  if (activeTab === 'sheet') {
+    setSheetImageSlots(prev => ({ ...prev, [slotNumber]: url }))
+  } else {
+    setSummaryImageSlots(prev => ({ ...prev, [slotNumber]: url }))
+  }
+  showMessage('success', `Image uploaded for slot ${slotNumber}!`)
+}}
                         />
                       ))}
                     </div>

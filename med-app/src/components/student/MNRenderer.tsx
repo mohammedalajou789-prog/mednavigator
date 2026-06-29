@@ -60,22 +60,45 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
           return (
             <div key={`sec-${sIdx}`} style={{ marginBottom: '28px' }}>
 
-              {/* H1 — floats above everything, no card */}
-              <h1
+              {/* H1 — section header with left border */}
+              {(() => { h1Counter++; return null })()}
+              <div
                 id={h1Id}
                 style={{
                   scrollMarginTop: '96px',
-                  fontSize: '1.9rem',
-                  fontWeight: 900,
-                  color: '#15203A',
-                  marginTop: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                  borderLeft: '4px solid #2563EB',
+                  background: '#F8FAFF',
+                  borderRadius: '0 10px 10px 0',
+                  padding: '12px 18px',
+                  marginTop: '24px',
                   marginBottom: '14px',
-                  letterSpacing: '-0.022em',
-                  lineHeight: 1.2,
                 }}
               >
-                {section.heading.content}
-              </h1>
+                <span style={{
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  color: '#2563EB',
+                  letterSpacing: '0.04em',
+                  flexShrink: 0,
+                  minWidth: '24px',
+                }}>
+                  {String(h1Counter).padStart(2, '0')}
+                </span>
+                <div style={{ width: '1px', height: '20px', background: '#DBEAFE', flexShrink: 0 }} />
+                <h1 style={{
+                  margin: 0,
+                  fontSize: '1.05rem',
+                  fontWeight: 700,
+                  color: '#1E293B',
+                  letterSpacing: '-0.01em',
+                  lineHeight: 1.3,
+                }}>
+                  {section.heading.content}
+                </h1>
+              </div>
 
               {subSections.map((sub, subIdx) => {
                 // Skip empty pre-H2 sections

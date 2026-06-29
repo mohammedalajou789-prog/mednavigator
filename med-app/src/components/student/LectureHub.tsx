@@ -113,19 +113,15 @@ interface LectureHubProps {
   subjectSlug?: string
   userName?: string
   userId?: string
-  sheet: Sheet | null
-  sheetLocked: boolean
-  summary: Summary | null
-  summaryLocked: boolean
-  flashcards: Flashcard[]
-  flashcardsLocked: boolean
-  quizQuestions: QuizQuestion[]
-  quizLocked: boolean
-  previousYearQuestions: PreviousYearQuestion[]
-  pyqLocked: boolean
+  // Access
+  accessAllowed: boolean
+  // Tab existence flags — no content, just booleans/counts
+  hasSheet: boolean
+  hasSummary: boolean
+  flashcardsCount: number
+  quizCount: number
+  pyqCount: number
   videos: Video[]
-  sheetImageSlots: Record<number, string>
-  summaryImageSlots: Record<number, string>
 }
 
 // ── Tab Config ─────────────────────────────────────────────────────────────
@@ -183,8 +179,6 @@ const TAB_CONFIG: Record<string, { label: string; icon: React.ReactNode }> = {
   },
 }
 
-const ALL_TABS = ['sheet', 'summary', 'flashcards', 'quiz', 'previous_years']
-
 // ── TOC Extractor ──────────────────────────────────────────────────────────
 
 export function extractToc(content: string): TocSection[] {
@@ -224,6 +218,17 @@ export function extractToc(content: string): TocSection[] {
   return toc
 }
 
+// ── Content fetcher ────────────────────────────────────────────────────────
+
+async function fetchTabContent(lectureId: string, subjectId: string, tab: string) {
+  const res = await fetch(
+    `/api/lecture-content?lectureId=${lectureId}&subjectId=${subjectId}&tab=${tab}`,
+    { cache: 'no-store' }
+  )
+  if (!res.ok) throw new Error('Failed to fetch content')
+  return res.json()
+}
+
 // ── LectureHub Component ───────────────────────────────────────────────────
 
 export default function LectureHub({
@@ -233,54 +238,101 @@ export default function LectureHub({
   subjectSlug,
   userName,
   userId,
-  sheet,
-  sheetLocked,
-  summary,
-  summaryLocked,
-  flashcards,
-  flashcardsLocked,
-  quizQuestions,
-  quizLocked,
-  previousYearQuestions,
-  pyqLocked,
+  accessAllowed,
+  hasSheet,
+  hasSummary,
+  flashcardsCount,
+  quizCount,
+  pyqCount,
   videos,
-  sheetImageSlots,
-  summaryImageSlots,
 }: LectureHubProps) {
   const { user } = useUserStore()
   const supabase = createClient()
 
-  // FIX 5: removed unused `sidebarOpen` from destructuring
+  // FIX 5: removed unused sidebarOpen
   const { setSidebarOpen } = useUIStore()
 
-  const availableTabs = ALL_TABS.filter((t) => {
-    if (t === 'sheet')          return !!sheet || sheetLocked
-    if (t === 'summary')        return !!summary || summaryLocked
-    if (t === 'flashcards')     return flashcards.length > 0 || flashcardsLocked
-    if (t === 'quiz')           return quizQuestions.length > 0 || quizLocked
-    if (t === 'previous_years') return previousYearQuestions.length > 0 || pyqLocked
-    return false
-  })
+  const availableTabs = [
+    hasSheet          && 'sheet',
+    hasSummary        && 'summary',
+    flashcardsCount > 0 && 'flashcards',
+    quizCount > 0       && 'quiz',
+    pyqCount > 0        && 'previous_years',
+  ].filter(Boolean) as string[]
+
+  // If access is locked, all tabs are still shown but content is locked
+  const allTabs = availableTabs.length > 0
+    ? availableTabs
+    : !accessAllowed
+      ? ['sheet', 'summary', 'flashcards', 'quiz', 'previous_years']
+      : []
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [activeSectionId, setActiveSectionId]   = useState<string>('')
-  const [activeTab, setActiveTab]               = useState(availableTabs[0] ?? 'sheet')
+  const [activeTab, setActiveTab]               = useState(allTabs[0] ?? 'sheet')
   const [progressPercent, setProgressPercent]   = useState(0)
   const [isCompleted, setIsCompleted]           = useState(false)
   const [isBookmarked, setIsBookmarked]         = useState(false)
 
   const [flashcardStats, setFlashcardStats] = useState<FlashcardStats>({
-    total: flashcards.length, easy: 0, medium: 0, hard: 0, current: 1, important: 0,
+    total: flashcardsCount, easy: 0, medium: 0, hard: 0, current: 1, important: 0,
   })
   const [quizStats, setQuizStats] = useState<QuizStats>({
-    total: quizQuestions.length, answered: 0, correct: 0, current: 1, important: 0,
+    total: quizCount, answered: 0, correct: 0, current: 1, important: 0,
   })
   const [pyqStats, setPyqStats] = useState({
-    total: previousYearQuestions.length, important: 0, answered: 0,
+    total: pyqCount, important: 0, answered: 0,
   })
 
-  // FIX 4: memoize tocSections so the scroll useEffect does not
-  // re-register the listener on every render
+  // ── Lazy content fetching — only fetch when tab is first activated ──────
+  const { data: sheetPayload, isLoading: sheetLoading } = useQuery({
+    queryKey: ['tab-content', lecture.id, subject.id, 'sheet'],
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'sheet'),
+    enabled:  activeTab === 'sheet',
+    staleTime: 1000 * 60 * 10,
+  })
+
+  const { data: summaryPayload, isLoading: summaryLoading } = useQuery({
+    queryKey: ['tab-content', lecture.id, subject.id, 'summary'],
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'summary'),
+    enabled:  activeTab === 'summary',
+    staleTime: 1000 * 60 * 10,
+  })
+
+  const { data: flashcardsPayload, isLoading: flashcardsLoading } = useQuery({
+    queryKey: ['tab-content', lecture.id, subject.id, 'flashcards'],
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'flashcards'),
+    enabled:  activeTab === 'flashcards',
+    staleTime: 1000 * 60 * 10,
+  })
+
+  const { data: quizPayload, isLoading: quizLoading } = useQuery({
+    queryKey: ['tab-content', lecture.id, subject.id, 'quiz'],
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'quiz'),
+    enabled:  activeTab === 'quiz',
+    staleTime: 1000 * 60 * 10,
+  })
+
+  const { data: pyqPayload, isLoading: pyqLoading } = useQuery({
+    queryKey: ['tab-content', lecture.id, subject.id, 'previous_years'],
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'previous_years'),
+    enabled:  activeTab === 'previous_years',
+    staleTime: 1000 * 60 * 10,
+  })
+
+  // Extract content from payloads
+  const sheet:              Sheet | null              = sheetPayload?.data ?? null
+  const sheetLocked:        boolean                   = sheetPayload?.locked ?? !accessAllowed
+  const summary:            Summary | null            = summaryPayload?.data ?? null
+  const summaryLocked:      boolean                   = summaryPayload?.locked ?? !accessAllowed
+  const flashcards:         Flashcard[]               = flashcardsPayload?.data ?? []
+  const flashcardsLocked:   boolean                   = flashcardsPayload?.locked ?? !accessAllowed
+  const quizQuestions:      QuizQuestion[]            = quizPayload?.data ?? []
+  const quizLocked:         boolean                   = quizPayload?.locked ?? !accessAllowed
+  const previousYearQuestions: PreviousYearQuestion[] = pyqPayload?.data ?? []
+  const pyqLocked:          boolean                   = pyqPayload?.locked ?? !accessAllowed
+
+  // FIX 4: memoize tocSections
   const tocSections: TocSection[] = useMemo(() => {
     if (activeTab === 'sheet')   return extractToc(sheet?.content ?? '')
     if (activeTab === 'summary') return extractToc(summary?.content ?? '')
@@ -294,13 +346,20 @@ export default function LectureHub({
     (activeTab === 'quiz'           && quizLocked)       ||
     (activeTab === 'previous_years' && pyqLocked)
 
+  const isCurrentTabLoading =
+    (activeTab === 'sheet'          && sheetLoading)     ||
+    (activeTab === 'summary'        && summaryLoading)    ||
+    (activeTab === 'flashcards'     && flashcardsLoading) ||
+    (activeTab === 'quiz'           && quizLoading)       ||
+    (activeTab === 'previous_years' && pyqLoading)
+
   // FIX 3: added setSidebarOpen to dependency array
   useEffect(() => {
     setSidebarOpen(false)
     return () => setSidebarOpen(true)
   }, [setSidebarOpen])
 
-  // FIX 1: added activeTab to queryKey so each tab gets its own cache entry
+  // FIX 1: added activeTab to queryKey
   const { data: progressData } = useQuery({
     queryKey: ['progress', user?.id, lecture.id, activeTab],
     queryFn: async () => {
@@ -342,8 +401,6 @@ export default function LectureHub({
     setIsBookmarked(!!bookmarkData)
   }, [bookmarkData])
 
-  // FIX 4 (continued): tocSections is now stable from useMemo,
-  // so this effect only re-runs when the content actually changes
   useEffect(() => {
     if (tocSections.length === 0) return
     const scrollContainer = document.getElementById('lecture-content-scroll')
@@ -428,6 +485,23 @@ export default function LectureHub({
 
   const displayName = userName ?? user?.full_name ?? ''
 
+  // ── Tab loading skeleton ───────────────────────────────────────────────
+  const ContentSkeleton = () => (
+    <div style={{ padding: '24px 0' }}>
+      {[...Array(6)].map((_, i) => (
+        <div key={i} style={{
+          height: i === 0 ? '28px' : '16px',
+          background: 'linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%)',
+          borderRadius: '8px',
+          marginBottom: '16px',
+          width: i % 3 === 2 ? '60%' : '100%',
+          animation: 'shimmer 1.5s infinite',
+        }} />
+      ))}
+      <style>{`@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} } div { background-size: 200% 100%; }`}</style>
+    </div>
+  )
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -441,7 +515,7 @@ export default function LectureHub({
       >
         {/* Mobile tabs */}
         <div className="lg:hidden flex gap-1 px-4 pt-3 pb-2 bg-white border-b border-slate-100 overflow-x-auto" style={{ flexShrink: 0 }}>
-          {availableTabs.map((tabId) => {
+          {allTabs.map((tabId) => {
             const cfg      = TAB_CONFIG[tabId]
             const isActive = activeTab === tabId
             return (
@@ -480,7 +554,6 @@ export default function LectureHub({
           </div>
 
           <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '16px', padding: 'clamp(14px, 4vw, 28px) clamp(14px, 4vw, 30px) clamp(12px, 3vw, 24px)', marginBottom: '16px', background: 'linear-gradient(120deg,#E8F0FF 0%,#EFF4FF 46%,#FAFBFF 100%)', border: '1px solid #DFE8FB', boxShadow: '0 1px 2px rgba(16,24,40,.04),0 22px 46px -30px rgba(40,90,200,.4)' }}>
-            {/* Pink glow */}
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '320px', height: '160px', background: 'radial-gradient(ellipse at center, rgba(249,168,212,0.3) 0%, rgba(216,180,254,0.15) 55%, transparent 75%)', pointerEvents: 'none', borderRadius: '50%', filter: 'blur(24px)', zIndex: 0 }} />
 
             {/* Desktop badges */}
@@ -536,6 +609,8 @@ export default function LectureHub({
         <div style={{ padding: '0 clamp(12px, 3vw, 26px) 120px' }}>
           {isCurrentTabLocked ? (
             <LockedContentCard subjectName={subject.name} />
+          ) : isCurrentTabLoading ? (
+            <ContentSkeleton />
           ) : (
             <>
               {activeTab === 'sheet' && sheet && (
@@ -557,14 +632,14 @@ export default function LectureHub({
                   tocSections={tocSections}
                 />
               )}
-              {activeTab === 'flashcards' && (
+              {activeTab === 'flashcards' && flashcards.length > 0 && (
                 <FlashcardsViewer
                   flashcards={flashcards as any}
                   userName={displayName}
                   onStatsChange={setFlashcardStats}
                 />
               )}
-              {activeTab === 'quiz' && (
+              {activeTab === 'quiz' && quizQuestions.length > 0 && (
                 <QuizViewer
                   questions={quizQuestions as any}
                   lectureId={lecture.id}
@@ -572,7 +647,7 @@ export default function LectureHub({
                   onStatsChange={setQuizStats}
                 />
               )}
-              {activeTab === 'previous_years' && (
+              {activeTab === 'previous_years' && previousYearQuestions.length > 0 && (
                 <PreviousYearsViewer
                   questions={previousYearQuestions as any}
                   userName={displayName}
@@ -627,7 +702,7 @@ export default function LectureHub({
               </p>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {availableTabs.map((tabId) => {
+              {allTabs.map((tabId) => {
                 const cfg      = TAB_CONFIG[tabId]
                 const isActive = activeTab === tabId
                 return (
@@ -696,9 +771,7 @@ export default function LectureHub({
               </div>
             ) : (
               <>
-                <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                  Reading Progress
-                </p>
+                <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Reading Progress</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' }}>
                   <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
                     <svg width="56" height="56" viewBox="0 0 56 56">
@@ -734,29 +807,7 @@ export default function LectureHub({
         {/* ── FLASHCARD STATS CARD ── */}
         {!sidebarCollapsed && activeTab === 'flashcards' && (
           <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Progress
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' }}>
-              <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
-                <svg width="56" height="56" viewBox="0 0 56 56">
-                  <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
-                  <circle cx="28" cy="28" r="22" fill="none" stroke="#2563EB" strokeWidth="5" strokeLinecap="round"
-                    strokeDasharray="138.23"
-                    strokeDashoffset={flashcardStats.total > 0 ? 138.23 - (138.23 * flashcardStats.current / flashcardStats.total) : 138.23}
-                    transform="rotate(-90 28 28)"
-                    style={{ transition: 'stroke-dashoffset 0.4s ease' }}
-                  />
-                </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#2563EB' }}>{flashcardStats.current}/{flashcardStats.total}</span>
-                </div>
-              </div>
-              <div>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>Card {flashcardStats.current}</p>
-                <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94A3B8' }}>{flashcardStats.total - flashcardStats.current} remaining</p>
-              </div>
-            </div>
+            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Progress</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <StatPill label="Total"     value={flashcardStats.total}     color="blue"  />
               <StatPill label="Important" value={flashcardStats.important} color="amber" />
@@ -767,9 +818,7 @@ export default function LectureHub({
         {/* ── QUIZ STATS CARD ── */}
         {!sidebarCollapsed && activeTab === 'quiz' && (
           <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Quiz Progress
-            </p>
+            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Quiz Progress</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <StatPill label="Total"     value={quizStats.total}     color="blue"  />
               <StatPill label="Correct"   value={quizStats.correct}   color="green" />
@@ -782,9 +831,7 @@ export default function LectureHub({
         {/* ── PYQ STATS CARD ── */}
         {!sidebarCollapsed && activeTab === 'previous_years' && (
           <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Previous Years
-            </p>
+            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Previous Years</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
               <StatPill label="Total"     value={pyqStats.total}     color="blue"  />
               <StatPill label="Important" value={pyqStats.important} color="amber" />
@@ -800,24 +847,10 @@ export default function LectureHub({
               <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', scrollbarWidth: 'none' }}>
                 {tocSections.filter(s => s.level <= 2).map((section) => {
                   const isMain = section.level === 1
-                  const label  = isMain
-                    ? `${section.h1Num}`
-                    : `${section.h1Num}${String.fromCharCode(96 + section.h2Num!)}`
+                  const label  = isMain ? `${section.h1Num}` : `${section.h1Num}${String.fromCharCode(96 + section.h2Num!)}`
                   return (
-                    <button
-                      key={section.id}
-                      id={`toc-btn-${section.id}`}
-                      onClick={() => handleTocClick(section.id)}
-                      title={section.label}
-                      style={{
-                        width: '32px', height: '20px', borderRadius: '6px', border: 'none',
-                        background: activeSectionId === section.id ? '#2563EB' : isMain ? '#EEF3FF' : 'transparent',
-                        color: activeSectionId === section.id ? '#fff' : isMain ? '#2563EB' : '#94A3B8',
-                        fontSize: '10px', fontWeight: isMain ? 700 : 500,
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        lineHeight: 1, transition: 'background 0.2s, color 0.2s',
-                      }}
-                    >
+                    <button key={section.id} id={`toc-btn-${section.id}`} onClick={() => handleTocClick(section.id)} title={section.label}
+                      style={{ width: '32px', height: '20px', borderRadius: '6px', border: 'none', background: activeSectionId === section.id ? '#2563EB' : isMain ? '#EEF3FF' : 'transparent', color: activeSectionId === section.id ? '#fff' : isMain ? '#2563EB' : '#94A3B8', fontSize: '10px', fontWeight: isMain ? 700 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'background 0.2s, color 0.2s' }}>
                       {label}
                     </button>
                   )
@@ -825,50 +858,24 @@ export default function LectureHub({
               </div>
             ) : (
               <>
-                <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                  Table of Contents
-                </p>
+                <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Table of Contents</p>
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '260px', overflowY: 'auto' }}>
                   {tocSections.filter(s => s.level <= 3).map((section) => {
                     let numLabel = ''
-                    if (section.level === 1) {
-                      numLabel = `${section.h1Num}`
-                    } else if (section.level === 2) {
-                      const letter = String.fromCharCode(96 + section.h2Num!)
-                      numLabel = section.h1Num > 0 ? `${section.h1Num}${letter}` : `${section.h2Num}`
-                    } else {
-                      numLabel = '·'
-                    }
+                    if (section.level === 1) numLabel = `${section.h1Num}`
+                    else if (section.level === 2) { const letter = String.fromCharCode(96 + section.h2Num!); numLabel = section.h1Num > 0 ? `${section.h1Num}${letter}` : `${section.h2Num}` }
+                    else numLabel = '·'
                     const isMainHeading = section.level === 1
                     return (
-                      <button
-                        key={section.id}
-                        onClick={() => handleTocClick(section.id)}
-                        style={{
-                          width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
-                          padding: isMainHeading ? '9px 10px' : '6px 10px 6px 18px',
-                          borderRadius: '10px', border: 'none', background: 'transparent',
-                          cursor: 'pointer', textAlign: 'left', transition: 'background 0.12s',
-                        }}
+                      <button key={section.id} onClick={() => handleTocClick(section.id)}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: isMainHeading ? '9px 10px' : '6px 10px 6px 18px', borderRadius: '10px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', transition: 'background 0.12s' }}
                         onMouseEnter={e => (e.currentTarget.style.background = '#F5F7FF')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       >
-                        <span style={{
-                          minWidth: '26px', height: '26px', borderRadius: '50%',
-                          background: isMainHeading ? '#2563EB' : '#EEF3FF',
-                          color: isMainHeading ? '#fff' : '#2563EB',
-                          fontSize: isMainHeading ? '11px' : '10px', fontWeight: 700,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0, padding: '0 4px',
-                        }}>
+                        <span style={{ minWidth: '26px', height: '26px', borderRadius: '50%', background: isMainHeading ? '#2563EB' : '#EEF3FF', color: isMainHeading ? '#fff' : '#2563EB', fontSize: isMainHeading ? '11px' : '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: '0 4px' }}>
                           {numLabel}
                         </span>
-                        <span style={{
-                          fontSize: isMainHeading ? '13px' : '12px',
-                          fontWeight: isMainHeading ? 700 : 500,
-                          color: isMainHeading ? '#1E293B' : '#475569',
-                          lineHeight: 1.4,
-                        }}>
+                        <span style={{ fontSize: isMainHeading ? '13px' : '12px', fontWeight: isMainHeading ? 700 : 500, color: isMainHeading ? '#1E293B' : '#475569', lineHeight: 1.4 }}>
                           {section.label}
                         </span>
                       </button>
@@ -886,58 +893,25 @@ export default function LectureHub({
         {/* ── ACTIONS CARD ── */}
         {!sidebarCollapsed && (
           <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Actions
-            </p>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Actions</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button
-                onClick={handleMarkComplete}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: '8px', padding: '10px', borderRadius: '10px', border: 'none',
-                  cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-                  background: isCompleted ? '#16A34A' : '#EEF3FF',
-                  color: isCompleted ? '#fff' : '#2563EB',
-                  transition: 'all 0.15s ease',
-                }}
-              >
+              <button onClick={handleMarkComplete}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, background: isCompleted ? '#16A34A' : '#EEF3FF', color: isCompleted ? '#fff' : '#2563EB', transition: 'all 0.15s ease' }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  {isCompleted
-                    ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>
-                    : <circle cx="12" cy="12" r="10"/>
-                  }
+                  {isCompleted ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></> : <circle cx="12" cy="12" r="10"/>}
                 </svg>
                 {isCompleted ? 'Completed' : 'Mark as Completed'}
               </button>
-              <button
-                onClick={handleToggleBookmark}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: '8px', padding: '10px', borderRadius: '10px', border: '1px solid #EAEDF2',
-                  cursor: 'pointer', fontSize: '13px', fontWeight: 500,
-                  background: isBookmarked ? '#FFF7ED' : '#fff',
-                  color: isBookmarked ? '#D97706' : '#6B7280',
-                  transition: 'all 0.15s ease',
-                }}
-              >
+              <button onClick={handleToggleBookmark}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', border: '1px solid #EAEDF2', cursor: 'pointer', fontSize: '13px', fontWeight: 500, background: isBookmarked ? '#FFF7ED' : '#fff', color: isBookmarked ? '#D97706' : '#6B7280', transition: 'all 0.15s ease' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? '#D97706' : 'none'} stroke={isBookmarked ? '#D97706' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                 </svg>
                 {isBookmarked ? 'Bookmarked' : 'Bookmark'}
               </button>
-              <Link
-                href={`/${universityId}/${subjectSlug ?? subject.id}`}
-                prefetch={false}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: '8px', padding: '10px', borderRadius: '10px', border: '1px solid #EAEDF2',
-                  fontSize: '13px', fontWeight: 500, color: '#6B7280', background: '#fff',
-                  textDecoration: 'none', transition: 'all 0.15s ease',
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="15 18 9 12 15 6"/>
-                </svg>
+              <Link href={`/${universityId}/${subjectSlug ?? subject.id}`} prefetch={false}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', border: '1px solid #EAEDF2', fontSize: '13px', fontWeight: 500, color: '#6B7280', background: '#fff', textDecoration: 'none', transition: 'all 0.15s ease' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 Back to Subject
               </Link>
             </div>
@@ -952,15 +926,7 @@ export default function LectureHub({
 
 // ── Stat Pill ──────────────────────────────────────────────────────────────
 
-function StatPill({
-  label,
-  value,
-  color,
-}: {
-  label: string
-  value: number
-  color: 'blue' | 'green' | 'amber' | 'slate'
-}) {
+function StatPill({ label, value, color }: { label: string; value: number; color: 'blue' | 'green' | 'amber' | 'slate' }) {
   const bg   = color === 'blue' ? '#EFF6FF' : color === 'green' ? '#F0FDF4' : color === 'amber' ? '#FFFBEB' : '#F8FAFC'
   const text = color === 'blue' ? '#2563EB' : color === 'green' ? '#16A34A' : color === 'amber' ? '#D97706' : '#64748B'
   const sub  = color === 'blue' ? '#3B82F6' : color === 'green' ? '#22C55E' : color === 'amber' ? '#F59E0B' : '#94A3B8'
@@ -977,21 +943,18 @@ function StatPill({
 function NotesPanel({ lectureId }: { lectureId: string }) {
   const { user }   = useUserStore()
   const supabase   = createClient()
-  const [note, setNote]         = useState('')
-  const [saved, setSaved]       = useState(false)
-  const [loading, setLoading]   = useState(true)
-  const [noteId, setNoteId]     = useState<string | null>(null)
+  const [note, setNote]       = useState('')
+  const [saved, setSaved]     = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [noteId, setNoteId]   = useState<string | null>(null)
   const saveTimer = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (!user) { setLoading(false); return }
     async function load() {
       const { data } = await supabase
-        .from('user_notes')
-        .select('id, note_content')
-        .eq('user_id', user!.id)
-        .eq('lecture_id', lectureId)
-        .maybeSingle()
+        .from('user_notes').select('id, note_content')
+        .eq('user_id', user!.id).eq('lecture_id', lectureId).maybeSingle()
       if (data) { setNote(data.note_content ?? ''); setNoteId(data.id) }
       setLoading(false)
     }
@@ -1008,14 +971,9 @@ function NotesPanel({ lectureId }: { lectureId: string }) {
   async function saveNote(content: string) {
     if (!user) return
     if (noteId) {
-      await supabase.from('user_notes')
-        .update({ note_content: content, updated_at: new Date().toISOString() })
-        .eq('id', noteId)
+      await supabase.from('user_notes').update({ note_content: content, updated_at: new Date().toISOString() }).eq('id', noteId)
     } else {
-      const { data } = await supabase.from('user_notes')
-        .insert({ user_id: user.id, lecture_id: lectureId, note_content: content })
-        .select('id')
-        .maybeSingle()
+      const { data } = await supabase.from('user_notes').insert({ user_id: user.id, lecture_id: lectureId, note_content: content }).select('id').maybeSingle()
       if (data) setNoteId(data.id)
     }
     setSaved(true)
@@ -1026,27 +984,15 @@ function NotesPanel({ lectureId }: { lectureId: string }) {
   return (
     <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-        <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-          My Notes
-        </p>
+        <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>My Notes</p>
         {saved && <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 600 }}>✓ Saved</span>}
         {!saved && note.length > 0 && <span style={{ fontSize: '10px', color: '#94A3B8' }}>Saving...</span>}
       </div>
       {loading ? (
         <div style={{ height: '80px', background: '#F1F5F9', borderRadius: '10px' }} />
       ) : (
-        <textarea
-          value={note}
-          onChange={(e) => handleChange(e.target.value)}
-          placeholder="Write your notes here..."
-          rows={4}
-          style={{
-            width: '100%', fontSize: '12.5px', color: '#374151',
-            background: '#FEFCE8', border: '1px solid #FDE68A',
-            borderRadius: '10px', padding: '10px', resize: 'none',
-            outline: 'none', lineHeight: 1.6, fontFamily: 'inherit',
-            boxSizing: 'border-box',
-          }}
+        <textarea value={note} onChange={(e) => handleChange(e.target.value)} placeholder="Write your notes here..." rows={4}
+          style={{ width: '100%', fontSize: '12.5px', color: '#374151', background: '#FEFCE8', border: '1px solid #FDE68A', borderRadius: '10px', padding: '10px', resize: 'none', outline: 'none', lineHeight: 1.6, fontFamily: 'inherit', boxSizing: 'border-box' }}
         />
       )}
     </div>

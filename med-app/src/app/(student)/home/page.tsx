@@ -278,7 +278,7 @@ export default async function StudentDashboard() {
   const firstName = profile.full_name?.split(' ')[0] ?? 'Student'
 
   return (
-    <div style={{ padding: '28px', maxWidth: '1080px', margin: '0 auto' }}>
+    <div style={{ padding: 'clamp(16px, 4vw, 28px)', maxWidth: '1080px', margin: '0 auto' }}>
 
       {/* ── Welcome header ── */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
@@ -286,7 +286,7 @@ export default async function StudentDashboard() {
           <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: PRIMARY, marginBottom: '6px' }}>
             {getTodayLabel()}
           </div>
-          <h1 style={{ margin: 0, fontSize: '30px', fontWeight: 800, letterSpacing: '-.025em', color: INK, lineHeight: 1.1 }}>
+          <h1 style={{ margin: 0, fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 800, letterSpacing: '-.025em', color: INK, lineHeight: 1.1 }}>
             Welcome back, {firstName}
           </h1>
           <div style={{ fontSize: '14.5px', color: INK2, marginTop: '4px' }}>
@@ -303,7 +303,7 @@ export default async function StudentDashboard() {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px', marginBottom: '22px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', gap: '12px', marginBottom: '22px' }}>
         <KpiCard
           iconBg={`rgba(37,99,235,0.12)`} badge="SUBSCRIBED" badgeColor={INK3}
           icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={PRIMARY} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>}
@@ -361,7 +361,7 @@ export default async function StudentDashboard() {
       )}
 
       {/* ── Two column: Recent Activity + Right Rail ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '22px', marginBottom: '22px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 380px), 1fr))', gap: '22px', marginBottom: '22px' }}>
 
         {/* Recent Activity */}
         <div style={{ background: CARD_BG, border: `1px solid ${CARD_BDR}`, borderRadius: '18px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)' }}>
@@ -492,7 +492,7 @@ export default async function StudentDashboard() {
             )}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '18px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '14px' }}>
             {pinnedSubjects.map(({ subject_id, subject }) => (
               <Link
                 key={subject_id}

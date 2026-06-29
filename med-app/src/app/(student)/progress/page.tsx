@@ -125,7 +125,7 @@ export default async function ProgressPage() {
   }
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100%', padding: '28px 28px 64px', fontFamily: 'inherit' }}>
+    <div style={{ background: 'var(--bg)', minHeight: '100%', padding: 'clamp(16px, 4vw, 28px) clamp(16px, 4vw, 28px) 64px', fontFamily: 'inherit' }}>
 
       {/* Header */}
       <div style={{ marginBottom: '28px' }}>
@@ -138,7 +138,7 @@ export default async function ProgressPage() {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '28px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 160px), 1fr))', gap: '12px', marginBottom: '28px' }}>
         <KpiCard
           icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -260,7 +260,7 @@ export default async function ProgressPage() {
         </div>
 
         {/* Right column */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px', alignItems: 'stretch' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '18px', alignItems: 'stretch' }}>
 
           {/* Summary card */}
           <div style={{ background: 'var(--card)', borderRadius: '18px', border: '1px solid var(--line)', padding: '20px', boxShadow: 'var(--shadow)' }}>

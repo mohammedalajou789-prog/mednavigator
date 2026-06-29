@@ -30,7 +30,7 @@ export default async function ProgressPage() {
             id,
             name,
             university_id,
-            universities ( id, name )
+            universities ( id, name, slug )
           )
         )
       `)
@@ -75,7 +75,7 @@ export default async function ProgressPage() {
         id: subject.id,
         name: subject.name,
         universityName: university?.name ?? '',
-        universityId: subject.university_id,
+        universityId: (university as any)?.slug ?? subject.university_id,
         lectures: [],
       }
     }
@@ -237,7 +237,7 @@ export default async function ProgressPage() {
                       {subject.lectures.slice(0, 5).map(lecture => (
                         <Link
                           key={lecture.id}
-                          href={`/${subject.universityId}/${subject.id}/${lecture.id}`}
+                          href={`/${(subject as any).universitySlug ?? subject.universityId}/${subject.id}/${lecture.id}`}
                           prefetch={false}
                           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '10px', background: 'var(--bg-2)', textDecoration: 'none', transition: 'background 0.15s' }}
                         >

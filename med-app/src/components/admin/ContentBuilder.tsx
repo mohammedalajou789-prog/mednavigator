@@ -342,9 +342,15 @@ export default function ContentBuilder({
     { label: 'Must Memorize', syntax: '\n[MUST_MEMORIZE]\n\n[/MUST_MEMORIZE]\n' },
     { label: 'Previous Year', syntax: '\n[PREVIOUS_YEAR]\n\n[/PREVIOUS_YEAR]\n' },
     { label: 'Highlight',     syntax: '\n[HIGHLIGHT]\n\n[/HIGHLIGHT]\n' },
-    { label: 'Image Slot',    syntax: '\n[IMAGE_SLOT:1]\n' },
     { label: 'Table',         syntax: '\n[TABLE]\n| Column 1 | Column 2 |\n|----------|----------|\n| Value 1  | Value 2  |\n[/TABLE]\n' },
   ]
+
+  // Auto-increment image slot number based on existing slots in content
+  function insertImageSlot() {
+    const existing = getImageSlots(currentContent)
+    const nextSlot = existing.length > 0 ? Math.max(...existing) + 1 : 1
+    insertAtCursor(`\n[IMAGE_SLOT:${nextSlot}]\n`)
+  }
 
   const currentContent = activeTab === 'sheet' ? sheetContent : summaryContent
 

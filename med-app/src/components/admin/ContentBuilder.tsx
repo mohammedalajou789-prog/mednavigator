@@ -152,29 +152,102 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
     }]
   )
 
-  // CHANGE 1 — Synchronized scroll refs
+  // Click-to-sync refs
   const editorRef  = useRef<HTMLTextAreaElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
-  const isSyncingRef = useRef(false)
 
-  const handleEditorScroll = useCallback(() => {
-    if (isSyncingRef.current || !editorRef.current || !previewRef.current) return
-    isSyncingRef.current = true
-    const editor = editorRef.current
+  // Hide preview panel state
+  const [showPreview, setShowPreview] = useState(true)
+
+  // Click to sync: when admin clicks in editor, scroll preview to matching block
+  const handleEditorClick = useCallback(() => {
+    const textarea = editorRef.current
     const preview = previewRef.current
-    const pct = editor.scrollTop / (editor.scrollHeight - editor.clientHeight)
-    preview.scrollTop = pct * (preview.scrollHeight - preview.clientHeight)
-    requestAnimationFrame(() => { isSyncingRef.current = false })
+    if (!textarea || !preview) return
+
+    const cursorPos = textarea.selectionStart
+    const textUpToCursor = textarea.value.slice(0, cursorPos)
+    const lines = textUpToCursor.split('\n')
+
+    // Walk backwards from cursor to find the nearest heading or block tag
+    let targetId: string | null = null
+    let targetTag: string | null = null
+
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i].trim()
+
+      if (line.startsWith('# ')) {
+        targetId = `section-${line.slice(2).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+        break
+      }
+      if (line.startsWith('## ')) {
+        targetId = `section-${line.slice(3).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+        break
+      }
+      if (line === '[TABLE]' || line.startsWith('| ')) { targetTag = 'table'; break }
+      if (line === '[IMPORTANT]') { targetTag = 'important'; break }
+      if (line === '[CLINICAL_PEARL]') { targetTag = 'clinical_pearl'; break }
+      if (line === '[MUST_MEMORIZE]') { targetTag = 'must_memorize'; break }
+      if (line === '[PREVIOUS_YEAR]') { targetTag = 'previous_year'; break }
+      if (line === '[HIGHLIGHT]') { targetTag = 'highlight'; break }
+      if (line.match(/^\[IMAGE_SLOT:\d+\]/)) { targetTag = 'image_slot'; break }
+    }
+
+    if (targetId) {
+      const el = preview.querySelector(`#${targetId}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        // Flash highlight
+        ;(el as HTMLElement).style.transition = 'background 0.3s'
+        ;(el as HTMLElement).style.background = '#DBEAFE'
+        setTimeout(() => { (el as HTMLElement).style.background = '' }, 1000)
+      }
+      return
+    }
+
+    if (targetTag) {
+      // Find all elements of that type by their known CSS characteristics
+      // and pick the one closest to the cursor proportionally
+      const allBlocks = preview.querySelectorAll('div[style]')
+      const totalLines = textarea.value.split('\n').length
+      const cursorLineIndex = lines.length
+      const pct = cursorLineIndex / totalLines
+
+      // Scroll preview proportionally as fallback
+      preview.scrollTop = pct * (preview.scrollHeight - preview.clientHeight)
+    }
   }, [])
 
-  const handlePreviewScroll = useCallback(() => {
-    if (isSyncingRef.current || !editorRef.current || !previewRef.current) return
-    isSyncingRef.current = true
-    const editor = editorRef.current
-    const preview = previewRef.current
-    const pct = preview.scrollTop / (preview.scrollHeight - preview.clientHeight)
-    editor.scrollTop = pct * (editor.scrollHeight - editor.clientHeight)
-    requestAnimationFrame(() => { isSyncingRef.current = false })
+  // Click in preview: scroll editor to matching line
+  const handlePreviewClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const textarea = editorRef.current
+    if (!textarea) return
+
+    const target = e.target as HTMLElement
+    const section = target.closest('[id^="section-"]')
+    if (!section) return
+
+    const sectionId = section.id
+    const headingText = sectionId.replace('section-', '').replace(/-/g, ' ')
+
+    const lines = textarea.value.split('\n')
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim().toLowerCase()
+      if (
+        line.startsWith('# ') && line.slice(2).replace(/[^a-z0-9 ]/g, '') === headingText ||
+        line.startsWith('## ') && line.slice(3).replace(/[^a-z0-9 ]/g, '') === headingText
+      ) {
+        // Calculate scroll position for this line
+        const lineHeight = textarea.scrollHeight / lines.length
+        textarea.scrollTop = lineHeight * i - textarea.clientHeight / 2
+        textarea.focus()
+        textarea.setSelectionRange(
+          lines.slice(0, i).join('\n').length + 1,
+          lines.slice(0, i + 1).join('\n').length
+        )
+        break
+      }
+    }
   }, [])
 
   // CHANGE 3 — Insert at cursor position
@@ -434,19 +507,39 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
               </button>
             )}
             </div>
-            <button
-              onClick={() => setStudentPreview(p => !p)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                studentPreview
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-              </svg>
-              {studentPreview ? 'Back to Editor' : 'Student Preview'}
-            </button>
+            <div className="flex items-center gap-2">
+              {!studentPreview && (
+                <button
+                  onClick={() => setShowPreview(p => !p)}
+                  title={showPreview ? 'Hide Preview' : 'Show Preview'}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  {showPreview ? (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                  {showPreview ? 'Hide Preview' : 'Show Preview'}
+                </button>
+              )}
+              <button
+                onClick={() => setStudentPreview(p => !p)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  studentPreview
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+                {studentPreview ? 'Back to Editor' : 'Student Preview'}
+              </button>
+            </div>
           </div>
 
           {/* CHANGE 2 — Student preview mode: full width, watermark on */}
@@ -467,7 +560,7 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
           ) : (
             <>
               {/* CHANGE 1 — Synchronized scroll: editor + preview side by side */}
-              <div className="grid grid-cols-2 gap-6">
+              <div className={`grid gap-6 ${showPreview ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 {/* Editor panel */}
                 <div className="space-y-4">
                   <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3">
@@ -492,7 +585,7 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
                         ref={editorRef}
                         value={activeTab === 'sheet' ? sheetContent : summaryContent}
                         onChange={(e) => activeTab === 'sheet' ? setSheetContent(e.target.value) : setSummaryContent(e.target.value)}
-                        onScroll={handleEditorScroll}
+                        onClick={handleEditorClick}
                         rows={24}
                         placeholder={`# ${lectureTitle}\n\n## Definition\n\n[IMPORTANT]\nWrite important content here.\n[/IMPORTANT]`}
                         className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-mono text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none leading-relaxed"
@@ -519,7 +612,8 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
                   </div>
                 </div>
 
-                {/* Preview panel — CHANGE 1: ref + onScroll for sync */}
+                {/* Preview panel */}
+                {showPreview && (
                 <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
                   <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Live Preview</h3>
@@ -527,8 +621,8 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
                   </div>
                   <div
                     ref={previewRef}
-                    onScroll={handlePreviewScroll}
-                    className="p-5 overflow-y-auto max-h-[700px]"
+                    onClick={handlePreviewClick}
+                    className="p-5 overflow-y-auto max-h-[700px] cursor-pointer"
                   >
                     {currentContent ? (
                       <MNRenderer content={currentContent} showWatermark={false} imageSlots={activeTab === 'sheet' ? sheetImageSlots : summaryImageSlots} />
@@ -537,6 +631,7 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
                     )}
                   </div>
                 </div>
+                )}
               </div>
 
               {/* Image Slots Manager */}

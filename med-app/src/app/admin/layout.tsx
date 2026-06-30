@@ -18,7 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <AdminSidebar fullName={profile.full_name ?? 'Admin'} role={profile.role} />
 
       {/* Main content */}
-      <div className="flex-1 ml-56 flex flex-col transition-all duration-300">
+      <div id="admin-main" className="flex-1 ml-56 flex flex-col transition-all duration-300" style={{ transition: 'margin-left 0.3s' }}>
         <OwnerTopBar />
         <main className="flex-1">
           {children}

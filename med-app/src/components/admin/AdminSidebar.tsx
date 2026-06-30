@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 interface Props {
@@ -10,6 +10,16 @@ interface Props {
 
 export default function AdminSidebar({ fullName, role }: Props) {
   const [collapsed, setCollapsed] = useState(false)
+
+  useEffect(() => {
+    const main = document.getElementById('admin-main')
+    if (!main) return
+    if (collapsed) {
+      main.style.marginLeft = '0px'
+    } else {
+      main.style.marginLeft = '224px'
+    }
+  }, [collapsed])
 
   return (
     <>

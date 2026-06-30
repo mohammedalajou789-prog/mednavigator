@@ -247,7 +247,7 @@ export default function LectureHub({
   videos,
 }: LectureHubProps) {
   const { user } = useUserStore()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   // FIX 5: removed unused sidebarOpen
   const { setSidebarOpen } = useUIStore()
@@ -289,35 +289,45 @@ export default function LectureHub({
     queryKey: ['tab-content', lecture.id, subject.id, 'sheet'],
     queryFn:  () => fetchTabContent(lecture.id, subject.id, 'sheet'),
     enabled:  activeTab === 'sheet',
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   })
 
   const { data: summaryPayload, isLoading: summaryLoading } = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'summary'],
     queryFn:  () => fetchTabContent(lecture.id, subject.id, 'summary'),
     enabled:  activeTab === 'summary',
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   })
 
   const { data: flashcardsPayload, isLoading: flashcardsLoading } = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'flashcards'],
     queryFn:  () => fetchTabContent(lecture.id, subject.id, 'flashcards'),
     enabled:  activeTab === 'flashcards',
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   })
 
   const { data: quizPayload, isLoading: quizLoading } = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'quiz'],
     queryFn:  () => fetchTabContent(lecture.id, subject.id, 'quiz'),
     enabled:  activeTab === 'quiz',
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   })
 
   const { data: pyqPayload, isLoading: pyqLoading } = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'previous_years'],
     queryFn:  () => fetchTabContent(lecture.id, subject.id, 'previous_years'),
     enabled:  activeTab === 'previous_years',
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   })
 
   // Extract content from payloads
@@ -375,8 +385,10 @@ export default function LectureHub({
         .maybeSingle()
       return data ?? null
     },
-    enabled: !!user,
+    enabled: !!user?.id,
     staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   })
 
   const { data: bookmarkData } = useQuery({
@@ -391,8 +403,10 @@ export default function LectureHub({
         .maybeSingle()
       return data ?? null
     },
-    enabled: !!user,
+    enabled: !!user?.id,
     staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   })
 
   useEffect(() => {

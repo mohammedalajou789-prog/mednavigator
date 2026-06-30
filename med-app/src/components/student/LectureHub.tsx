@@ -323,7 +323,9 @@ export default function LectureHub({
   // Extract content from payloads
   const sheet:              Sheet | null              = sheetPayload?.data ?? null
   const sheetLocked:        boolean                   = sheetPayload?.locked ?? !accessAllowed
-  const sheetImageSlots:    Record<number, string>    = sheetPayload?.imageSlots ?? {}
+  const sheetImageSlots: Record<number, string> = Object.fromEntries(
+  Object.entries(sheetPayload?.imageSlots ?? {}).map(([k, v]) => [Number(k), String(v)])
+)
   const summary:            Summary | null            = summaryPayload?.data ?? null
   const summaryLocked:      boolean                   = summaryPayload?.locked ?? !accessAllowed
   const flashcards:         Flashcard[]               = flashcardsPayload?.data ?? []

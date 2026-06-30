@@ -57,23 +57,51 @@ export default async function ContentBuilderPage({ params }: Props) {
     groupName = sub?.title ?? ''
   }
 
+  const { data: sheet } = await supabase
+    .from('sheets')
+    .select('id, title, content, status, version')
+    .eq('lecture_id', lectureId)
+    .maybeSingle()
+
+  const { data: summary } = await supabase
+    .from('summaries')
+    .select('id, title, content, status, version')
+    .eq('lecture_id', lectureId)
+    .maybeSingle()
+
   const [
-    { data: sheet },
-    { data: summary },
     { data: flashcards },
     { data: quizQuestions },
     { data: pyqs },
     { data: videos },
     { data: clinicalModules },
+    { data: sheetImageSlots },
+    { data: summaryImageSlots },
   ] = await Promise.all([
-    supabase.from('sheets').select('id, title, content, status, version').eq('lecture_id', lectureId).maybeSingle(),
-    supabase.from('summaries').select('id, title, content, status, version').eq('lecture_id', lectureId).maybeSingle(),
     supabase.from('flashcards').select('id, front_text, back_text, tags').eq('lecture_id', lectureId).order('display_order'),
     supabase.from('quiz_questions').select('id, question, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, tags').eq('lecture_id', lectureId),
     supabase.from('previous_year_questions').select('id, question, options, correct_answer, explanation, exam_year, exam_type').eq('lecture_id', lectureId),
     supabase.from('videos').select('id, title, description, video_url, is_preview, display_order').eq('lecture_id', lectureId).order('display_order'),
     supabase.from('clinical_modules').select('id, module_type, clinical_topics(id, title, description, display_order, clinical_sheets(id, title, content))').eq('subject_id', subjectId).is('archived_at', null),
+    sheet?.id
+      ? supabase.from('image_slots').select('slot_number, media_library(file_url)').eq('entity_type', 'sheet').eq('entity_id', sheet.id)
+      : Promise.resolve({ data: [] as any[] }),
+    summary?.id
+      ? supabase.from('image_slots').select('slot_number, media_library(file_url)').eq('entity_type', 'summary').eq('entity_id', summary.id)
+      : Promise.resolve({ data: [] as any[] }),
   ])
+
+  const sheetImages: Record<number, string> = {}
+  for (const row of sheetImageSlots ?? []) {
+    const url = (row.media_library as any)?.file_url
+    if (url) sheetImages[row.slot_number] = url
+  }
+
+  const summaryImages: Record<number, string> = {}
+  for (const row of summaryImageSlots ?? []) {
+    const url = (row.media_library as any)?.file_url
+    if (url) summaryImages[row.slot_number] = url
+  }
 
   const isClinic = subject?.subject_type === 'clinical'
   const university = subject.universities as { name: string } | null

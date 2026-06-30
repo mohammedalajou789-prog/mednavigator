@@ -162,6 +162,8 @@ export default async function ContentBuilderPage({ params }: Props) {
           }))}
           isClinic={isClinic}
           existingModules={(clinicalModules ?? []) as any}
+          existingSheetImages={sheetImages}
+          existingSummaryImages={summaryImages}
         />
       </div>
     </div>

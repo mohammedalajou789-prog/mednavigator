@@ -4,12 +4,6 @@ import { createServerClient } from '@supabase/ssr'
 import type { Database } from '@/types/database'
 
 const STUDENT_ONLY_ROUTES = [
-  '/home',
-  '/bookmarks',
-  '/notifications',
-  '/profile',
-  '/search',
-  '/subscriptions',
   '/settings',
   '/notes',
   '/progress',

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import MNRenderer from '@/components/student/MNRenderer'
 import BulkImportTab from '@/components/admin/BulkImportTab'
 import VideoManager from '@/components/admin/VideoManager'
@@ -94,6 +94,143 @@ interface Props {
 type TabType = 'videos' | 'sheet' | 'summary' | 'flashcards' | 'quiz' | 'previous_years' | 'osce'
 type EditorMode = 'manual' | 'import'
 
+// ---------------------------------------------------------------------------
+// Sync configuration
+// ---------------------------------------------------------------------------
+// Only these MN Syntax block types are allowed to trigger editor <-> preview
+// scroll sync. Plain paragraph text is intentionally excluded.
+const SYNCABLE_BOX_TAGS: { open: string; type: string }[] = [
+  { open: '[IMPORTANT]', type: 'important' },
+  { open: '[CLINICAL_PEARL]', type: 'clinical_pearl' },
+  { open: '[MUST_MEMORIZE]', type: 'must_memorize' },
+  { open: '[PREVIOUS_YEAR]', type: 'previous_year' },
+  { open: '[HIGHLIGHT]', type: 'highlight' },
+]
+
+type SyncTarget =
+  | { kind: 'heading'; id: string }
+  | { kind: 'occurrence'; type: string; occurrence: number }
+  | null
+
+/**
+ * Walk backwards from the given line index to determine which syncable
+ * block (heading, box, or table) that line belongs to — if any.
+ * Returns null if the line is plain text/empty and not inside any
+ * syncable block, so callers know NOT to sync.
+ */
+function resolveSyncTargetFromLine(allLines: string[], lineIndex: number): SyncTarget {
+  // 1) Is this line itself a heading? Headings sync by id (their own text).
+  const thisLine = allLines[lineIndex]?.trim() ?? ''
+  if (thisLine.startsWith('# ') || thisLine.startsWith('## ') || thisLine.startsWith('### ')) {
+    const text = thisLine.replace(/^#{1,3}\s*/, '')
+    const id = `section-${text.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+    return { kind: 'heading', id }
+  }
+
+  // 2) Walk backwards to see if this line sits inside a box or table block.
+  //    While walking back, also count prior occurrences of that same block
+  //    type so we know whether this is the 1st / 2nd / Nth of its kind.
+  for (const tag of SYNCABLE_BOX_TAGS) {
+    const closeTag = tag.open.replace('[', '[/')
+    let openIdx = -1
+    for (let i = lineIndex; i >= 0; i--) {
+      const l = allLines[i].trim()
+      if (l === closeTag) break // closed before reaching cursor -> not inside this block
+      if (l === tag.open) { openIdx = i; break }
+    }
+    if (openIdx !== -1) {
+      // Confirm the block actually closes at/after lineIndex (well-formed) —
+      // not strictly required, but keeps behavior predictable.
+      let occurrence = 0
+      for (let i = 0; i <= openIdx; i++) {
+        if (allLines[i].trim() === tag.open) occurrence++
+      }
+      return { kind: 'occurrence', type: tag.type, occurrence }
+    }
+  }
+
+  // 3) Table check: [TABLE] ... [/TABLE]
+  {
+    let openIdx = -1
+    for (let i = lineIndex; i >= 0; i--) {
+      const l = allLines[i].trim()
+      if (l === '[/TABLE]') break
+      if (l === '[TABLE]') { openIdx = i; break }
+    }
+    if (openIdx !== -1) {
+      let occurrence = 0
+      for (let i = 0; i <= openIdx; i++) {
+        if (allLines[i].trim() === '[TABLE]') occurrence++
+      }
+      return { kind: 'occurrence', type: 'table', occurrence }
+    }
+  }
+
+  // Plain text / not inside any syncable block.
+  return null
+}
+
+/** Find the DOM element in the preview matching a resolved sync target. */
+function findPreviewElement(preview: HTMLElement, target: SyncTarget): HTMLElement | null {
+  if (!target) return null
+  if (target.kind === 'heading') {
+    return preview.querySelector<HTMLElement>(`#${CSS.escape(target.id)}`)
+  }
+  return preview.querySelector<HTMLElement>(`#block-${target.type}-${target.occurrence}`)
+}
+
+/** Given a clicked preview element, resolve it back to a SyncTarget. */
+function resolveSyncTargetFromPreviewElement(clicked: HTMLElement, preview: HTMLElement): SyncTarget {
+  const el = clicked.closest<HTMLElement>('[data-sync-type]')
+  if (!el) return null
+
+  const syncType = el.dataset.syncType
+  if (syncType === 'heading') {
+    if (!el.id) return null
+    return { kind: 'heading', id: el.id }
+  }
+  if (syncType === 'box' || syncType === 'table') {
+    // id pattern: block-<type>-<occurrence>
+    const match = el.id.match(/^block-(.+)-(\d+)$/)
+    if (!match) return null
+    return { kind: 'occurrence', type: match[1], occurrence: parseInt(match[2], 10) }
+  }
+  // 'text' or anything else -> not syncable
+  return null
+}
+
+/** Find the editor line index (0-based) for a given SyncTarget. */
+function findEditorLineForTarget(lines: string[], target: SyncTarget): number | null {
+  if (!target) return null
+
+  if (target.kind === 'heading') {
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i].trim()
+      if (!(l.startsWith('# ') || l.startsWith('## ') || l.startsWith('### '))) continue
+      const text = l.replace(/^#{1,3}\s*/, '')
+      const id = `section-${text.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+      if (id === target.id) return i
+    }
+    return null
+  }
+
+  // occurrence-based (box or table)
+  const openTag =
+    target.type === 'table'
+      ? '[TABLE]'
+      : SYNCABLE_BOX_TAGS.find(t => t.type === target.type)?.open
+  if (!openTag) return null
+
+  let count = 0
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim() === openTag) {
+      count++
+      if (count === target.occurrence) return i
+    }
+  }
+  return null
+}
+
 export default function ContentBuilder({
   lectureId,
   subjectId,
@@ -156,104 +293,87 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
   const editorRef  = useRef<HTMLTextAreaElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
 
+  // FIX (scroll reset bug): remembers the preview's scroll position across
+  // re-renders (typing, inserting blocks, image uploads, etc.) so the view
+  // doesn't jump back to the top every time content changes.
+  const preservedScrollTop = useRef<number>(0)
+
   // Hide preview panel state
   const [showPreview, setShowPreview] = useState(true)
 
-  // Click to sync: when admin clicks in editor, scroll preview to matching block
-  const handleEditorClick = useCallback(() => {
+  // Before the preview re-renders with new content, capture its current
+  // scroll position synchronously.
+  const captureScrollBeforeUpdate = useCallback(() => {
+    if (previewRef.current) {
+      preservedScrollTop.current = previewRef.current.scrollTop
+    }
+  }, [])
+
+  // After content changes (and MNRenderer re-renders), restore the scroll
+  // position instead of letting it default back to 0.
+  useEffect(() => {
+    if (previewRef.current) {
+      previewRef.current.scrollTop = preservedScrollTop.current
+    }
+    // Re-run whenever the rendered content changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetContent, summaryContent, activeTab, sheetImageSlots, summaryImageSlots])
+
+  // FIX (double-click only + element-type gating):
+  // Single click no longer triggers sync at all (normal cursor placement
+  // still works via the browser default). Only a double-click on a
+  // heading, box (Important/Clinical Pearl/etc.), or table triggers sync.
+  const handleEditorDoubleClick = useCallback(() => {
     const textarea = editorRef.current
     const preview = previewRef.current
     if (!textarea || !preview) return
 
     const cursorPos = textarea.selectionStart
+    const allLines = textarea.value.split('\n')
     const textUpToCursor = textarea.value.slice(0, cursorPos)
-    const lines = textUpToCursor.split('\n')
+    const cursorLineIndex = textUpToCursor.split('\n').length - 1
 
-    // Walk backwards from cursor to find the nearest heading or block tag
-    let targetId: string | null = null
-    let targetTag: string | null = null
+    const target = resolveSyncTargetFromLine(allLines, cursorLineIndex)
+    if (!target) return // plain text — do nothing, per spec
 
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i].trim()
+    const el = findPreviewElement(preview, target)
+    if (!el) return
 
-      if (line.startsWith('# ')) {
-        targetId = `section-${line.slice(2).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
-        break
-      }
-      if (line.startsWith('## ')) {
-        targetId = `section-${line.slice(3).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
-        break
-      }
-      if (line === '[TABLE]' || line.startsWith('| ')) { targetTag = 'table'; break }
-      if (line === '[IMPORTANT]') { targetTag = 'important'; break }
-      if (line === '[CLINICAL_PEARL]') { targetTag = 'clinical_pearl'; break }
-      if (line === '[MUST_MEMORIZE]') { targetTag = 'must_memorize'; break }
-      if (line === '[PREVIOUS_YEAR]') { targetTag = 'previous_year'; break }
-      if (line === '[HIGHLIGHT]') { targetTag = 'highlight'; break }
-      if (line.match(/^\[IMAGE_SLOT:\d+\]/)) { targetTag = 'image_slot'; break }
-    }
-
-    if (targetId) {
-      const el = preview.querySelector(`#${targetId}`)
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        // Flash highlight
-        ;(el as HTMLElement).style.transition = 'background 0.3s'
-        ;(el as HTMLElement).style.background = '#DBEAFE'
-        setTimeout(() => { (el as HTMLElement).style.background = '' }, 1000)
-      }
-      return
-    }
-
-    if (targetTag) {
-      // Find all elements of that type by their known CSS characteristics
-      // and pick the one closest to the cursor proportionally
-      const allBlocks = preview.querySelectorAll('div[style]')
-      const totalLines = textarea.value.split('\n').length
-      const cursorLineIndex = lines.length
-      const pct = cursorLineIndex / totalLines
-
-      // Scroll preview proportionally as fallback
-      preview.scrollTop = pct * (preview.scrollHeight - preview.clientHeight)
-    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    el.style.transition = 'background 0.3s'
+    const prevBg = el.style.background
+    el.style.background = '#DBEAFE'
+    setTimeout(() => { el.style.background = prevBg }, 1000)
   }, [])
 
-  // Click in preview: scroll editor to matching line
-  const handlePreviewClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const handlePreviewDoubleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const textarea = editorRef.current
-    if (!textarea) return
+    const preview = previewRef.current
+    if (!textarea || !preview) return
 
-    const target = e.target as HTMLElement
-    const section = target.closest('[id^="section-"]')
-    if (!section) return
-
-    const sectionId = section.id
-    const headingText = sectionId.replace('section-', '').replace(/-/g, ' ')
+    const target = resolveSyncTargetFromPreviewElement(e.target as HTMLElement, preview)
+    if (!target) return // clicked plain text / non-syncable element — do nothing
 
     const lines = textarea.value.split('\n')
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim().toLowerCase()
-      if (
-        line.startsWith('# ') && line.slice(2).replace(/[^a-z0-9 ]/g, '') === headingText ||
-        line.startsWith('## ') && line.slice(3).replace(/[^a-z0-9 ]/g, '') === headingText
-      ) {
-        // Calculate scroll position for this line
-        const lineHeight = textarea.scrollHeight / lines.length
-        textarea.scrollTop = lineHeight * i - textarea.clientHeight / 2
-        textarea.focus()
-        textarea.setSelectionRange(
-          lines.slice(0, i).join('\n').length + 1,
-          lines.slice(0, i + 1).join('\n').length
-        )
-        break
-      }
-    }
+    const lineIndex = findEditorLineForTarget(lines, target)
+    if (lineIndex === null) return
+
+    const lineHeight = textarea.scrollHeight / lines.length
+    textarea.scrollTop = lineHeight * lineIndex - textarea.clientHeight / 2
+    textarea.focus()
+    textarea.setSelectionRange(
+      lines.slice(0, lineIndex).join('\n').length + 1,
+      lines.slice(0, lineIndex + 1).join('\n').length
+    )
   }, [])
 
   // CHANGE 3 — Insert at cursor position
   const insertAtCursor = useCallback((syntax: string) => {
     const textarea = editorRef.current
     if (!textarea) return
+
+    // Preserve preview scroll position across this content change too.
+    captureScrollBeforeUpdate()
 
     const start  = textarea.selectionStart
     const end    = textarea.selectionEnd
@@ -277,7 +397,7 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
       textarea.focus()
       textarea.setSelectionRange(newPos, newPos)
     })
-  }, [activeTab, sheetContent, summaryContent])
+  }, [activeTab, sheetContent, summaryContent, captureScrollBeforeUpdate])
 
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text })
@@ -527,7 +647,7 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
                 </button>
               )}
               <button
-                onClick={() => setStudentPreview(p => !p)}
+                onClick={() => { captureScrollBeforeUpdate(); setStudentPreview(p => !p) }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   studentPreview
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -549,7 +669,7 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
                 <span className="w-2 h-2 rounded-full bg-green-500" />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Student View — exactly as students see it</span>
               </div>
-              <div className="p-5 overflow-y-auto max-h-[800px]">
+              <div ref={previewRef} className="p-5 overflow-y-auto max-h-[800px]">
                 {currentContent ? (
                   <MNRenderer content={currentContent} showWatermark={true} userName="Preview User" imageSlots={activeTab === 'sheet' ? sheetImageSlots : summaryImageSlots} />
                 ) : (
@@ -580,12 +700,16 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
                           <span className="text-xs text-gray-400">Version {(activeTab === 'sheet' ? existingSheet : existingSummary)?.version}</span>
                         )}
                       </div>
-                      {/* CHANGE 1: ref + onScroll for sync */}
+                      {/* FIX: onDoubleClick instead of onClick, so a single click just
+                          places the cursor as normal and does not trigger any sync. */}
                       <textarea
                         ref={editorRef}
                         value={activeTab === 'sheet' ? sheetContent : summaryContent}
-                        onChange={(e) => activeTab === 'sheet' ? setSheetContent(e.target.value) : setSummaryContent(e.target.value)}
-                        onClick={handleEditorClick}
+                        onChange={(e) => {
+                          captureScrollBeforeUpdate()
+                          activeTab === 'sheet' ? setSheetContent(e.target.value) : setSummaryContent(e.target.value)
+                        }}
+                        onDoubleClick={handleEditorDoubleClick}
                         rows={24}
                         placeholder={`# ${lectureTitle}\n\n## Definition\n\n[IMPORTANT]\nWrite important content here.\n[/IMPORTANT]`}
                         className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-mono text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none leading-relaxed"
@@ -619,10 +743,11 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Live Preview</h3>
                     <span className="text-xs text-gray-400 capitalize">{activeTab}</span>
                   </div>
+                  {/* FIX: onDoubleClick instead of onClick */}
                   <div
                     ref={previewRef}
-                    onClick={handlePreviewClick}
-                    className="p-5 overflow-y-auto max-h-[700px] cursor-pointer"
+                    onDoubleClick={handlePreviewDoubleClick}
+                    className="p-5 overflow-y-auto max-h-[700px]"
                   >
                     {currentContent ? (
                       <MNRenderer content={currentContent} showWatermark={false} imageSlots={activeTab === 'sheet' ? sheetImageSlots : summaryImageSlots} />
@@ -654,6 +779,7 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
   slotNumber={slot}
   existingUrl={activeTab === 'sheet' ? (sheetImageSlots[slot] ?? null) : (summaryImageSlots[slot] ?? null)}
   onUploadSuccess={(url, slotNumber) => {
+  captureScrollBeforeUpdate()
   if (activeTab === 'sheet') {
     setSheetImageSlots(prev => ({ ...prev, [slotNumber]: url }))
   } else {

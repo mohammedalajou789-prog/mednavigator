@@ -337,6 +337,9 @@ export default function LectureHub({
   Object.entries(sheetPayload?.imageSlots ?? {}).map(([k, v]) => [Number(k), String(v)])
 )
   const summary:            Summary | null            = summaryPayload?.data ?? null
+  const summaryImageSlots: Record<number, string> = Object.fromEntries(
+  Object.entries(summaryPayload?.imageSlots ?? {}).map(([k, v]) => [Number(k), String(v)])
+)
   const summaryLocked:      boolean                   = summaryPayload?.locked ?? !accessAllowed
   const flashcards:         Flashcard[]               = flashcardsPayload?.data ?? []
   const flashcardsLocked:   boolean                   = flashcardsPayload?.locked ?? !accessAllowed
@@ -640,7 +643,7 @@ export default function LectureHub({
                   imageSlots={sheetImageSlots}
                 />
               )}
-              {activeTab === 'summary' && summary && (
+            {activeTab === 'summary' && summary && (
                 <SheetReader
                   content={summary.content ?? ''}
                   title={lecture.title}
@@ -648,6 +651,7 @@ export default function LectureHub({
                   onProgressUpdate={handleProgressUpdate}
                   userName={displayName}
                   tocSections={tocSections}
+                  imageSlots={summaryImageSlots}
                 />
               )}
               {activeTab === 'flashcards' && flashcards.length > 0 && (

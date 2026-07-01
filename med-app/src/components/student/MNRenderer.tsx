@@ -16,6 +16,15 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
 
   const sections = groupBlocksIntoSections(blocks)
 
+  // Occurrence counters shared across the ENTIRE render pass, so that
+  // "1st Important box", "2nd Important box", etc. are numbered globally
+  // (matching the order they appear in the raw MN Syntax content).
+  const occurrenceCounters: Record<string, number> = {}
+  function nextOccurrenceId(type: string): string {
+    occurrenceCounters[type] = (occurrenceCounters[type] ?? 0) + 1
+    return `block-${type}-${occurrenceCounters[type]}`
+  }
+
   return (
     <div className="relative font-sans">
       {showWatermark && userName && (
@@ -34,7 +43,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
           if (section.type === 'pre') {
             return section.blocks.map((block, bIdx) => {
               if (block.type === 'h1') { h1Counter++; h2Counter = 0 }
-              return renderBlock(block, sIdx * 1000 + bIdx, undefined, imageSlots)
+              return renderBlock(block, sIdx * 1000 + bIdx, undefined, imageSlots, nextOccurrenceId)
             })
           }
 
@@ -58,6 +67,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
               {(() => { h1Counter++; return null })()}
               <div
                 id={h1Id}
+                data-sync-type="heading"
                 style={{
                   scrollMarginTop: '96px',
                   display: 'flex',
@@ -87,7 +97,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
                   return (
                     <div key={`pre-${subIdx}`} style={{ background: '#fff', border: '1px solid #ECEEF3', borderRadius: '18px', padding: '24px 26px', marginBottom: '14px', boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)' }}>
                       {sub.blocks.map((block, bIdx) =>
-                        renderBlock(block, sIdx * 1000 + subIdx * 100 + bIdx, undefined, imageSlots)
+                        renderBlock(block, sIdx * 1000 + subIdx * 100 + bIdx, undefined, imageSlots, nextOccurrenceId)
                       )}
                     </div>
                   )
@@ -99,7 +109,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
 
                 return (
                   <div key={`sub-${subIdx}`} style={{ marginBottom: '14px' }}>
-                    <div id={sectionId} style={{ scrollMarginTop: '96px', background: '#fff', border: '1px solid #ECEEF3', borderRadius: '18px', padding: '24px 26px', boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)' }}>
+                    <div id={sectionId} data-sync-type="heading" style={{ scrollMarginTop: '96px', background: '#fff', border: '1px solid #ECEEF3', borderRadius: '18px', padding: '24px 26px', boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
                         <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)', color: '#fff', fontSize: '14px', fontWeight: 700, flexShrink: 0, boxShadow: '0 5px 12px -4px rgba(47,107,255,.6)' }}>
                           {currentNum}
@@ -109,7 +119,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
                         </span>
                       </div>
                       {sub.blocks.map((block, bIdx) =>
-                        renderBlock(block, sIdx * 1000 + subIdx * 100 + bIdx, undefined, imageSlots)
+                        renderBlock(block, sIdx * 1000 + subIdx * 100 + bIdx, undefined, imageSlots, nextOccurrenceId)
                       )}
                     </div>
                   </div>
@@ -295,7 +305,13 @@ function renderMultiLine(content: string): React.ReactNode {
   })
 }
 
-function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: Record<number, string> = {}) {
+function renderBlock(
+  block: Block,
+  key: number,
+  _h2Number?: number,
+  imageSlots: Record<number, string> = {},
+  nextOccurrenceId?: (type: string) => string
+) {
   switch (block.type) {
 
     case 'image_slot': {
@@ -336,7 +352,7 @@ function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: 
     case 'h1': {
       const h1Id = `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
       return (
-        <h1 key={key} id={h1Id} style={{ scrollMarginTop: '96px', fontSize: '1.9rem', fontWeight: 900, color: '#15203A', marginTop: '32px', marginBottom: '20px', letterSpacing: '-0.022em', lineHeight: 1.2 }}>
+        <h1 key={key} id={h1Id} data-sync-type="heading" style={{ scrollMarginTop: '96px', fontSize: '1.9rem', fontWeight: 900, color: '#15203A', marginTop: '32px', marginBottom: '20px', letterSpacing: '-0.022em', lineHeight: 1.2 }}>
           {block.content}
         </h1>
       )
@@ -345,7 +361,7 @@ function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: 
     case 'h2': {
       const sectionId = `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
       return (
-        <div key={key} id={sectionId} style={{ scrollMarginTop: '96px', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+        <div key={key} id={sectionId} data-sync-type="heading" style={{ scrollMarginTop: '96px', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)', color: '#fff', fontSize: '14px', fontWeight: 700, flexShrink: 0 }}>?</span>
           <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>{block.content.toUpperCase()}</span>
         </div>
@@ -354,15 +370,16 @@ function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: 
 
     case 'h3':
       return (
-        <h3 key={key} className="text-[1.05rem] font-bold text-slate-800 dark:text-slate-200 mt-8 mb-3 flex items-center gap-2">
+        <h3 key={key} data-sync-type="heading" className="text-[1.05rem] font-bold text-slate-800 dark:text-slate-200 mt-8 mb-3 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
           {block.content}
         </h3>
       )
 
-    case 'highlight':
+    case 'highlight': {
+      const id = nextOccurrenceId?.('highlight')
       return (
-        <div key={key} style={{ display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#FFFAED,#FFFDF8)', border: '1px solid #F4E6BC', marginBottom: '16px' }}>
+        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#FFFAED,#FFFDF8)', border: '1px solid #F4E6BC', marginBottom: '16px' }}>
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#FCEFC4', color: '#D89A06', flexShrink: 0, marginTop: '2px' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
           </span>
@@ -370,10 +387,12 @@ function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: 
           <div style={{ margin: 0, fontSize: '16px', lineHeight: 1.7, color: '#534820' }}>{renderMultiLine(block.content)}</div>
         </div>
       )
+    }
 
-    case 'important':
+    case 'important': {
+      const id = nextOccurrenceId?.('important')
       return (
-        <div key={key} style={{ position: 'relative', overflow: 'hidden', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#FFF4F3,#FFFAFA)', border: '1px solid #FAD7D3', marginBottom: '16px' }}>
+        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', position: 'relative', overflow: 'hidden', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#FFF4F3,#FFFAFA)', border: '1px solid #FAD7D3', marginBottom: '16px' }}>
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#FBDAD6', color: '#DC4842', flexShrink: 0, marginTop: '2px' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </span>
@@ -384,10 +403,12 @@ function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: 
           </div>
         </div>
       )
+    }
 
-    case 'clinical_pearl':
+    case 'clinical_pearl': {
+      const id = nextOccurrenceId?.('clinical_pearl')
       return (
-        <div key={key} style={{ display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#EEF4FF,#F7FAFF)', border: '1px solid #DCE6FB', marginBottom: '16px' }}>
+        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#EEF4FF,#F7FAFF)', border: '1px solid #DCE6FB', marginBottom: '16px' }}>
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#DCE7FF', color: '#2F6BFF', flexShrink: 0, marginTop: '2px' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
           </span>
@@ -398,10 +419,12 @@ function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: 
           </div>
         </div>
       )
+    }
 
-    case 'must_memorize':
+    case 'must_memorize': {
+      const id = nextOccurrenceId?.('must_memorize')
       return (
-        <div key={key} style={{ display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#EDFBF4,#F5FDF8)', border: '1px solid #B8EDD3', marginBottom: '16px' }}>
+        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#EDFBF4,#F5FDF8)', border: '1px solid #B8EDD3', marginBottom: '16px' }}>
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#C8F0DC', color: '#138A5A', flexShrink: 0, marginTop: '2px' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           </span>
@@ -412,10 +435,12 @@ function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: 
           </div>
         </div>
       )
+    }
 
-    case 'previous_year':
+    case 'previous_year': {
+      const id = nextOccurrenceId?.('previous_year')
       return (
-        <div key={key} style={{ display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#F6F0FF,#FAF7FF)', border: '1px solid #DDD0FA', marginBottom: '16px' }}>
+        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#F6F0FF,#FAF7FF)', border: '1px solid #DDD0FA', marginBottom: '16px' }}>
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#EDE0FC', color: '#7C3AED', flexShrink: 0, marginTop: '2px' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </span>
@@ -426,11 +451,13 @@ function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: 
           </div>
         </div>
       )
+    }
 
-    case 'table':
+    case 'table': {
       if (!block.rows || block.rows.length === 0) return null
+      const id = nextOccurrenceId?.('table')
       return (
-        <div key={key} className="my-6 overflow-x-auto rounded-xl shadow-sm">
+        <div key={key} id={id} data-sync-type="table" className="my-6 overflow-x-auto rounded-xl shadow-sm" style={{ scrollMarginTop: '96px' }}>
           <table className="w-full text-[0.9rem]">
             <thead>
               <tr className="bg-blue-50 dark:bg-blue-900/40">
@@ -461,13 +488,14 @@ function renderBlock(block: Block, key: number, _h2Number?: number, imageSlots: 
           </table>
         </div>
       )
+    }
 
     case 'empty':
       return <div key={key} className="h-1" />
 
     default:
       return (
-        <p key={key} style={{ fontSize: '15.5px', lineHeight: 1.75, color: '#3C4661', margin: '0 0 14px' }}>
+        <p key={key} data-sync-type="text" style={{ fontSize: '15.5px', lineHeight: 1.75, color: '#3C4661', margin: '0 0 14px' }}>
           {renderInline(block.content)}
         </p>
       )

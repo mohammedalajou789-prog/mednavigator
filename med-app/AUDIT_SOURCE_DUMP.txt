@@ -1,0 +1,1864 @@
+===== C:\Users\mohammed alajou\Documents\mednavigator\med-app\medical-pathways\src\middleware.ts =====
+import { NextResponse } from 'next/server'
+
+export function middleware() {
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ['/admin/:path*']
+}
+
+
+
+===== C:\Users\mohammed alajou\Documents\mednavigator\med-app\src\lib\supabase\middleware.ts =====
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+import type { Database } from '@/types/database'
+
+export async function updateSession(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request })
+
+  const supabase = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          )
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  return { supabaseResponse, user }
+}
+
+
+
+===== C:\Users\mohammed alajou\Documents\mednavigator\med-app\src\app\(student)\[uniSlug]\[subjectSlug]\page.tsx =====
+!!! FILE NOT FOUND !!!
+
+
+
+===== C:\Users\mohammed alajou\Documents\mednavigator\med-app\src\app\(student)\[uniSlug]\[subjectSlug]\previous-years\page.tsx =====
+!!! FILE NOT FOUND !!!
+
+
+
+===== C:\Users\mohammed alajou\Documents\mednavigator\med-app\src\app\(student)\[uniSlug]\[subjectSlug]\[lectureSlug]\page.tsx =====
+!!! FILE NOT FOUND !!!
+
+
+
+===== C:\Users\mohammed alajou\Documents\mednavigator\med-app\src\app\api\lecture-content\route.ts =====
+import { createServerClient } from '@/lib/supabase/server'
+import { checkUserAccess } from '@/lib/services/subscriptions'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const lectureId = searchParams.get('lectureId')
+  const subjectId = searchParams.get('subjectId')
+  const tab       = searchParams.get('tab') ?? 'sheet'
+
+  if (!lectureId || !subjectId) {
+    return NextResponse.json({ error: 'Missing params' }, { status: 400 })
+  }
+
+  const supabase = await createServerClient()
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  const { data: { user } } = await supabase.auth.getUser()
+  let userId: string | null = null
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .single()
+    userId = profile?.id ?? null
+  }
+
+  // ── Access check ──────────────────────────────────────────────────────────
+  const { allowed } = await checkUserAccess(subjectId, userId)
+
+  // ── Fetch requested tab content ───────────────────────────────────────────
+  if (tab === 'sheet') {
+    if (!allowed) return NextResponse.json({ locked: true, data: null })
+    const { data } = await supabase
+      .from('sheets')
+      .select('id, title, content, status, updated_at')
+      .eq('lecture_id', lectureId)
+      .eq('status', 'published')
+      .maybeSingle()
+
+    const imageSlots: Record<number, string> = {}
+    if (data?.id) {
+      const { data: slots, error: slotsError } = await supabase
+        .from('image_slots')
+        .select('slot_number, media_library!image_slots_media_id_fkey(file_url)')
+        .eq('entity_type', 'sheet')
+        .eq('entity_id', data.id)
+
+      if (slotsError) {
+        console.error('image_slots fetch error:', slotsError)
+      }
+
+      if (slots) {
+        for (const slot of slots) {
+          const media = slot.media_library as unknown as { file_url: string } | null
+          if (media?.file_url) imageSlots[Number(slot.slot_number)] = media.file_url
+        }
+      }
+    }
+    return NextResponse.json({ locked: false, data, imageSlots })
+  }
+
+  if (tab === 'summary') {
+    if (!allowed) return NextResponse.json({ locked: true, data: null })
+    const { data } = await supabase
+      .from('summaries')
+      .select('id, title, content, status, updated_at')
+      .eq('lecture_id', lectureId)
+      .eq('status', 'published')
+      .maybeSingle()
+
+    const imageSlots: Record<number, string> = {}
+    if (data?.id) {
+      const { data: slots, error: slotsError } = await supabase
+        .from('image_slots')
+        .select('slot_number, media_library!image_slots_media_id_fkey(file_url)')
+        .eq('entity_type', 'summary')
+        .eq('entity_id', data.id)
+
+      if (slotsError) {
+        console.error('image_slots fetch error (summary):', slotsError)
+      }
+
+      if (slots) {
+        for (const slot of slots) {
+          const media = slot.media_library as unknown as { file_url: string } | null
+          if (media?.file_url) imageSlots[Number(slot.slot_number)] = media.file_url
+        }
+      }
+    }
+
+    return NextResponse.json({ locked: false, data, imageSlots })
+  }
+
+  if (tab === 'flashcards') {
+    if (!allowed) return NextResponse.json({ locked: true, data: null })
+    const { data } = await supabase
+      .from('flashcards')
+      .select('id, front_text, back_text, tags, display_order')
+      .eq('lecture_id', lectureId)
+      .order('display_order')
+    return NextResponse.json({ locked: false, data: data ?? [] })
+  }
+
+  if (tab === 'quiz') {
+    if (!allowed) return NextResponse.json({ locked: true, data: null })
+    const { data } = await supabase
+      .from('quiz_questions')
+      .select('id, question, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, tags')
+      .eq('lecture_id', lectureId)
+    return NextResponse.json({ locked: false, data: data ?? [] })
+  }
+
+  if (tab === 'previous_years') {
+    if (!allowed) return NextResponse.json({ locked: true, data: null })
+    const { data } = await supabase
+      .from('previous_year_questions')
+      .select('id, question, options, correct_answer, explanation, exam_year, exam_type')
+      .eq('lecture_id', lectureId)
+    return NextResponse.json({ locked: false, data: data ?? [] })
+  }
+
+  return NextResponse.json({ error: 'Invalid tab' }, { status: 400 })
+}
+
+
+
+===== C:\Users\mohammed alajou\Documents\mednavigator\med-app\src\components\student\LectureHub.tsx =====
+'use client'
+
+import { useState, useEffect, useRef, useMemo } from 'react'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+import { useUserStore } from '@/stores/userStore'
+import { useUIStore } from '@/stores/uiStore'
+import SheetReader from '@/components/student/SheetReader'
+import FlashcardsViewer from '@/components/student/FlashcardsViewer'
+import QuizViewer from '@/components/student/QuizViewer'
+import PreviousYearsViewer from '@/components/student/PreviousYearsViewer'
+import LockedContentCard from '@/components/student/LockedContentCard'
+import { useQuery } from '@tanstack/react-query'
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+interface Lecture {
+  id: string
+  title: string
+  description: string | null
+  status: string
+}
+
+interface Subject {
+  id: string
+  name: string
+  access_mode: string | null
+  is_free: boolean | null
+}
+
+interface Sheet {
+  id: string
+  content: string | null
+  status: string
+  updated_at: string | null
+}
+
+interface Summary {
+  id: string
+  content: string | null
+  status: string
+  updated_at: string | null
+}
+
+interface Flashcard {
+  id: string
+  front_text: string
+  back_text: string
+  tags: string[] | null
+}
+
+interface QuizQuestion {
+  id: string
+  question: string
+  option_a: string | null
+  option_b: string | null
+  option_c: string | null
+  option_d: string | null
+  option_e: string | null
+  correct_answer: string | null
+  explanation: string | null
+  tags: string[] | null
+}
+
+interface PreviousYearQuestion {
+  id: string
+  question: string
+  options: unknown
+  correct_answer: string | null
+  explanation: string | null
+  exam_year: number | null
+  exam_type: string | null
+}
+
+interface Video {
+  id: string
+  title: string
+  description: string | null
+  video_url: string
+  is_preview: boolean | null
+  display_order: number | null
+}
+
+export interface TocSection {
+  id: string
+  level: number
+  label: string
+  h1Num: number
+  h2Num: number | null
+}
+
+export interface FlashcardStats {
+  total: number
+  easy: number
+  medium: number
+  hard: number
+  current: number
+  important: number
+}
+
+export interface QuizStats {
+  total: number
+  answered: number
+  correct: number
+  current: number
+  important: number
+}
+
+interface LectureHubProps {
+  lecture: Lecture
+  subject: Subject
+  universityId: string
+  subjectSlug?: string
+  userName?: string
+  userId?: string
+  // Access
+  accessAllowed: boolean
+  // Tab existence flags — no content, just booleans/counts
+  hasSheet: boolean
+  hasSummary: boolean
+  flashcardsCount: number
+  quizCount: number
+  pyqCount: number
+  videos: Video[]
+}
+
+// ── Tab Config ─────────────────────────────────────────────────────────────
+
+const TAB_CONFIG: Record<string, { label: string; icon: React.ReactNode }> = {
+  sheet: {
+    label: 'Sheet',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="9" y1="13" x2="15" y2="13"/>
+        <line x1="9" y1="17" x2="13" y2="17"/>
+      </svg>
+    ),
+  },
+  summary: {
+    label: 'Summary',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="9" y1="13" x2="15" y2="13"/>
+        <line x1="9" y1="17" x2="11" y2="17"/>
+      </svg>
+    ),
+  },
+  flashcards: {
+    label: 'Flashcards',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="2"/>
+        <line x1="2" y1="10" x2="22" y2="10"/>
+      </svg>
+    ),
+  },
+  quiz: {
+    label: 'Quiz',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    ),
+  },
+  previous_years: {
+    label: 'Previous Years',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+    ),
+  },
+}
+
+// ── TOC Extractor ──────────────────────────────────────────────────────────
+
+export function extractToc(content: string): TocSection[] {
+  const lines = content.split('\n')
+  const toc: TocSection[] = []
+  let h1Counter = 0
+  let h2Counter = 0
+
+  lines.forEach((line) => {
+    const h1 = line.match(/^#\s+(.+)/)
+    const h2 = line.match(/^##\s+(.+)/)
+    const h3 = line.match(/^###\s+(.+)/)
+
+    if (h1) {
+      h1Counter++
+      h2Counter = 0
+      const label = h1[1].trim()
+      const id = `section-${label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+      toc.push({ id, level: 1, label, h1Num: h1Counter, h2Num: null })
+    } else if (h2) {
+      h2Counter++
+      const label = h2[1].trim()
+      const id = `section-${label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+      if (h1Counter === 0) {
+        h1Counter++
+        h2Counter = 0
+        toc.push({ id, level: 1, label, h1Num: h1Counter, h2Num: null })
+      } else {
+        toc.push({ id, level: 2, label, h1Num: h1Counter, h2Num: h2Counter })
+      }
+    } else if (h3) {
+      const label = h3[1].trim()
+      const id = `section-${label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+      toc.push({ id, level: 3, label, h1Num: h1Counter, h2Num: h2Counter })
+    }
+  })
+  return toc
+}
+
+// ── Content fetcher ────────────────────────────────────────────────────────
+
+async function fetchTabContent(lectureId: string, subjectId: string, tab: string) {
+  const res = await fetch(
+    `/api/lecture-content?lectureId=${lectureId}&subjectId=${subjectId}&tab=${tab}`,
+    { cache: 'no-store' }
+  )
+  if (!res.ok) throw new Error('Failed to fetch content')
+  return res.json()
+}
+
+// ── LectureHub Component ───────────────────────────────────────────────────
+
+export default function LectureHub({
+  lecture,
+  subject,
+  universityId,
+  subjectSlug,
+  userName,
+  userId,
+  accessAllowed,
+  hasSheet,
+  hasSummary,
+  flashcardsCount,
+  quizCount,
+  pyqCount,
+  videos,
+}: LectureHubProps) {
+  const { user } = useUserStore()
+  const supabase = useMemo(() => createClient(), [])
+
+  // FIX 5: removed unused sidebarOpen
+  const { setSidebarOpen } = useUIStore()
+
+  const availableTabs = [
+    hasSheet          && 'sheet',
+    hasSummary        && 'summary',
+    flashcardsCount > 0 && 'flashcards',
+    quizCount > 0       && 'quiz',
+    pyqCount > 0        && 'previous_years',
+  ].filter(Boolean) as string[]
+
+  // If access is locked, all tabs are still shown but content is locked
+  const allTabs = availableTabs.length > 0
+    ? availableTabs
+    : !accessAllowed
+      ? ['sheet', 'summary', 'flashcards', 'quiz', 'previous_years']
+      : []
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const [activeSectionId, setActiveSectionId]   = useState<string>('')
+  const [activeTab, setActiveTab]               = useState(allTabs[0] ?? 'sheet')
+  const [progressPercent, setProgressPercent]   = useState(0)
+  const [isCompleted, setIsCompleted]           = useState(false)
+  const [isBookmarked, setIsBookmarked]         = useState(false)
+
+  const [flashcardStats, setFlashcardStats] = useState<FlashcardStats>({
+    total: flashcardsCount, easy: 0, medium: 0, hard: 0, current: 1, important: 0,
+  })
+  const [quizStats, setQuizStats] = useState<QuizStats>({
+    total: quizCount, answered: 0, correct: 0, current: 1, important: 0,
+  })
+  const [pyqStats, setPyqStats] = useState({
+    total: pyqCount, important: 0, answered: 0,
+  })
+
+  // ── Lazy content fetching — only fetch when tab is first activated ──────
+  const { data: sheetPayload, isLoading: sheetLoading } = useQuery({
+    queryKey: ['tab-content', lecture.id, subject.id, 'sheet'],
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'sheet'),
+    enabled:  activeTab === 'sheet',
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
+
+  const { data: summaryPayload, isLoading: summaryLoading } = useQuery({
+    queryKey: ['tab-content', lecture.id, subject.id, 'summary'],
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'summary'),
+    enabled:  activeTab === 'summary',
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
+
+  const { data: flashcardsPayload, isLoading: flashcardsLoading } = useQuery({
+    queryKey: ['tab-content', lecture.id, subject.id, 'flashcards'],
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'flashcards'),
+    enabled:  activeTab === 'flashcards',
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
+
+  const { data: quizPayload, isLoading: quizLoading } = useQuery({
+    queryKey: ['tab-content', lecture.id, subject.id, 'quiz'],
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'quiz'),
+    enabled:  activeTab === 'quiz',
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
+
+  const { data: pyqPayload, isLoading: pyqLoading } = useQuery({
+    queryKey: ['tab-content', lecture.id, subject.id, 'previous_years'],
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'previous_years'),
+    enabled:  activeTab === 'previous_years',
+    staleTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
+
+  // Extract content from payloads
+  const sheet:              Sheet | null              = sheetPayload?.data ?? null
+  const sheetLocked:        boolean                   = sheetPayload?.locked ?? !accessAllowed
+  const sheetImageSlots: Record<number, string> = Object.fromEntries(
+  Object.entries(sheetPayload?.imageSlots ?? {}).map(([k, v]) => [Number(k), String(v)])
+)
+  const summary:            Summary | null            = summaryPayload?.data ?? null
+  const summaryImageSlots: Record<number, string> = Object.fromEntries(
+  Object.entries(summaryPayload?.imageSlots ?? {}).map(([k, v]) => [Number(k), String(v)])
+)
+  const summaryLocked:      boolean                   = summaryPayload?.locked ?? !accessAllowed
+  const flashcards:         Flashcard[]               = flashcardsPayload?.data ?? []
+  const flashcardsLocked:   boolean                   = flashcardsPayload?.locked ?? !accessAllowed
+  const quizQuestions:      QuizQuestion[]            = quizPayload?.data ?? []
+  const quizLocked:         boolean                   = quizPayload?.locked ?? !accessAllowed
+  const previousYearQuestions: PreviousYearQuestion[] = pyqPayload?.data ?? []
+  const pyqLocked:          boolean                   = pyqPayload?.locked ?? !accessAllowed
+
+  // FIX 4: memoize tocSections
+  const tocSections: TocSection[] = useMemo(() => {
+    if (activeTab === 'sheet')   return extractToc(sheet?.content ?? '')
+    if (activeTab === 'summary') return extractToc(summary?.content ?? '')
+    return []
+  }, [activeTab, sheet?.content, summary?.content])
+
+  const isCurrentTabLocked =
+    (activeTab === 'sheet'          && sheetLocked)     ||
+    (activeTab === 'summary'        && summaryLocked)    ||
+    (activeTab === 'flashcards'     && flashcardsLocked) ||
+    (activeTab === 'quiz'           && quizLocked)       ||
+    (activeTab === 'previous_years' && pyqLocked)
+
+  const isCurrentTabLoading =
+    (activeTab === 'sheet'          && sheetLoading)     ||
+    (activeTab === 'summary'        && summaryLoading)    ||
+    (activeTab === 'flashcards'     && flashcardsLoading) ||
+    (activeTab === 'quiz'           && quizLoading)       ||
+    (activeTab === 'previous_years' && pyqLoading)
+
+  // FIX 3: added setSidebarOpen to dependency array
+  useEffect(() => {
+    setSidebarOpen(false)
+    return () => setSidebarOpen(true)
+  }, [setSidebarOpen])
+
+  // FIX 1: added activeTab to queryKey
+  const { data: progressData } = useQuery({
+    queryKey: ['progress', user?.id, lecture.id, activeTab],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_progress')
+        .select('progress_percentage, completed')
+        .eq('user_id', user!.id)
+        .eq('lecture_id', lecture.id)
+        .eq('content_type', activeTab)
+        .maybeSingle()
+      return data ?? null
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
+
+  const { data: bookmarkData } = useQuery({
+    queryKey: ['bookmark', 'lecture', user?.id, lecture.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('bookmarks')
+        .select('id')
+        .eq('user_id', user!.id)
+        .eq('lecture_id', lecture.id)
+        .eq('bookmark_type', 'lecture')
+        .maybeSingle()
+      return data ?? null
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
+
+  useEffect(() => {
+    setProgressPercent(progressData?.progress_percentage ?? 0)
+    setIsCompleted(progressData?.completed ?? false)
+  }, [progressData])
+
+  useEffect(() => {
+    setIsBookmarked(!!bookmarkData)
+  }, [bookmarkData])
+
+  useEffect(() => {
+    if (tocSections.length === 0) return
+    const scrollContainer = document.getElementById('lecture-content-scroll')
+    if (!scrollContainer) return
+
+    function handleScroll() {
+      let current = tocSections[0]?.id ?? ''
+      for (const section of tocSections) {
+        const el = document.getElementById(section.id)
+        if (!el) continue
+        const top = el.getBoundingClientRect().top - scrollContainer!.getBoundingClientRect().top
+        if (top <= 140) current = section.id
+      }
+      setActiveSectionId(current)
+      const activeBtn = document.getElementById(`toc-btn-${current}`)
+      if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
+    return () => scrollContainer.removeEventListener('scroll', handleScroll)
+  }, [tocSections])
+
+  function handleTocClick(id: string) {
+    const el = document.getElementById(id)
+    const scrollContainer = document.getElementById('lecture-content-scroll')
+    if (el && scrollContainer) {
+      const elTop        = el.getBoundingClientRect().top
+      const containerTop = scrollContainer.getBoundingClientRect().top
+      const offset       = elTop - containerTop + scrollContainer.scrollTop - 120
+      scrollContainer.scrollTo({ top: offset, behavior: 'smooth' })
+    } else if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  async function handleMarkComplete() {
+    if (!user) return
+    const next = !isCompleted
+    setIsCompleted(next)
+    setProgressPercent(next ? 100 : progressPercent)
+    await supabase.from('user_progress').upsert({
+      user_id:             user.id,
+      lecture_id:          lecture.id,
+      content_type:        activeTab,
+      progress_percentage: next ? 100 : progressPercent,
+      completed:           next,
+      last_accessed_at:    new Date().toISOString(),
+      updated_at:          new Date().toISOString(),
+    }, { onConflict: 'user_id,lecture_id,content_type' })
+  }
+
+  async function handleToggleBookmark() {
+    if (!user) return
+    if (isBookmarked) {
+      await supabase.from('bookmarks').delete()
+        .eq('user_id', user.id)
+        .eq('lecture_id', lecture.id)
+        .eq('bookmark_type', 'lecture')
+      setIsBookmarked(false)
+    } else {
+      await supabase.from('bookmarks').insert({
+        user_id: user.id, lecture_id: lecture.id, bookmark_type: 'lecture',
+      })
+      setIsBookmarked(true)
+    }
+  }
+
+  function handleProgressUpdate(pct: number) {
+    setProgressPercent(pct)
+    if (!user) return
+    supabase.from('user_progress').upsert({
+      user_id:             user.id,
+      lecture_id:          lecture.id,
+      content_type:        activeTab,
+      progress_percentage: pct,
+      completed:           pct >= 100,
+      last_accessed_at:    new Date().toISOString(),
+      updated_at:          new Date().toISOString(),
+    }, { onConflict: 'user_id,lecture_id,content_type' })
+  }
+
+  const displayName = userName ?? user?.full_name ?? ''
+
+  // ── Tab loading skeleton ───────────────────────────────────────────────
+  const ContentSkeleton = () => (
+    <div style={{ padding: '24px 0' }}>
+      {[...Array(6)].map((_, i) => (
+        <div key={i} style={{
+          height: i === 0 ? '28px' : '16px',
+          background: 'linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%)',
+          borderRadius: '8px',
+          marginBottom: '16px',
+          width: i % 3 === 2 ? '60%' : '100%',
+          animation: 'shimmer 1.5s infinite',
+        }} />
+      ))}
+      <style>{`@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} } div { background-size: 200% 100%; }`}</style>
+    </div>
+  )
+
+  // ── Render ───────────────────────────────────────────────────────────────
+
+  return (
+    <div className="flex" style={{ height: 'calc(100vh - 72px)', overflow: 'hidden', position: 'relative' }}>
+
+      {/* ── CENTER: scrollable content ── */}
+      <div
+        id="lecture-content-scroll"
+        className="flex-1 min-w-0"
+        style={{ overflowY: 'auto', height: 'calc(100vh - 72px)', background: '#F5F6FA' }}
+      >
+        {/* Mobile tabs */}
+        <div className="lg:hidden flex gap-1 px-4 pt-3 pb-2 bg-white border-b border-slate-100 overflow-x-auto" style={{ flexShrink: 0 }}>
+          {allTabs.map((tabId) => {
+            const cfg      = TAB_CONFIG[tabId]
+            const isActive = activeTab === tabId
+            return (
+              <button
+                key={tabId}
+                onClick={() => setActiveTab(tabId)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '7px 14px', borderRadius: '20px', border: 'none',
+                  cursor: 'pointer', fontSize: '13px',
+                  fontWeight: isActive ? 600 : 500,
+                  background: isActive ? '#EEF3FF' : '#F3F4F6',
+                  color: isActive ? '#2563EB' : '#6B7280',
+                  whiteSpace: 'nowrap', flexShrink: 0,
+                }}
+              >
+                {cfg.icon}
+                {cfg.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Hero card */}
+        <div style={{ padding: 'clamp(12px, 3vw, 22px) clamp(12px, 3vw, 26px) 0', background: '#F5F6FA' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#7A8499', fontWeight: 500, marginBottom: '18px' }}>
+            <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+            <Link href={`/${universityId}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>Subjects</Link>
+            <span style={{ color: '#C5CBD6' }}>/</span>
+            <Link href={`/${universityId}/${subjectSlug ?? subject.id}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>{subject.name}</Link>
+            <span style={{ color: '#C5CBD6' }}>/</span>
+            <span style={{ color: '#1B2335', fontWeight: 700 }}>{lecture.title}</span>
+          </div>
+
+          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '16px', padding: 'clamp(14px, 4vw, 28px) clamp(14px, 4vw, 30px) clamp(12px, 3vw, 24px)', marginBottom: '16px', background: 'linear-gradient(120deg,#E8F0FF 0%,#EFF4FF 46%,#FAFBFF 100%)', border: '1px solid #DFE8FB', boxShadow: '0 1px 2px rgba(16,24,40,.04),0 22px 46px -30px rgba(40,90,200,.4)' }}>
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '320px', height: '160px', background: 'radial-gradient(ellipse at center, rgba(249,168,212,0.3) 0%, rgba(216,180,254,0.15) 55%, transparent 75%)', pointerEvents: 'none', borderRadius: '50%', filter: 'blur(24px)', zIndex: 0 }} />
+
+            {/* Desktop badges */}
+            <div className="hidden sm:flex" style={{ position: 'absolute', top: '24px', right: '28px', flexDirection: 'column', alignItems: 'flex-end', gap: '9px' }}>
+              {isCompleted ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', background: '#E7F7EF', border: '1px solid #C7EBD8', color: '#138A5A', fontSize: '12.5px', fontWeight: 700 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  Completed
+                </span>
+              ) : (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', background: '#EFF4FF', border: '1px solid #D5E2FF', color: '#2F6BFF', fontSize: '12.5px', fontWeight: 700 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  In Progress
+                </span>
+              )}
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', background: '#FFF6E0', border: '1px solid #F3E1AE', color: '#A1730A', fontSize: '12.5px', fontWeight: 700 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#E5A700" stroke="#E5A700" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                {subject.access_mode === 'free' ? 'Free' : 'Premium'}
+              </span>
+            </div>
+
+            {/* Mobile badges */}
+            <div className="flex sm:hidden gap-2 mb-3 flex-wrap">
+              {isCompleted ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#E7F7EF', border: '1px solid #C7EBD8', color: '#138A5A', fontSize: '11px', fontWeight: 700 }}>✓ Completed</span>
+              ) : (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#EFF4FF', border: '1px solid #D5E2FF', color: '#2F6BFF', fontSize: '11px', fontWeight: 700 }}>In Progress</span>
+              )}
+              <span style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#FFF6E0', border: '1px solid #F3E1AE', color: '#A1730A', fontSize: '11px', fontWeight: 700 }}>
+                ★ {subject.access_mode === 'free' ? 'Free' : 'Premium'}
+              </span>
+            </div>
+
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: '18px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '54px', height: '54px', borderRadius: '15px', background: 'linear-gradient(150deg,#3B79FF,#2F6BFF)', color: '#fff', flexShrink: 0, boxShadow: '0 10px 22px -8px rgba(47,107,255,.7)' }}>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+              </span>
+              <div style={{ paddingTop: '2px' }}>
+                <h1 style={{ margin: 0, fontSize: 'clamp(22px, 5vw, 40px)', lineHeight: 1.1, fontWeight: 800, letterSpacing: '-0.025em', color: '#15203A' }}>{lecture.title}</h1>
+                <div style={{ marginTop: '7px', fontSize: '15px', fontWeight: 600, color: '#2F6BFF' }}>{subject.name}</div>
+              </div>
+            </div>
+
+            {lecture.description && (
+              <div style={{ marginTop: '16px', padding: '12px 16px', background: 'rgba(47,107,255,0.06)', borderRadius: '12px', borderLeft: '3px solid #2F6BFF' }}>
+                <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.6, color: '#3C4661' }}>{lecture.description}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Content area */}
+        <div style={{ padding: '0 clamp(12px, 3vw, 26px) 120px' }}>
+          {isCurrentTabLocked ? (
+            <LockedContentCard subjectName={subject.name} />
+          ) : isCurrentTabLoading ? (
+            <ContentSkeleton />
+          ) : (
+            <>
+              {activeTab === 'sheet' && sheet && (
+                <SheetReader
+                  content={sheet.content ?? ''}
+                  title={lecture.title}
+                  onProgressUpdate={handleProgressUpdate}
+                  userName={displayName}
+                  tocSections={tocSections}
+                  imageSlots={sheetImageSlots}
+                />
+              )}
+            {activeTab === 'summary' && summary && (
+                <SheetReader
+                  content={summary.content ?? ''}
+                  title={lecture.title}
+                  isSummary
+                  onProgressUpdate={handleProgressUpdate}
+                  userName={displayName}
+                  tocSections={tocSections}
+                  imageSlots={summaryImageSlots}
+                />
+              )}
+              {activeTab === 'flashcards' && flashcards.length > 0 && (
+                <FlashcardsViewer
+                  flashcards={flashcards as any}
+                  userName={displayName}
+                  onStatsChange={setFlashcardStats}
+                />
+              )}
+              {activeTab === 'quiz' && quizQuestions.length > 0 && (
+                <QuizViewer
+                  questions={quizQuestions as any}
+                  lectureId={lecture.id}
+                  userName={displayName}
+                  onStatsChange={setQuizStats}
+                />
+              )}
+              {activeTab === 'previous_years' && previousYearQuestions.length > 0 && (
+                <PreviousYearsViewer
+                  questions={previousYearQuestions as any}
+                  userName={displayName}
+                  onStatsChange={setPyqStats}
+                />
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── RIGHT SIDEBAR — desktop only ── */}
+      <aside
+        id="lecture-right-sidebar"
+        className="hidden lg:flex"
+        style={{
+          width:      sidebarCollapsed ? '64px' : '272px',
+          height:     'calc(100vh - 72px)',
+          overflowY:  'auto',
+          borderLeft: '1px solid #EEF0F4',
+          background: '#F7F8FA',
+          flexDirection: 'column',
+          gap:        '12px',
+          padding:    sidebarCollapsed ? '16px 8px' : '16px 12px',
+          flexShrink: 0,
+          transition: 'width 0.25s ease, padding 0.25s ease',
+        }}
+      >
+        {/* Toggle Button */}
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '100%', height: 36, borderRadius: 10, border: '1px solid #EAEDF2',
+            background: '#fff', cursor: 'pointer', color: '#6B7280', flexShrink: 0,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {sidebarCollapsed
+              ? <polyline points="15 18 9 12 15 6"/>
+              : <polyline points="9 18 15 12 9 6"/>
+            }
+          </svg>
+        </button>
+
+        {/* ── CONTENT TABS CARD ── */}
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+          <div style={{ padding: sidebarCollapsed ? '8px' : '14px 16px 10px' }}>
+            {!sidebarCollapsed && (
+              <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Content
+              </p>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {allTabs.map((tabId) => {
+                const cfg      = TAB_CONFIG[tabId]
+                const isActive = activeTab === tabId
+                return (
+                  <button
+                    key={tabId}
+                    onClick={() => setActiveTab(tabId)}
+                    title={cfg.label}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center',
+                      justifyContent: sidebarCollapsed ? 'center' : 'space-between',
+                      padding: sidebarCollapsed ? '10px' : '10px 12px',
+                      borderRadius: '10px', border: 'none', cursor: 'pointer',
+                      background: isActive ? '#EEF3FF' : 'transparent',
+                      color: isActive ? '#2563EB' : '#6B7280',
+                      transition: 'all 0.15s ease', textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: sidebarCollapsed ? 0 : '10px' }}>
+                      <span style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '32px', height: '32px', borderRadius: '8px',
+                        background: isActive ? '#DBEAFE' : '#F3F4F6',
+                        color: isActive ? '#2563EB' : '#9CA3AF',
+                        flexShrink: 0, transition: 'all 0.15s ease',
+                      }}>
+                        {cfg.icon}
+                      </span>
+                      {!sidebarCollapsed && (
+                        <span style={{ fontSize: '13.5px', fontWeight: isActive ? 600 : 500 }}>
+                          {cfg.label}
+                        </span>
+                      )}
+                    </div>
+                    {!sidebarCollapsed && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isActive ? '#2563EB' : '#D1D5DB'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                      </svg>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ── READING PROGRESS CARD ── */}
+        {(activeTab === 'sheet' || activeTab === 'summary') && (
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            {sidebarCollapsed ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                <div style={{ position: 'relative', width: '44px', height: '44px' }}>
+                  <svg width="44" height="44" viewBox="0 0 56 56">
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#2563EB" strokeWidth="5" strokeLinecap="round"
+                      strokeDasharray="138.23"
+                      strokeDashoffset={138.23 - (138.23 * progressPercent / 100)}
+                      transform="rotate(-90 28 28)"
+                      style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#2563EB' }}>{progressPercent}%</span>
+                  </div>
+                </div>
+                <span style={{ fontSize: '9px', fontWeight: 600, color: '#A0A8B8', letterSpacing: '0.04em' }}>READ</span>
+              </div>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Reading Progress</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' }}>
+                  <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
+                    <svg width="56" height="56" viewBox="0 0 56 56">
+                      <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
+                      <circle cx="28" cy="28" r="22" fill="none" stroke="#2563EB" strokeWidth="5" strokeLinecap="round"
+                        strokeDasharray="138.23"
+                        strokeDashoffset={138.23 - (138.23 * progressPercent / 100)}
+                        transform="rotate(-90 28 28)"
+                        style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+                      />
+                    </svg>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB' }}>{progressPercent}%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>
+                      {progressPercent >= 100 ? 'Finished!' : 'Keep reading'}
+                    </p>
+                    <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94A3B8', fontWeight: 500 }}>
+                      {progressPercent >= 100 ? 'Great job!' : progressPercent > 0 ? `${progressPercent}% done` : 'Not started'}
+                    </p>
+                  </div>
+                </div>
+                <div style={{ height: '6px', borderRadius: '999px', background: '#EEF0F4', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${progressPercent}%`, borderRadius: '999px', background: 'linear-gradient(90deg, #3B82F6, #2563EB)', transition: 'width 0.3s ease' }} />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── FLASHCARD STATS CARD ── */}
+        {!sidebarCollapsed && activeTab === 'flashcards' && (
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Progress</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <StatPill label="Total"     value={flashcardStats.total}     color="blue"  />
+              <StatPill label="Important" value={flashcardStats.important} color="amber" />
+            </div>
+          </div>
+        )}
+
+        {/* ── QUIZ STATS CARD ── */}
+        {!sidebarCollapsed && activeTab === 'quiz' && (
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Quiz Progress</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <StatPill label="Total"     value={quizStats.total}     color="blue"  />
+              <StatPill label="Correct"   value={quizStats.correct}   color="green" />
+              <StatPill label="Answered"  value={quizStats.answered}  color="slate" />
+              <StatPill label="Important" value={quizStats.important} color="amber" />
+            </div>
+          </div>
+        )}
+
+        {/* ── PYQ STATS CARD ── */}
+        {!sidebarCollapsed && activeTab === 'previous_years' && (
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Previous Years</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+              <StatPill label="Total"     value={pyqStats.total}     color="blue"  />
+              <StatPill label="Important" value={pyqStats.important} color="amber" />
+              <StatPill label="Answered"  value={pyqStats.answered}  color="green" />
+            </div>
+          </div>
+        )}
+
+        {/* ── TABLE OF CONTENTS CARD ── */}
+        {tocSections.length > 0 && (
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '10px 6px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            {sidebarCollapsed ? (
+              <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', scrollbarWidth: 'none' }}>
+                {tocSections.filter(s => s.level <= 2).map((section) => {
+                  const isMain = section.level === 1
+                  const label  = isMain ? `${section.h1Num}` : `${section.h1Num}${String.fromCharCode(96 + section.h2Num!)}`
+                  return (
+                    <button key={section.id} id={`toc-btn-${section.id}`} onClick={() => handleTocClick(section.id)} title={section.label}
+                      style={{ width: '32px', height: '20px', borderRadius: '6px', border: 'none', background: activeSectionId === section.id ? '#2563EB' : isMain ? '#EEF3FF' : 'transparent', color: activeSectionId === section.id ? '#fff' : isMain ? '#2563EB' : '#94A3B8', fontSize: '10px', fontWeight: isMain ? 700 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'background 0.2s, color 0.2s' }}>
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Table of Contents</p>
+                <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '260px', overflowY: 'auto' }}>
+                  {tocSections.filter(s => s.level <= 3).map((section) => {
+                    let numLabel = ''
+                    if (section.level === 1) numLabel = `${section.h1Num}`
+                    else if (section.level === 2) { const letter = String.fromCharCode(96 + section.h2Num!); numLabel = section.h1Num > 0 ? `${section.h1Num}${letter}` : `${section.h2Num}` }
+                    else numLabel = '·'
+                    const isMainHeading = section.level === 1
+                    return (
+                      <button key={section.id} onClick={() => handleTocClick(section.id)}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: isMainHeading ? '9px 10px' : '6px 10px 6px 18px', borderRadius: '10px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', transition: 'background 0.12s' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = '#F5F7FF')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <span style={{ minWidth: '26px', height: '26px', borderRadius: '50%', background: isMainHeading ? '#2563EB' : '#EEF3FF', color: isMainHeading ? '#fff' : '#2563EB', fontSize: isMainHeading ? '11px' : '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: '0 4px' }}>
+                          {numLabel}
+                        </span>
+                        <span style={{ fontSize: isMainHeading ? '13px' : '12px', fontWeight: isMainHeading ? 700 : 500, color: isMainHeading ? '#1E293B' : '#475569', lineHeight: 1.4 }}>
+                          {section.label}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </nav>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── NOTES CARD ── */}
+        {!sidebarCollapsed && <NotesPanel lectureId={lecture.id} />}
+
+        {/* ── ACTIONS CARD ── */}
+        {!sidebarCollapsed && (
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Actions</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button onClick={handleMarkComplete}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, background: isCompleted ? '#16A34A' : '#EEF3FF', color: isCompleted ? '#fff' : '#2563EB', transition: 'all 0.15s ease' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  {isCompleted ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></> : <circle cx="12" cy="12" r="10"/>}
+                </svg>
+                {isCompleted ? 'Completed' : 'Mark as Completed'}
+              </button>
+              <button onClick={handleToggleBookmark}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', border: '1px solid #EAEDF2', cursor: 'pointer', fontSize: '13px', fontWeight: 500, background: isBookmarked ? '#FFF7ED' : '#fff', color: isBookmarked ? '#D97706' : '#6B7280', transition: 'all 0.15s ease' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? '#D97706' : 'none'} stroke={isBookmarked ? '#D97706' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                </svg>
+                {isBookmarked ? 'Bookmarked' : 'Bookmark'}
+              </button>
+              <Link href={`/${universityId}/${subjectSlug ?? subject.id}`} prefetch={false}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', border: '1px solid #EAEDF2', fontSize: '13px', fontWeight: 500, color: '#6B7280', background: '#fff', textDecoration: 'none', transition: 'all 0.15s ease' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Back to Subject
+              </Link>
+            </div>
+          </div>
+        )}
+
+        <div style={{ height: '8px' }} />
+      </aside>
+    </div>
+  )
+}
+
+// ── Stat Pill ──────────────────────────────────────────────────────────────
+
+function StatPill({ label, value, color }: { label: string; value: number; color: 'blue' | 'green' | 'amber' | 'slate' }) {
+  const bg   = color === 'blue' ? '#EFF6FF' : color === 'green' ? '#F0FDF4' : color === 'amber' ? '#FFFBEB' : '#F8FAFC'
+  const text = color === 'blue' ? '#2563EB' : color === 'green' ? '#16A34A' : color === 'amber' ? '#D97706' : '#64748B'
+  const sub  = color === 'blue' ? '#3B82F6' : color === 'green' ? '#22C55E' : color === 'amber' ? '#F59E0B' : '#94A3B8'
+  return (
+    <div style={{ background: bg, borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
+      <p style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: text }}>{value}</p>
+      <p style={{ margin: '2px 0 0', fontSize: '10px', fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</p>
+    </div>
+  )
+}
+
+// ── Notes Panel ────────────────────────────────────────────────────────────
+
+function NotesPanel({ lectureId }: { lectureId: string }) {
+  const { user }   = useUserStore()
+  const supabase   = createClient()
+  const [note, setNote]       = useState('')
+  const [saved, setSaved]     = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [noteId, setNoteId]   = useState<string | null>(null)
+  const saveTimer = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    if (!user) { setLoading(false); return }
+    async function load() {
+      const { data } = await supabase
+        .from('user_notes').select('id, note_content')
+        .eq('user_id', user!.id).eq('lecture_id', lectureId).maybeSingle()
+      if (data) { setNote(data.note_content ?? ''); setNoteId(data.id) }
+      setLoading(false)
+    }
+    load()
+  }, [user, lectureId])
+
+  function handleChange(val: string) {
+    setNote(val)
+    setSaved(false)
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => saveNote(val), 1500)
+  }
+
+  async function saveNote(content: string) {
+    if (!user) return
+    if (noteId) {
+      await supabase.from('user_notes').update({ note_content: content, updated_at: new Date().toISOString() }).eq('id', noteId)
+    } else {
+      const { data } = await supabase.from('user_notes').insert({ user_id: user.id, lecture_id: lectureId, note_content: content }).select('id').maybeSingle()
+      if (data) setNoteId(data.id)
+    }
+    setSaved(true)
+  }
+
+  if (!user) return null
+
+  return (
+    <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+        <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>My Notes</p>
+        {saved && <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 600 }}>✓ Saved</span>}
+        {!saved && note.length > 0 && <span style={{ fontSize: '10px', color: '#94A3B8' }}>Saving...</span>}
+      </div>
+      {loading ? (
+        <div style={{ height: '80px', background: '#F1F5F9', borderRadius: '10px' }} />
+      ) : (
+        <textarea value={note} onChange={(e) => handleChange(e.target.value)} placeholder="Write your notes here..." rows={4}
+          style={{ width: '100%', fontSize: '12.5px', color: '#374151', background: '#FEFCE8', border: '1px solid #FDE68A', borderRadius: '10px', padding: '10px', resize: 'none', outline: 'none', lineHeight: 1.6, fontFamily: 'inherit', boxSizing: 'border-box' }}
+        />
+      )}
+    </div>
+  )
+}
+
+
+
+===== C:\Users\mohammed alajou\Documents\mednavigator\med-app\src\components\student\LectureRightSidebar.tsx =====
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useUserStore } from '@/stores/userStore'
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface TocSection {
+  id: string
+  level: number
+  label: string
+}
+
+interface FlashcardStats {
+  total: number
+  easy: number
+  medium: number
+  hard: number
+  current: number
+}
+
+interface QuizStats {
+  total: number
+  answered: number
+  correct: number
+  current: number
+}
+
+interface LectureRightSidebarProps {
+  lectureId: string
+  subjectId: string
+  universityId: string
+  activeTab: string
+  tocSections?: TocSection[]
+  onTocClick?: (id: string) => void
+  progressPercent?: number
+  flashcardStats?: FlashcardStats
+  quizStats?: QuizStats
+  isCompleted: boolean
+  isBookmarked: boolean
+  onMarkComplete: () => void
+  onToggleBookmark: () => void
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────────
+
+export default function LectureRightSidebar({
+  lectureId,
+  subjectId,
+  universityId,
+  activeTab,
+  tocSections = [],
+  onTocClick,
+  progressPercent = 0,
+  flashcardStats,
+  quizStats,
+  isCompleted,
+  isBookmarked,
+  onMarkComplete,
+  onToggleBookmark,
+}: LectureRightSidebarProps) {
+  return (
+    <aside className="w-[260px] min-w-[260px] bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 overflow-y-auto flex flex-col gap-3 p-3">
+
+      {(activeTab === 'sheet' || activeTab === 'summary') && (
+        <SheetSidebar
+          tocSections={tocSections}
+          onTocClick={onTocClick}
+          progressPercent={progressPercent}
+          lectureId={lectureId}
+        />
+      )}
+
+      {activeTab === 'flashcards' && flashcardStats && (
+        <FlashcardSidebar stats={flashcardStats} />
+      )}
+
+      {activeTab === 'quiz' && quizStats && (
+        <QuizSidebar stats={quizStats} />
+      )}
+
+      {activeTab === 'previous_years' && (
+        <PreviousYearsSidebar />
+      )}
+
+      <ActionCard
+        isCompleted={isCompleted}
+        isBookmarked={isBookmarked}
+        onMarkComplete={onMarkComplete}
+        onToggleBookmark={onToggleBookmark}
+      />
+
+    </aside>
+  )
+}
+
+// ── Sheet Sidebar ──────────────────────────────────────────────────────────────
+
+function SheetSidebar({
+  tocSections,
+  onTocClick,
+  progressPercent,
+  lectureId,
+}: {
+  tocSections: TocSection[]
+  onTocClick?: (id: string) => void
+  progressPercent: number
+  lectureId: string
+}) {
+  return (
+    <>
+      <ProgressCard progressPercent={progressPercent} />
+
+      {tocSections.length > 0 && (
+        <SidebarCard title="Table of Contents">
+          <div className="flex flex-col gap-0">
+            {tocSections.map((section, idx) => (
+              <button
+                key={section.id}
+                onClick={() => onTocClick?.(section.id)}
+                className="flex items-center gap-2.5 py-1.5 text-left w-full group hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg px-1 transition-all"
+              >
+                <span className={`
+                  w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0
+                  ${section.level === 1
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}
+                `}>
+                  {idx + 1}
+                </span>
+                <span className={`
+                  text-[12px] leading-tight
+                  ${section.level === 1
+                    ? 'text-slate-700 dark:text-slate-200 font-medium'
+                    : 'text-slate-500 dark:text-slate-400 pl-1'}
+                `}>
+                  {section.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </SidebarCard>
+      )}
+
+      <NotesCard lectureId={lectureId} />
+    </>
+  )
+}
+
+// ── Progress Card ──────────────────────────────────────────────────────────────
+
+function ProgressCard({ progressPercent }: { progressPercent: number }) {
+  return (
+    <SidebarCard title="Reading Progress">
+      <div className="flex items-center gap-3">
+        <CircleProgress pct={progressPercent} />
+        <div>
+          <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">
+            {progressPercent}% read
+          </p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            {progressPercent >= 100 ? 'Finished!' : 'Keep going'}
+          </p>
+        </div>
+      </div>
+    </SidebarCard>
+  )
+}
+
+// ── Flashcard Sidebar ──────────────────────────────────────────────────────────
+
+function FlashcardSidebar({ stats }: { stats: FlashcardStats }) {
+  const pct = stats.total > 0 ? Math.round((stats.current / stats.total) * 100) : 0
+
+  return (
+    <>
+      <SidebarCard title="Progress">
+        <div className="flex items-center gap-3 mb-3">
+          <CircleProgress pct={pct} />
+          <div>
+            <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">
+              Card {stats.current} of {stats.total}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">{pct}% reviewed</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 text-center">
+            <p className="text-[18px] font-bold text-green-600 dark:text-green-400">{stats.easy}</p>
+            <p className="text-[10px] text-green-700 dark:text-green-500 font-medium">Easy</p>
+          </div>
+          <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2 text-center">
+            <p className="text-[18px] font-bold text-amber-600 dark:text-amber-400">{stats.medium}</p>
+            <p className="text-[10px] text-amber-700 dark:text-amber-500 font-medium">Medium</p>
+          </div>
+          <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-2 text-center">
+            <p className="text-[18px] font-bold text-red-600 dark:text-red-400">{stats.hard}</p>
+            <p className="text-[10px] text-red-700 dark:text-red-500 font-medium">Hard</p>
+          </div>
+        </div>
+      </SidebarCard>
+
+      <SidebarCard title="Study Tips">
+        <div className="space-y-2">
+          <Tip icon="ti-repeat" text="Review hard cards first" />
+          <Tip icon="ti-brain" text="Try to answer before flipping" />
+          <Tip icon="ti-clock" text="Short daily sessions work better" />
+        </div>
+      </SidebarCard>
+    </>
+  )
+}
+
+// ── Quiz Sidebar ───────────────────────────────────────────────────────────────
+
+function QuizSidebar({ stats }: { stats: QuizStats }) {
+  const scorePct = stats.answered > 0 ? Math.round((stats.correct / stats.answered) * 100) : 0
+
+  return (
+    <>
+      <SidebarCard title="Quiz Progress">
+        <div className="flex items-center gap-3 mb-3">
+          <CircleProgress pct={scorePct} color={scorePct >= 70 ? 'green' : scorePct >= 50 ? 'amber' : 'red'} />
+          <div>
+            <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">
+              {stats.correct}/{stats.answered} correct
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {stats.total - stats.answered} remaining
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-center">
+            <p className="text-[18px] font-bold text-blue-600 dark:text-blue-400">{stats.total}</p>
+            <p className="text-[10px] text-blue-700 dark:text-blue-500 font-medium">Total</p>
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 text-center">
+            <p className="text-[18px] font-bold text-green-600 dark:text-green-400">{stats.correct}</p>
+            <p className="text-[10px] text-green-700 dark:text-green-500 font-medium">Correct</p>
+          </div>
+          <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-2 text-center">
+            <p className="text-[18px] font-bold text-slate-600 dark:text-slate-300">{stats.answered}</p>
+            <p className="text-[10px] text-slate-500 font-medium">Done</p>
+          </div>
+        </div>
+      </SidebarCard>
+
+      <SidebarCard title="Study Tips">
+        <div className="space-y-2">
+          <Tip icon="ti-flag" text="Flag uncertain answers for review" />
+          <Tip icon="ti-book" text="Read explanations even for correct answers" />
+          <Tip icon="ti-refresh" text="Retake the quiz after reviewing mistakes" />
+        </div>
+      </SidebarCard>
+    </>
+  )
+}
+
+// ── Previous Years Sidebar ─────────────────────────────────────────────────────
+
+function PreviousYearsSidebar() {
+  return (
+    <SidebarCard title="Exam Tips">
+      <div className="space-y-2">
+        <Tip icon="ti-calendar" text="Filter by exam year to focus on recent exams" />
+        <Tip icon="ti-chart-bar" text="Track which topics appear most frequently" />
+        <Tip icon="ti-repeat" text="Review wrong answers thoroughly" />
+        <Tip icon="ti-clock" text="Practice under timed conditions" />
+      </div>
+    </SidebarCard>
+  )
+}
+
+// ── Notes Card ─────────────────────────────────────────────────────────────────
+
+function NotesCard({ lectureId }: { lectureId: string }) {
+  const { user } = useUserStore()
+  const supabase = createClient()
+  const [note, setNote] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [noteId, setNoteId] = useState<string | null>(null)
+  const saveTimer = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    async function load() {
+      const { data } = await supabase
+        .from('user_notes')
+        .select('id, note_content')
+        .eq('user_id', user!.id)
+        .eq('lecture_id', lectureId)
+        .maybeSingle()
+      if (data) {
+        setNote(data.note_content ?? '')
+        setNoteId(data.id)
+      }
+      setLoading(false)
+    }
+    load()
+  }, [user, lectureId])
+
+  function handleChange(val: string) {
+    setNote(val)
+    setSaved(false)
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => saveNote(val), 1500)
+  }
+
+  async function saveNote(content: string) {
+    if (!user) return
+    if (noteId) {
+      await supabase
+        .from('user_notes')
+        .update({ note_content: content, updated_at: new Date().toISOString() })
+        .eq('id', noteId)
+    } else {
+      const { data } = await supabase
+        .from('user_notes')
+        .insert({ user_id: user.id, lecture_id: lectureId, note_content: content })
+        .select('id')
+        .maybeSingle()
+      if (data) setNoteId(data.id)
+    }
+    setSaved(true)
+  }
+
+  return (
+    <SidebarCard title="My Notes">
+      {loading ? (
+        <div className="h-20 bg-slate-100 dark:bg-slate-700 rounded-lg animate-pulse" />
+      ) : (
+        <div>
+          <textarea
+            value={note}
+            onChange={(e) => handleChange(e.target.value)}
+            placeholder="Write your notes for this lecture..."
+            rows={5}
+            className="w-full text-[12.5px] text-slate-700 dark:text-slate-200 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-2.5 resize-none outline-none focus:border-amber-400 dark:focus:border-amber-600 placeholder-slate-400 transition-all leading-relaxed"
+          />
+          <div className="flex items-center justify-between mt-1.5">
+            <span className="text-[10px] text-slate-400">{note.length} characters</span>
+            {saved && (
+              <span className="text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1">
+                <i className="ti ti-check text-[11px]" aria-hidden="true" />
+                Saved
+              </span>
+            )}
+            {!saved && note.length > 0 && (
+              <span className="text-[10px] text-slate-400">Saving...</span>
+            )}
+          </div>
+        </div>
+      )}
+    </SidebarCard>
+  )
+}
+
+// ── Action Card ────────────────────────────────────────────────────────────────
+
+function ActionCard({
+  isCompleted,
+  isBookmarked,
+  onMarkComplete,
+  onToggleBookmark,
+}: {
+  isCompleted: boolean
+  isBookmarked: boolean
+  onMarkComplete: () => void
+  onToggleBookmark: () => void
+}) {
+  return (
+    <SidebarCard title="Actions">
+      <button
+        onClick={onMarkComplete}
+        className={`
+          w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-semibold mb-2 transition-all
+          ${isCompleted
+            ? 'bg-green-600 hover:bg-green-700 text-white'
+            : 'bg-green-500 hover:bg-green-600 text-white'
+          }
+        `}
+      >
+        <i className={`ti ${isCompleted ? 'ti-circle-check-filled' : 'ti-circle-check'} text-[16px]`} aria-hidden="true" />
+        {isCompleted ? 'Completed ✓' : 'Mark as Completed'}
+      </button>
+      <button
+        onClick={onToggleBookmark}
+        className={`
+          w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-medium border transition-all
+          ${isBookmarked
+            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400'
+            : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
+          }
+        `}
+      >
+        <i className={`ti ${isBookmarked ? 'ti-bookmark-filled' : 'ti-bookmark'} text-[15px]`} aria-hidden="true" />
+        {isBookmarked ? 'Bookmarked' : 'Bookmark Lecture'}
+      </button>
+    </SidebarCard>
+  )
+}
+
+// ── Shared Components ──────────────────────────────────────────────────────────
+
+function SidebarCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5">
+      <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+        {title}
+      </p>
+      {children}
+    </div>
+  )
+}
+
+function CircleProgress({
+  pct,
+  color = 'blue',
+}: {
+  pct: number
+  color?: 'blue' | 'green' | 'amber' | 'red'
+}) {
+  const CIRC = 157.08
+  const offset = CIRC - (CIRC * pct) / 100
+  const strokeColor =
+    color === 'green' ? '#16A34A' :
+    color === 'amber' ? '#D97706' :
+    color === 'red' ? '#DC2626' :
+    '#2563EB'
+
+  return (
+    <div className="relative w-[52px] h-[52px] flex-shrink-0">
+      <svg width="52" height="52" viewBox="0 0 52 52" className="rotate-[-90deg]">
+        <circle cx="26" cy="26" r="22" fill="none" stroke="#E2E8F0" strokeWidth="4" className="dark:stroke-slate-600" />
+        <circle
+          cx="26" cy="26" r="22"
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={CIRC}
+          strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-[12px] font-bold text-slate-800 dark:text-slate-100">{pct}%</span>
+      </div>
+    </div>
+  )
+}
+
+function Tip({ icon, text }: { icon: string; text: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <i className={`ti ${icon} text-[14px] text-blue-500 mt-0.5 flex-shrink-0`} aria-hidden="true" />
+      <span className="text-[12px] text-slate-600 dark:text-slate-400 leading-relaxed">{text}</span>
+    </div>
+  )
+}
+
+
+
+===== C:\Users\mohammed alajou\Documents\mednavigator\med-app\src\components\student\SheetReader.tsx =====
+'use client'
+
+import { useEffect, useRef } from 'react'
+import MNRenderer from './MNRenderer'
+
+interface SheetReaderProps {
+  content: string
+  title?: string
+  isSummary?: boolean
+  userName?: string
+  imageSlots?: Record<number, string>
+  onProgressUpdate?: (pct: number) => void
+  tocSections?: { id: string; level: number; label: string }[]
+}
+
+export default function SheetReader({
+  content,
+  title = '',
+  isSummary = false,
+  userName,
+  imageSlots = {},
+  onProgressUpdate,
+}: SheetReaderProps) {
+
+  const lastSavedPct = useRef<number>(-1)
+  const throttleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const scrollContainer = document.getElementById('lecture-content-scroll')
+    if (!scrollContainer || !onProgressUpdate) return
+
+    function handleScroll() {
+      const el = document.getElementById('lecture-content-scroll')
+      if (!el) return
+
+      const scrollTop = el.scrollTop
+      const scrollHeight = el.scrollHeight - el.clientHeight
+      if (scrollHeight <= 0) return
+
+      const rawPct = (scrollTop / scrollHeight) * 100
+      const pct = Math.min(100, Math.round(rawPct))
+
+      // Update display immediately (no throttle on UI)
+      onProgressUpdate!(pct)
+
+      // Save to DB only if changed by 3% or more (throttled at 1.5s)
+      if (Math.abs(pct - lastSavedPct.current) < 3) return
+      if (throttleTimer.current) return
+
+      throttleTimer.current = setTimeout(() => {
+        throttleTimer.current = null
+        lastSavedPct.current = pct
+      }, 1500)
+    }
+
+    // Fire once on mount to restore saved progress position
+    handleScroll()
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      scrollContainer.removeEventListener('scroll', handleScroll)
+      if (throttleTimer.current) clearTimeout(throttleTimer.current)
+    }
+  }, [onProgressUpdate])
+
+  return (
+    <div style={{ userSelect: 'none' }} onContextMenu={(e) => e.preventDefault()}>
+      <MNRenderer
+        content={content}
+        showWatermark={true}
+        userName={userName}
+        imageSlots={imageSlots}
+      />
+    </div>
+  )
+}
+
+
+
+===== C:\Users\mohammed alajou\Documents\mednavigator\med-app\src\lib\services\subscriptions.ts =====
+import { createServerClient } from '@/lib/supabase/server'
+import { cache } from 'react'
+
+export type AccessResult =
+  | { allowed: true }
+  | { allowed: false; reason: 'not_subscribed' | 'subscription_expired' | 'subject_not_found' }
+
+export const checkUserAccess = cache(async (
+  subjectId: string,
+  userId: string | null
+): Promise<AccessResult> => {
+  const supabase = await createServerClient()
+
+  const { data: subject, error: subjectError } = await supabase
+    .from('subjects')
+    .select('id, access_mode, is_free')
+    .eq('id', subjectId)
+    .single()
+
+  if (subjectError || !subject) {
+    return { allowed: false, reason: 'subject_not_found' }
+  }
+
+  if (subject.access_mode === 'free' || subject.is_free === true) {
+    return { allowed: true }
+  }
+
+  if (!userId) {
+    return { allowed: false, reason: 'not_subscribed' }
+  }
+
+  const now = new Date().toISOString()
+
+  const { data: subscription, error: subError } = await supabase
+    .from('subject_subscriptions')
+    .select('id, status, end_date')
+    .eq('user_id', userId)
+    .eq('subject_id', subjectId)
+    .eq('status', 'active')
+    .gt('end_date', now)
+    .maybeSingle()
+
+  if (subError) {
+    return { allowed: false, reason: 'not_subscribed' }
+  }
+
+  if (!subscription) {
+    return { allowed: false, reason: 'not_subscribed' }
+  }
+
+  return { allowed: true }
+})
+
+export const getUserSubscription = cache(async (subjectId: string, userId: string) => {
+  const supabase = await createServerClient()
+
+  const { data, error } = await supabase
+    .from('subject_subscriptions')
+    .select('id, status, start_date, end_date')
+    .eq('user_id', userId)
+    .eq('subject_id', subjectId)
+    .order('end_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  return { data, error }
+})
+
+export const getUserSubscriptions = cache(async (userId: string) => {
+  const supabase = await createServerClient()
+
+  const { data, error } = await supabase
+    .from('subject_subscriptions')
+    .select(`
+      id,
+      status,
+      start_date,
+      end_date,
+      subjects (
+        id,
+        name,
+        universities (
+          id,
+          name
+        )
+      )
+    `)
+    .eq('user_id', userId)
+    .order('end_date', { ascending: false })
+
+  return { data, error }
+})
+
+
+

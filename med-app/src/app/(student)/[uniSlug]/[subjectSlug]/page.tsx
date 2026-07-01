@@ -35,7 +35,7 @@ export default async function SubjectPage({ params }: PageProps) {
   // ── base data (fetched by id now that slugs are resolved) ──────────
   const [{ data: university }, { data: subject }] = await Promise.all([
     supabase.from('universities').select('id,name').eq('id', universityId).single(),
-    supabase.from('subjects').select('*').eq('id', subjectId).eq('is_published', true).single(),
+    supabase.from('subjects').select('id, name, description, access_mode, subject_type').eq('id', subjectId).eq('is_published', true).single(),
   ])
   if (!subject || !university) notFound()
 
@@ -70,21 +70,19 @@ export default async function SubjectPage({ params }: PageProps) {
     const [
       { data: sheets },
       { data: summaries },
-      { data: flashcards },
-      { data: quizzes },
-      { data: pyqs },
+      { data: contentCounts },
     ] = await Promise.all([
       supabase.from('sheets').select('lecture_id').in('lecture_id', lectureIds).eq('status', 'published'),
       supabase.from('summaries').select('lecture_id').in('lecture_id', lectureIds).eq('status', 'published'),
-      supabase.from('flashcards').select('lecture_id').in('lecture_id', lectureIds),
-      supabase.from('quiz_questions').select('lecture_id').in('lecture_id', lectureIds),
-      supabase.from('previous_year_questions').select('lecture_id').in('lecture_id', lectureIds),
+      supabase.rpc('get_content_counts_by_lecture', { lecture_ids: lectureIds }),
     ])
     sheets?.forEach(r    => { sheetMap[r.lecture_id]   = true })
     summaries?.forEach(r => { summaryMap[r.lecture_id] = true })
-    flashcards?.forEach(r => { flashMap[r.lecture_id]  = (flashMap[r.lecture_id]  ?? 0) + 1 })
-    quizzes?.forEach(r   => { quizMap[r.lecture_id]    = (quizMap[r.lecture_id]   ?? 0) + 1 })
-    pyqs?.forEach(r      => { pyqMap[r.lecture_id]     = (pyqMap[r.lecture_id]    ?? 0) + 1 })
+    contentCounts?.forEach((r: any) => {
+      flashMap[r.lecture_id] = r.flashcards_count ?? 0
+      quizMap[r.lecture_id]  = r.quiz_count ?? 0
+      pyqMap[r.lecture_id]   = r.pyq_count ?? 0
+    })
   }
 
   // ── user progress ──────────────────────────────────────────────────
@@ -119,10 +117,6 @@ export default async function SubjectPage({ params }: PageProps) {
   const completedCount  = Object.values(progressByLecture).filter(r => r.completed).length
   const totalLectures   = lectureList.length
   const progressPercent = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0
-
-  // progress ring (r=34, viewBox 104)
-  const ringC      = 2 * Math.PI * 34
-  const ringOffset = ringC * (1 - progressPercent / 100)
 
   // continue-reading
   const continueLecture  = continueRow ? lectureList.find((l: any) => l.id === continueRow!.lecture_id) : null

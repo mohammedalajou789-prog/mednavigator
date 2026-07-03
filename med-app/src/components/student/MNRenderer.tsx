@@ -10,8 +10,6 @@ interface MNRendererProps {
 }
 
 export default function MNRenderer({ content, userName, showWatermark = false, imageSlots = {} }: MNRendererProps) {
-  const [lightboxUrl, setLightboxUrl] = React.useState<string | null>(null)
-  const [lightboxAlt, setLightboxAlt] = React.useState<string>('')
   const blocks = parseContent(content)
   let h1Counter = 0
   let h2Counter = 0
@@ -83,7 +81,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
                   marginBottom: '14px',
                 }}
               >
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: '#2563EB', color: '#fff', fontSize: '13px', fontWeight: 800, flexShrink: 0 }}>
+                <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB', letterSpacing: '0.04em', flexShrink: 0, minWidth: '24px' }}>
                   {String(h1Counter).padStart(2, '0')}
                 </span>
                 <div style={{ width: '1px', height: '20px', background: '#DBEAFE', flexShrink: 0 }} />

@@ -215,3 +215,102 @@ aside nav::-webkit-scrollbar    { width: 0px; }
   #lecture-content-scroll span { font-size: 13.5px  !important; }
   #lecture-content-scroll .mn-block { font-size: 13px !important; }
 }
+/* ── MNRenderer Dark Mode Overrides ────────────────────────────────────── */
+
+.dark .mn-renderer {
+  /* Main text */
+  color: #E2E8F0;
+}
+
+/* Section heading bar (h1 strip) */
+.dark .mn-renderer [style*="background: #F8FAFF"] {
+  background: #1E2D45 !important;
+  border-left-color: #3B82F6 !important;
+}
+
+.dark .mn-renderer h1 {
+  color: #F1F5F9 !important;
+}
+
+/* Sub-section cards (white cards with border) */
+.dark .mn-renderer [style*="background: #fff"],
+.dark .mn-renderer [style*="background: white"] {
+  background: #1A2332 !important;
+  border-color: #2D3F55 !important;
+}
+
+/* Default paragraph text */
+.dark .mn-renderer p {
+  color: #CBD5E1 !important;
+}
+
+/* h2 heading */
+.dark .mn-renderer [style*="color: #2F6BFF"] {
+  color: #60A5FA !important;
+}
+
+/* Highlight box */
+.dark .mn-renderer [style*="background: linear-gradient(180deg,#FFFAED"] {
+  background: #2D2510 !important;
+  border-color: #6B5B1E !important;
+}
+.dark .mn-renderer [style*="color: #534820"] {
+  color: #FDE68A !important;
+}
+
+/* Important box */
+.dark .mn-renderer [style*="background: linear-gradient(180deg,#FFF4F3"] {
+  background: #2D1210 !important;
+  border-color: #7B2020 !important;
+}
+.dark .mn-renderer [style*="color: #5A4341"] {
+  color: #FCA5A5 !important;
+}
+
+/* Clinical Pearl box */
+.dark .mn-renderer [style*="background: linear-gradient(180deg,#EEF4FF"] {
+  background: #101B2D !important;
+  border-color: #1E3A6B !important;
+}
+.dark .mn-renderer [style*="color: #39496B"] {
+  color: #BFDBFE !important;
+}
+
+/* Must Memorize box */
+.dark .mn-renderer [style*="background: linear-gradient(180deg,#EDFBF4"] {
+  background: #0D2318 !important;
+  border-color: #1A5C3A !important;
+}
+.dark .mn-renderer [style*="color: #1A5C3A"] {
+  color: #6EE7B7 !important;
+}
+
+/* Previous Year box */
+.dark .mn-renderer [style*="background: linear-gradient(180deg,#F6F0FF"] {
+  background: #1A1030 !important;
+  border-color: #4C1D95 !important;
+}
+.dark .mn-renderer [style*="color: #3D2A6B"] {
+  color: #DDD6FE !important;
+}
+
+/* Section number badge text */
+.dark .mn-renderer [style*="color: #1E293B"] {
+  color: #F1F5F9 !important;
+}
+
+/* Subheading number circle — keep blue gradient, no change needed */
+
+/* Table */
+.dark .mn-renderer table {
+  background: #1A2332;
+}
+.dark .mn-renderer thead tr {
+  background: #1E3A6B !important;
+}
+.dark .mn-renderer tbody tr:nth-child(odd) {
+  background: #1A2332 !important;
+}
+.dark .mn-renderer tbody tr:nth-child(even) {
+  background: #1E2A3A !important;
+}

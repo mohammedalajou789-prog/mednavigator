@@ -26,7 +26,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
   }
 
   return (
-    <div className="relative font-sans">
+    <div className="relative font-sans mn-renderer">
       {showWatermark && userName && (
         <div className="pointer-events-none select-none absolute inset-0 z-10 overflow-hidden opacity-[0.04]" aria-hidden="true">
           {Array.from({ length: 20 }).map((_, i) => (

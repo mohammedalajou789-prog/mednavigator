@@ -723,7 +723,14 @@ export default function LectureHub({
                 Content
               </p>
             )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: '2px',
+              ...(sidebarCollapsed && {
+                maxHeight: '300px',
+                overflowY: 'auto',
+                scrollbarWidth: 'none',
+              }),
+            }}>
               {allTabs.map((tabId) => {
                 const cfg      = TAB_CONFIG[tabId]
                 const isActive = activeTab === tabId

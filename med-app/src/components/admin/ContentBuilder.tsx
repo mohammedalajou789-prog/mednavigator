@@ -44,6 +44,7 @@ interface PYQ {
   explanation: string
   exam_year: number | ''
   exam_type: string
+  batch_name: string
 }
 
 interface Video {
@@ -283,10 +284,18 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
   )
 
   const [pyqs, setPyqs] = useState<PYQ[]>(
-    existingPYQs.length > 0 ? existingPYQs : [{
-      question: '', options: ['', '', '', '', ''], correct_answer: 'A',
-      explanation: '', exam_year: '', exam_type: 'final'
-    }]
+    existingPYQs.length > 0
+      ? existingPYQs.map(q => ({
+          ...q,
+          batch_name: (q as any).batch_name ?? '',
+          options: Array.isArray(q.options)
+            ? q.options.map((o: any) => typeof o === 'string' ? o : (o?.text ?? o?.value ?? String(o)))
+            : ['', '', '', '', ''],
+        }))
+      : [{
+          question: '', options: ['', '', '', '', ''], correct_answer: 'A',
+          explanation: '', exam_year: '', exam_type: 'final', batch_name: ''
+        }]
   )
 
   // Click-to-sync refs
@@ -945,7 +954,14 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
                     )}
                   </div>
                   <div className="space-y-3">
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Batch Name</label>
+                        <input type="text" value={q.batch_name}
+                          onChange={(e) => setPyqs(prev => prev.map((item, i) => i === index ? { ...item, batch_name: e.target.value } : item))}
+                          placeholder="e.g. 2021/2022"
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
                       <div>
                         <label className="text-xs font-medium text-gray-600 mb-1 block">Exam Year</label>
                         <input type="number" value={q.exam_year}
@@ -995,7 +1011,7 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
                   </div>
                 </div>
               ))}
-              <button onClick={() => setPyqs(prev => [...prev, { question: '', options: ['', '', '', '', ''], correct_answer: 'A', explanation: '', exam_year: '', exam_type: 'final' }])}
+              <button onClick={() => setPyqs(prev => [...prev, { question: '', options: ['', '', '', '', ''], correct_answer: 'A', explanation: '', exam_year: '', exam_type: 'final', batch_name: '' }])}
                 className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
                 + Add Question
               </button>

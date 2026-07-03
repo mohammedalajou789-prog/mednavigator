@@ -75,9 +75,9 @@ export default async function LecturePage({ params }: PageProps) {
     { data: videos },
   ] = await Promise.all([
     supabase.from('sheets').select('id').eq('lecture_id', resolvedLectureId)
-      .eq('status', 'published').maybeSingle(),
+      .maybeSingle(),
     supabase.from('summaries').select('id').eq('lecture_id', resolvedLectureId)
-      .eq('status', 'published').maybeSingle(),
+      .maybeSingle(),
     supabase.from('flashcards').select('id', { count: 'exact', head: true })
       .eq('lecture_id', resolvedLectureId),
     supabase.from('quiz_questions').select('id', { count: 'exact', head: true })

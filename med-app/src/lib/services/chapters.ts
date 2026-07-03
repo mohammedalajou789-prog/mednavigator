@@ -83,6 +83,24 @@ export async function updateChapter(
   return { data, error }
 }
 
+export async function publishChapter(chapterId: string): Promise<{ error: unknown }> {
+  const supabase = await createServerClient()
+  const { error } = await supabase
+    .from('chapters')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', chapterId)
+  return { error }
+}
+
+export async function unpublishChapter(chapterId: string): Promise<{ error: unknown }> {
+  const supabase = await createServerClient()
+  const { error } = await supabase
+    .from('chapters')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', chapterId)
+  return { error }
+}
+
 export async function archiveChapter(chapterId: string): Promise<{ error: unknown }> {
   const supabase = await createServerClient()
   const { error } = await supabase

@@ -117,6 +117,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
   const [mobileOpen,   setMobileOpen]   = useState(false)
   const [exploreOpen,  setExploreOpen]  = useState(false)
   const [guestToast,   setGuestToast]   = useState(false)
+  const [profileOpen,  setProfileOpen]  = useState(false)
 
   const isGuest = !isLoading && !user
 
@@ -458,13 +459,83 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
               </Link>
 
-              {/* Profile chip */}
-              <Link href="/profile" prefetch={false} style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '40px', padding: '0 8px 0 5px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', cursor: 'pointer', textDecoration: 'none', flexShrink: 0 }}>
-                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(140deg, rgb(91, 140, 255), rgb(47, 107, 255))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="8.6" r="3.9"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0z"/></svg>
-                </div>
-                <svg style={{ color: '#94A3B8' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </Link>
+              {/* Profile chip + dropdown */}
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <button
+                  onClick={() => setProfileOpen(v => !v)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '40px', padding: '0 8px 0 5px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', cursor: 'pointer', flexShrink: 0 }}
+                >
+                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(140deg, rgb(91, 140, 255), rgb(47, 107, 255))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="8.6" r="3.9"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0z"/></svg>
+                  </div>
+                  <svg style={{ color: '#94A3B8', transition: 'transform 0.2s', transform: profileOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+
+                {profileOpen && (
+                  <>
+                    {/* Backdrop */}
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setProfileOpen(false)} />
+
+                    {/* Dropdown */}
+                    <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50, width: '240px', background: '#fff', borderRadius: '16px', border: '1px solid #E2E8F0', boxShadow: '0 8px 30px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+
+                      {/* User info */}
+                      <div style={{ padding: '16px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'linear-gradient(140deg, rgb(91, 140, 255), rgb(47, 107, 255))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="8.6" r="3.9"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0z"/></svg>
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.full_name ?? 'Student'}</div>
+                          <div style={{ fontSize: '12px', color: '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>{user?.email ?? ''}</div>
+                        </div>
+                      </div>
+
+                      {/* Menu items */}
+                      <div style={{ padding: '8px' }}>
+                        <Link href="/profile" prefetch={false} onClick={() => setProfileOpen(false)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, color: '#1E293B', textDecoration: 'none', transition: 'background 0.15s' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8.6" r="3.9"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0z"/></svg>
+                          My Profile
+                        </Link>
+
+                        <Link href="/settings" prefetch={false} onClick={() => setProfileOpen(false)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, color: '#1E293B', textDecoration: 'none', transition: 'background 0.15s' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                          Settings
+                        </Link>
+
+                        <Link href="/help" prefetch={false} onClick={() => setProfileOpen(false)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, color: '#1E293B', textDecoration: 'none', transition: 'background 0.15s' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                          Help Center
+                        </Link>
+                      </div>
+
+                      {/* Logout */}
+                      <div style={{ padding: '8px', borderTop: '1px solid #F1F5F9' }}>
+                        <button onClick={() => { setProfileOpen(false); handleLogout() }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, color: '#EF4444', cursor: 'pointer', background: 'transparent', border: 'none', width: '100%', fontFamily: 'inherit', transition: 'background 0.15s' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#FFF5F5')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                          Logout
+                        </button>
+                      </div>
+
+                    </div>
+                  </>
+                )}
+              </div>
             </>
           )}
         </header>

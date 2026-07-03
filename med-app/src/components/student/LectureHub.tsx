@@ -267,7 +267,7 @@ export default function LectureHub({
       ? ['sheet', 'summary', 'flashcards', 'quiz', 'previous_years']
       : []
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [activeSectionId, setActiveSectionId]   = useState<string>('')
   const [activeTab, setActiveTab]               = useState(allTabs[0] ?? 'sheet')
   const [progressPercent, setProgressPercent]   = useState(0)

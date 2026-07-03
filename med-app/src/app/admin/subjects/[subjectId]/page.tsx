@@ -2,6 +2,7 @@ import { requireAuth } from '@/lib/services/user'
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
+import PublishControls from './_components/PublishControls'
 
 interface Props {
   params: Promise<{ subjectId: string }>
@@ -155,6 +156,11 @@ export default async function AdminSubjectDetailPage({ params }: Props) {
                         }`}>
                           {lecture.status}
                         </span>
+                        <PublishControls
+                          type="lecture"
+                          id={lecture.id}
+                          currentStatus={lecture.status}
+                        />
                         <Link
                           href={`/admin/subjects/${subjectId}/content/${lecture.id}`}
                           className="text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 px-2 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"

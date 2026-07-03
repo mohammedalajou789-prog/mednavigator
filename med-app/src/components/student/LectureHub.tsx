@@ -263,9 +263,7 @@ export default function LectureHub({
   // If access is locked, all tabs are still shown but content is locked
   const allTabs = availableTabs.length > 0
     ? availableTabs
-    : !accessAllowed
-      ? ['sheet', 'summary', 'flashcards', 'quiz', 'previous_years']
-      : []
+    : ['sheet', 'summary', 'flashcards', 'quiz', 'previous_years']
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [activeSectionId, setActiveSectionId]   = useState<string>('')

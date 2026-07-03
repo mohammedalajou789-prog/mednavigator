@@ -714,7 +714,7 @@ export default function LectureHub({
           </svg>
         </button>
         {/* ── CONTENT TABS CARD ── */}
-        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           <div style={{ padding: sidebarCollapsed ? '8px' : '14px 16px 10px' }}>
             {!sidebarCollapsed && (
               <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>

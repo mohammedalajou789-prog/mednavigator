@@ -558,7 +558,7 @@ export default function LectureHub({
         </div>
 
         {/* Hero card */}
-        <div style={{ padding: 'clamp(12px, 3vw, 22px) clamp(12px, 3vw, 26px) 0', background: '#F5F6FA' }}>
+        <div style={{ padding: 'clamp(8px, 2vw, 14px) clamp(12px, 3vw, 26px) 0', background: '#F5F6FA' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#7A8499', fontWeight: 500, marginBottom: '18px' }}>
             <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
@@ -571,7 +571,7 @@ export default function LectureHub({
             <span style={{ color: '#1B2335', fontWeight: 700 }}>{lecture.title}</span>
           </div>
 
-          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '16px', padding: 'clamp(14px, 4vw, 28px) clamp(14px, 4vw, 30px) clamp(12px, 3vw, 24px)', marginBottom: '16px', background: 'linear-gradient(120deg,#E8F0FF 0%,#EFF4FF 46%,#FAFBFF 100%)', border: '1px solid #DFE8FB', boxShadow: '0 1px 2px rgba(16,24,40,.04),0 22px 46px -30px rgba(40,90,200,.4)' }}>
+          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '16px', padding: 'clamp(10px, 2vw, 18px) clamp(14px, 4vw, 30px) clamp(8px, 1.5vw, 16px)', marginBottom: '16px', background: 'linear-gradient(120deg,#E8F0FF 0%,#EFF4FF 46%,#FAFBFF 100%)', border: '1px solid #DFE8FB', boxShadow: '0 1px 2px rgba(16,24,40,.04),0 22px 46px -30px rgba(40,90,200,.4)' }}>
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '320px', height: '160px', background: 'radial-gradient(ellipse at center, rgba(249,168,212,0.3) 0%, rgba(216,180,254,0.15) 55%, transparent 75%)', pointerEvents: 'none', borderRadius: '50%', filter: 'blur(24px)', zIndex: 0 }} />
 
             {/* Desktop badges */}

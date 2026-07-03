@@ -30,7 +30,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
       {showWatermark && userName && (
         <div className="pointer-events-none select-none absolute inset-0 z-10 overflow-hidden opacity-[0.04]" aria-hidden="true">
           {Array.from({ length: 20 }).map((_, i) => (
-            <div key={i} className="absolute text-gray-900  text-sm font-medium whitespace-nowrap"
+            <div key={i} className="absolute text-gray-900 dark:text-white text-sm font-medium whitespace-nowrap"
               style={{ top: `${(i % 5) * 22 + 5}%`, left: `${Math.floor(i / 5) * 26 - 5}%`, transform: 'rotate(-30deg)' }}>
               {userName}
             </div>
@@ -280,10 +280,10 @@ function renderInline(text: string): React.ReactNode {
   const parts = text.split(/(==.+?==|\*\*.+?\*\*)/g)
   return parts.map((part, i) => {
     if (part.startsWith('==') && part.endsWith('==')) {
-      return <mark key={i} className="bg-yellow-200  text-gray-900  px-0.5 rounded not-italic">{part.slice(2, -2)}</mark>
+      return <mark key={i} className="bg-yellow-200 dark:bg-yellow-500/40 text-gray-900 dark:text-yellow-100 px-0.5 rounded not-italic">{part.slice(2, -2)}</mark>
     }
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i} className="font-bold text-gray-900 ">{part.slice(2, -2)}</strong>
+      return <strong key={i} className="font-bold text-gray-900 dark:text-white">{part.slice(2, -2)}</strong>
     }
     return <span key={i}>{part}</span>
   })
@@ -324,23 +324,23 @@ function renderBlock(
   <img
     src={imageUrl}
     alt={block.slotDescription ?? `Image ${slotNum}`}
-    className="w-full rounded-xl border border-slate-200  object-contain max-h-[260px] sm:max-h-[300px] md:max-h-[340px] bg-slate-50 "
+    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 object-contain max-h-[260px] sm:max-h-[300px] md:max-h-[340px] bg-slate-50 dark:bg-slate-900"
   />
           {block.slotDescription && (
-            <figcaption className="text-center text-xs text-slate-500  italic">
+            <figcaption className="text-center text-xs text-slate-500 dark:text-slate-400 italic">
               {block.slotDescription}
             </figcaption>
           )}
         </figure>
           ) : (
-            <div className="flex items-center justify-center gap-3 border-2 border-dashed border-slate-200  rounded-xl p-8 bg-slate-50 ">
-              <svg className="w-6 h-6 text-slate-300 " fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="flex items-center justify-center gap-3 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-8 bg-slate-50 dark:bg-slate-900">
+              <svg className="w-6 h-6 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
               </svg>
               <div>
-                <p className="text-xs font-mono text-slate-400 ">[IMAGE_SLOT:{slotNum}]</p>
+                <p className="text-xs font-mono text-slate-400 dark:text-slate-500">[IMAGE_SLOT:{slotNum}]</p>
                 {block.slotDescription && (
-                  <p className="text-xs text-slate-400  mt-0.5">{block.slotDescription}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{block.slotDescription}</p>
                 )}
               </div>
             </div>
@@ -370,7 +370,7 @@ function renderBlock(
 
     case 'h3':
       return (
-        <h3 key={key} data-sync-type="heading" className="text-[1.05rem] font-bold text-slate-800  mt-8 mb-3 flex items-center gap-2">
+        <h3 key={key} data-sync-type="heading" className="text-[1.05rem] font-bold text-slate-800 dark:text-slate-200 mt-8 mb-3 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
           {block.content}
         </h3>
@@ -456,9 +456,9 @@ function renderBlock(
         <div key={key} id={id} data-sync-type="table" className="my-6 overflow-x-auto rounded-xl shadow-sm" style={{ scrollMarginTop: '96px' }}>
           <table className="w-full text-[0.9rem]">
             <thead>
-              <tr className="bg-blue-50 ">
+              <tr className="bg-blue-50 dark:bg-blue-900/40">
                 {block.rows[0].map((cell, i) => (
-                  <th key={i} className="px-5 py-3 text-left text-[0.75rem] font-extrabold text-blue-600  uppercase tracking-wider border-b border-blue-100 ">
+                  <th key={i} className="px-5 py-3 text-left text-[0.75rem] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider border-b border-blue-100 dark:border-blue-800">
                     {cell}
                   </th>
                 ))}
@@ -467,13 +467,13 @@ function renderBlock(
             <tbody>
               {block.rows.slice(1).map((row, ri) => (
                 <tr key={ri} className={cn(
-                  'border-t border-gray-100 ',
-                  ri % 2 === 0 ? 'bg-white ' : 'bg-gray-50/80 '
+                  'border-t border-gray-100 dark:border-gray-800',
+                  ri % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/80 dark:bg-gray-800/40'
                 )}>
                   {row.map((cell, ci) => (
                     <td key={ci} className={cn(
-                      'px-5 py-3 text-[0.9rem] text-gray-700  leading-relaxed',
-                      ci === 0 && 'font-semibold text-gray-900 '
+                      'px-5 py-3 text-[0.9rem] text-gray-700 dark:text-gray-300 leading-relaxed',
+                      ci === 0 && 'font-semibold text-gray-900 dark:text-white'
                     )}>
                       {renderInline(cell)}
                     </td>

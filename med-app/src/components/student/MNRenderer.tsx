@@ -73,8 +73,8 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
                   display: 'flex',
                   alignItems: 'center',
                   gap: '14px',
-                  borderLeft: '4px solid #2563EB',
-                  background: '#F8FAFF',
+                  borderLeft: '4px solid var(--mn-border-h1-strip)',
+                  background: 'var(--mn-bg-h1-strip)',
                   borderRadius: '0 10px 10px 0',
                   padding: '12px 18px',
                   marginTop: '24px',
@@ -85,7 +85,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
                   {String(h1Counter).padStart(2, '0')}
                 </span>
                 <div style={{ width: '1px', height: '20px', background: '#DBEAFE', flexShrink: 0 }} />
-                <h1 className="text-[0.8rem] sm:text-[0.95rem] md:text-[1.05rem]" style={{ margin: 0, fontWeight: 700, color: '#1E293B', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
+                <h1 className="text-[0.8rem] sm:text-[0.95rem] md:text-[1.05rem]" style={{ margin: 0, fontWeight: 700, color: 'var(--mn-text-h1)', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
   {section.heading.content}
 </h1>
               </div>
@@ -95,7 +95,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
 
                 if (!sub.heading) {
                   return (
-                    <div key={`pre-${subIdx}`} style={{ background: '#fff', border: '1px solid #ECEEF3', borderRadius: '18px', padding: '24px 26px', marginBottom: '14px', boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)' }}>
+                    <div key={`pre-${subIdx}`} style={{ background: 'var(--mn-bg-card)', border: '1px solid var(--mn-border-card)', borderRadius: '18px', padding: '24px 26px', marginBottom: '14px', boxShadow: 'var(--mn-shadow-card)' }}>
                       {sub.blocks.map((block, bIdx) =>
                         renderBlock(block, sIdx * 1000 + subIdx * 100 + bIdx, undefined, imageSlots, nextOccurrenceId)
                       )}
@@ -109,12 +109,12 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
 
                 return (
                   <div key={`sub-${subIdx}`} style={{ marginBottom: '14px' }}>
-                    <div id={sectionId} data-sync-type="heading" style={{ scrollMarginTop: '96px', background: '#fff', border: '1px solid #ECEEF3', borderRadius: '18px', padding: '24px 26px', boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)' }}>
+                    <div id={sectionId} data-sync-type="heading" style={{ scrollMarginTop: '96px', background: 'var(--mn-bg-card)', border: '1px solid var(--mn-border-card)', borderRadius: '18px', padding: '24px 26px', boxShadow: 'var(--mn-shadow-card)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
                         <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)', color: '#fff', fontSize: '14px', fontWeight: 700, flexShrink: 0, boxShadow: '0 5px 12px -4px rgba(47,107,255,.6)' }}>
                           {currentNum}
                         </span>
-                        <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>
+                        <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: 'var(--mn-text-h2)' }}>
                           {sub.heading.content.toUpperCase()}
                         </span>
                       </div>
@@ -363,7 +363,7 @@ function renderBlock(
       return (
         <div key={key} id={sectionId} data-sync-type="heading" style={{ scrollMarginTop: '96px', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)', color: '#fff', fontSize: '14px', fontWeight: 700, flexShrink: 0 }}>?</span>
-          <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF' }}>{block.content.toUpperCase()}</span>
+          <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '.1em', color: 'var(--mn-text-h2)' }}>{block.content.toUpperCase()}</span>
         </div>
       )
     }
@@ -379,12 +379,12 @@ function renderBlock(
     case 'highlight': {
       const id = nextOccurrenceId?.('highlight')
       return (
-        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#FFFAED,#FFFDF8)', border: '1px solid #F4E6BC', marginBottom: '16px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#FCEFC4', color: '#D89A06', flexShrink: 0, marginTop: '2px' }}>
+        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'var(--mn-bg-highlight)', border: '1px solid var(--mn-border-highlight)', marginBottom: '16px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: 'var(--mn-icon-highlight)', color: 'var(--mn-icon-highlight-c)', flexShrink: 0, marginTop: '2px' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
           </span>
           {/* FIX 4: renderMultiLine instead of renderInline */}
-          <div style={{ margin: 0, fontSize: '16px', lineHeight: 1.7, color: '#534820' }}>{renderMultiLine(block.content)}</div>
+          <div style={{ margin: 0, fontSize: '16px', lineHeight: 1.7, color: 'var(--mn-text-highlight)' }}>{renderMultiLine(block.content)}</div>
         </div>
       )
     }
@@ -392,14 +392,13 @@ function renderBlock(
     case 'important': {
       const id = nextOccurrenceId?.('important')
       return (
-        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', position: 'relative', overflow: 'hidden', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#FFF4F3,#FFFAFA)', border: '1px solid #FAD7D3', marginBottom: '16px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#FBDAD6', color: '#DC4842', flexShrink: 0, marginTop: '2px' }}>
+        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', position: 'relative', overflow: 'hidden', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'var(--mn-bg-important)', border: '1px solid var(--mn-border-important)', marginBottom: '16px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: 'var(--mn-icon-important)', color: 'var(--mn-icon-important-c)', flexShrink: 0, marginTop: '2px' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </span>
           <div>
-            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.1em', color: '#DC4842', marginBottom: '5px' }}>IMPORTANT</div>
-            {/* FIX 4: renderMultiLine instead of renderInline */}
-            <div style={{ margin: 0, fontSize: '15.5px', lineHeight: 1.65, color: '#5A4341' }}>{renderMultiLine(block.content)}</div>
+            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.1em', color: 'var(--mn-label-important)', marginBottom: '5px' }}>IMPORTANT</div>
+            <div style={{ margin: 0, fontSize: '15.5px', lineHeight: 1.65, color: 'var(--mn-text-important)' }}>{renderMultiLine(block.content)}</div>
           </div>
         </div>
       )
@@ -408,14 +407,13 @@ function renderBlock(
     case 'clinical_pearl': {
       const id = nextOccurrenceId?.('clinical_pearl')
       return (
-        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#EEF4FF,#F7FAFF)', border: '1px solid #DCE6FB', marginBottom: '16px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#DCE7FF', color: '#2F6BFF', flexShrink: 0, marginTop: '2px' }}>
+        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'var(--mn-bg-pearl)', border: '1px solid var(--mn-border-pearl)', marginBottom: '16px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: 'var(--mn-icon-pearl)', color: 'var(--mn-icon-pearl-c)', flexShrink: 0, marginTop: '2px' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
           </span>
           <div>
-            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.1em', color: '#2F6BFF', marginBottom: '5px' }}>CLINICAL PEARL</div>
-            {/* FIX 4: renderMultiLine instead of renderInline */}
-            <div style={{ margin: 0, fontSize: '15.5px', lineHeight: 1.65, color: '#39496B' }}>{renderMultiLine(block.content)}</div>
+            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.1em', color: 'var(--mn-label-pearl)', marginBottom: '5px' }}>CLINICAL PEARL</div>
+            <div style={{ margin: 0, fontSize: '15.5px', lineHeight: 1.65, color: 'var(--mn-text-pearl)' }}>{renderMultiLine(block.content)}</div>
           </div>
         </div>
       )
@@ -424,14 +422,13 @@ function renderBlock(
     case 'must_memorize': {
       const id = nextOccurrenceId?.('must_memorize')
       return (
-        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#EDFBF4,#F5FDF8)', border: '1px solid #B8EDD3', marginBottom: '16px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#C8F0DC', color: '#138A5A', flexShrink: 0, marginTop: '2px' }}>
+        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'var(--mn-bg-memorize)', border: '1px solid var(--mn-border-memorize)', marginBottom: '16px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: 'var(--mn-icon-memorize)', color: 'var(--mn-icon-memorize-c)', flexShrink: 0, marginTop: '2px' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           </span>
           <div>
-            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.1em', color: '#138A5A', marginBottom: '5px' }}>MUST MEMORIZE</div>
-            {/* FIX 4: renderMultiLine instead of renderInline */}
-            <div style={{ margin: 0, fontSize: '15.5px', lineHeight: 1.65, fontWeight: 700, color: '#1A5C3A' }}>{renderMultiLine(block.content)}</div>
+            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.1em', color: 'var(--mn-label-memorize)', marginBottom: '5px' }}>MUST MEMORIZE</div>
+            <div style={{ margin: 0, fontSize: '15.5px', lineHeight: 1.65, fontWeight: 700, color: 'var(--mn-text-memorize)' }}>{renderMultiLine(block.content)}</div>
           </div>
         </div>
       )
@@ -440,14 +437,13 @@ function renderBlock(
     case 'previous_year': {
       const id = nextOccurrenceId?.('previous_year')
       return (
-        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#F6F0FF,#FAF7FF)', border: '1px solid #DDD0FA', marginBottom: '16px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#EDE0FC', color: '#7C3AED', flexShrink: 0, marginTop: '2px' }}>
+        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'var(--mn-bg-pyear)', border: '1px solid var(--mn-border-pyear)', marginBottom: '16px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: 'var(--mn-icon-pyear)', color: 'var(--mn-icon-pyear-c)', flexShrink: 0, marginTop: '2px' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </span>
           <div>
-            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.1em', color: '#7C3AED', marginBottom: '5px' }}>PREVIOUS YEAR</div>
-            {/* FIX 4: renderMultiLine instead of renderInline */}
-            <div style={{ margin: 0, fontSize: '15.5px', lineHeight: 1.65, color: '#3D2A6B' }}>{renderMultiLine(block.content)}</div>
+            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.1em', color: 'var(--mn-label-pyear)', marginBottom: '5px' }}>PREVIOUS YEAR</div>
+            <div style={{ margin: 0, fontSize: '15.5px', lineHeight: 1.65, color: 'var(--mn-text-pyear)' }}>{renderMultiLine(block.content)}</div>
           </div>
         </div>
       )
@@ -495,7 +491,7 @@ function renderBlock(
 
     default:
       return (
-        <p key={key} data-sync-type="text" style={{ fontSize: '15.5px', lineHeight: 1.75, color: '#3C4661', margin: '0 0 14px' }}>
+        <p key={key} data-sync-type="text" style={{ fontSize: '15.5px', lineHeight: 1.75, color: 'var(--mn-text-body)', margin: '0 0 14px' }}>
           {renderInline(block.content)}
         </p>
       )

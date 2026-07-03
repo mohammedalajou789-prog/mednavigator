@@ -10,6 +10,7 @@ import FlashcardsViewer from '@/components/student/FlashcardsViewer'
 import QuizViewer from '@/components/student/QuizViewer'
 import PreviousYearsViewer from '@/components/student/PreviousYearsViewer'
 import LockedContentCard from '@/components/student/LockedContentCard'
+import LectureContentSearch from '@/components/student/LectureContentSearch'
 import { useQuery } from '@tanstack/react-query'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -865,6 +866,15 @@ export default function LectureHub({
               <StatPill label="Answered"  value={pyqStats.answered}  color="green" />
             </div>
           </div>
+        )}
+
+        {/* ── LECTURE CONTENT SEARCH ── */}
+        {!sidebarCollapsed && (activeTab === 'sheet' || activeTab === 'summary') && (
+          <LectureContentSearch
+            sheetContent={sheet?.content ?? ''}
+            summaryContent={summary?.content ?? ''}
+            activeTab={activeTab}
+          />
         )}
 
         {/* ── TABLE OF CONTENTS CARD ── */}

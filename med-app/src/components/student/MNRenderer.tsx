@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils/cn'
+import ImageLightbox from '@/components/student/ImageLightbox'
 
 interface MNRendererProps {
   content: string
@@ -321,10 +322,10 @@ function renderBlock(
     <div key={key} className="my-6 flex justify-center">
       {imageUrl ? (
         <figure className="space-y-2 w-full max-w-[320px] sm:max-w-md md:max-w-lg">
-  <img
+  <ImageLightbox
     src={imageUrl}
     alt={block.slotDescription ?? `Image ${slotNum}`}
-    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 object-contain max-h-[260px] sm:max-h-[300px] md:max-h-[340px] bg-slate-50 dark:bg-slate-900"
+    className="w-full rounded-xl border border-slate-200 object-contain max-h-[260px] sm:max-h-[300px] md:max-h-[340px] bg-slate-50"
   />
           {block.slotDescription && (
             <figcaption className="text-center text-xs text-slate-500 dark:text-slate-400 italic">

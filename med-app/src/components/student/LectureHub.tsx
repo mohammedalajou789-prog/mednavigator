@@ -250,10 +250,7 @@ export default function LectureHub({
   const supabase = useMemo(() => createClient(), [])
 
   // FIX 5: removed unused sidebarOpen
-  const { setSidebarOpen, theme, setTheme } = useUIStore()
-
-  // Scoped dark mode — apply dark class to lecture wrapper only
-  const isDark = theme === 'dark'
+  const { setSidebarOpen } = useUIStore()
 
   const availableTabs = [
     hasSheet          && 'sheet',
@@ -528,13 +525,13 @@ export default function LectureHub({
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className={isDark ? 'dark' : ''} style={{ height: 'calc(100vh - 72px)', overflow: 'hidden', position: 'relative', display: 'flex' }}>
+    <div className="flex" style={{ height: 'calc(100vh - 72px)', overflow: 'hidden', position: 'relative' }}>
 
       {/* ── CENTER: scrollable content ── */}
       <div
         id="lecture-content-scroll"
         className="flex-1 min-w-0"
-        style={{ overflowY: 'auto', height: 'calc(100vh - 72px)', background: isDark ? '#0B1120' : '#F5F6FA' }}
+        style={{ overflowY: 'auto', height: 'calc(100vh - 72px)', background: '#F5F6FA' }}
       >
         {/* Mobile tabs */}
         <div className="lg:hidden flex gap-1 px-4 pt-3 pb-2 bg-white border-b border-slate-100 overflow-x-auto" style={{ flexShrink: 0 }}>
@@ -564,7 +561,7 @@ export default function LectureHub({
 
         {/* Hero card */}
         <div style={{ padding: 'clamp(12px, 3vw, 22px) clamp(12px, 3vw, 26px) 0', background: '#F5F6FA' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: isDark ? '#64748B' : '#7A8499', fontWeight: 500, marginBottom: '18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#7A8499', fontWeight: 500, marginBottom: '18px' }}>
             <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
               <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
@@ -576,7 +573,7 @@ export default function LectureHub({
             <span style={{ color: '#1B2335', fontWeight: 700 }}>{lecture.title}</span>
           </div>
 
-          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '16px', padding: 'clamp(14px, 4vw, 28px) clamp(14px, 4vw, 30px) clamp(12px, 3vw, 24px)', marginBottom: '16px', background: isDark ? 'linear-gradient(120deg,#0F1829 0%,#111E35 46%,#131F38 100%)' : 'linear-gradient(120deg,#E8F0FF 0%,#EFF4FF 46%,#FAFBFF 100%)', border: isDark ? '1px solid #1E2D45' : '1px solid #DFE8FB', boxShadow: '0 1px 2px rgba(16,24,40,.04),0 22px 46px -30px rgba(40,90,200,.4)' }}>
+          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '16px', padding: 'clamp(14px, 4vw, 28px) clamp(14px, 4vw, 30px) clamp(12px, 3vw, 24px)', marginBottom: '16px', background: 'linear-gradient(120deg,#E8F0FF 0%,#EFF4FF 46%,#FAFBFF 100%)', border: '1px solid #DFE8FB', boxShadow: '0 1px 2px rgba(16,24,40,.04),0 22px 46px -30px rgba(40,90,200,.4)' }}>
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '320px', height: '160px', background: 'radial-gradient(ellipse at center, rgba(249,168,212,0.3) 0%, rgba(216,180,254,0.15) 55%, transparent 75%)', pointerEvents: 'none', borderRadius: '50%', filter: 'blur(24px)', zIndex: 0 }} />
 
             {/* Desktop badges */}
@@ -615,7 +612,7 @@ export default function LectureHub({
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
               </span>
               <div style={{ paddingTop: '2px' }}>
-                <h1 style={{ margin: 0, fontSize: 'clamp(22px, 5vw, 40px)', lineHeight: 1.1, fontWeight: 800, letterSpacing: '-0.025em', color: isDark ? '#F1F5F9' : '#15203A' }}>{lecture.title}</h1>
+                <h1 style={{ margin: 0, fontSize: 'clamp(22px, 5vw, 40px)', lineHeight: 1.1, fontWeight: 800, letterSpacing: '-0.025em', color: '#15203A' }}>{lecture.title}</h1>
                 <div style={{ marginTop: '7px', fontSize: '15px', fontWeight: 600, color: '#2F6BFF' }}>{subject.name}</div>
               </div>
             </div>
@@ -693,7 +690,7 @@ export default function LectureHub({
           height:     'calc(100vh - 72px)',
           overflowY:  'auto',
           borderLeft: '1px solid #EEF0F4',
-          background: isDark ? '#0D1829' : '#F7F8FA',
+          background: '#F7F8FA',
           flexDirection: 'column',
           gap:        '12px',
           padding:    sidebarCollapsed ? '16px 8px' : '16px 12px',
@@ -707,8 +704,8 @@ export default function LectureHub({
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: '100%', height: 36, borderRadius: 10, border: '1px solid #EAEDF2',
-            background: isDark ? '#1E2D45' : '#fff', cursor: 'pointer',
-            color: isDark ? '#94A3B8' : '#6B7280', flexShrink: 0,
+            background: '#fff', cursor: 'pointer',
+            color: '#6B7280', flexShrink: 0,
           }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -718,37 +715,8 @@ export default function LectureHub({
             }
           </svg>
         </button>
-
-        {/* ── DARK MODE TOGGLE ── */}
-        <button
-          onClick={() => setTheme(isDark ? 'light' : 'dark')}
-          title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: '100%', height: 36, borderRadius: 10,
-            border: `1px solid ${isDark ? '#1E2D45' : '#EAEDF2'}`,
-            background: isDark ? '#1E2D45' : '#F8FAFC',
-            cursor: 'pointer', color: isDark ? '#FBBF24' : '#6B7280',
-            flexShrink: 0, transition: 'all 0.2s ease',
-          }}
-        >
-          {isDark ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="5"/>
-              <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-          )}
-        </button>
-
         {/* ── CONTENT TABS CARD ── */}
-        <div style={{ background: isDark ? '#131C2E' : '#fff', borderRadius: '16px', border: `1px solid ${isDark ? '#1E2D45' : '#EAEDF2'}`, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+        <div style={{ background: '#fff', borderRadius: '16px', border: `1px solid ${'#EAEDF2'}`, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
           <div style={{ padding: sidebarCollapsed ? '8px' : '14px 16px 10px' }}>
             {!sidebarCollapsed && (
               <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
@@ -811,7 +779,7 @@ export default function LectureHub({
 
         {/* ── READING PROGRESS CARD ── */}
         {(activeTab === 'sheet' || activeTab === 'summary') && (
-          <div style={{ background: isDark ? '#131C2E' : '#fff', borderRadius: '16px', border: `1px solid ${isDark ? '#1E2D45' : '#EAEDF2'}`, padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', border: `1px solid ${'#EAEDF2'}`, padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {sidebarCollapsed ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                 <div style={{ position: 'relative', width: '44px', height: '44px' }}>
@@ -953,7 +921,7 @@ export default function LectureHub({
 
         {/* ── ACTIONS CARD ── */}
         {!sidebarCollapsed && (
-          <div style={{ background: isDark ? '#131C2E' : '#fff', borderRadius: '16px', border: `1px solid ${isDark ? '#1E2D45' : '#EAEDF2'}`, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', border: `1px solid ${'#EAEDF2'}`, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Actions</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button onClick={handleMarkComplete}

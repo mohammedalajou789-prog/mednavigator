@@ -40,7 +40,7 @@ export default function AdminDocsPage() {
           <div className="space-y-4">
             <DocBlock title="Flashcards" description="Each card uses [CARD]...[/CARD]." code={"[CARD]\nQ: What is normal ejection fraction?\nA: 55-70%\n[/CARD]"} />
             <DocBlock title="Quiz Questions" description="Each question uses [QUESTION]...[/QUESTION]. CORRECT: must be A-E." code={"[QUESTION]\nWhat is normal EF?\nA) 20-30%\nB) 55-70%\nCORRECT: B\nEXPLANATION: Normal EF is 55-70%.\n[/QUESTION]"} />
-            <DocBlock title="Previous Year Questions" description="Each question uses [PYQ]...[/PYQ]." code={"[PYQ]\nEXAM_YEAR: 2025\nEXAM_TYPE: Final\nQUESTION: What is normal EF?\nA) 55-70%\nCORRECT: A\nEXPLANATION: Normal EF is 55-70%.\n[/PYQ]"} />
+            <DocBlock title="Previous Year Questions" description="Each question uses [PYQ]...[/PYQ]." code={"[PYQ]\nBATCH: 2027\nEXAM_YEAR: 2025\nEXAM_TYPE: Final\nQUESTION: What is normal EF?\nA) 55-70%\nCORRECT: A\nEXPLANATION: Normal EF is 55-70%.\n[/PYQ]"} />
           </div>
         </section>
         <section id="image-slots">

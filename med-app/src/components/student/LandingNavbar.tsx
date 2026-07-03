@@ -19,8 +19,12 @@ interface LandingNavbarProps {
 
 const LogoIcon = () => (
   <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    <svg width="18" height="18" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="28" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="5"/>
+      <path d="M 50 50 L 50 22" fill="none" stroke="#93C5FD" strokeWidth="7" strokeLinecap="round"/>
+      <path d="M 50 50 L 50 78" fill="none" stroke="white" strokeWidth="7" strokeLinecap="round"/>
+      <path d="M 22 50 L 78 50" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="5" strokeLinecap="round"/>
+      <circle cx="50" cy="50" r="5" fill="white"/>
     </svg>
   </div>
 )

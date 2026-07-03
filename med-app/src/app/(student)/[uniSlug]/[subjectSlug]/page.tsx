@@ -74,7 +74,7 @@ export default async function SubjectPage({ params }: PageProps) {
     ] = await Promise.all([
       supabase.from('sheets').select('lecture_id').in('lecture_id', lectureIds).eq('status', 'published'),
       supabase.from('summaries').select('lecture_id').in('lecture_id', lectureIds).eq('status', 'published'),
-      supabase.rpc('get_content_counts_by_lecture', { lecture_ids: lectureIds }),
+      supabase.rpc('get_content_counts_by_lecture' as any, { lecture_ids: lectureIds }),
     ])
     sheets?.forEach(r    => { sheetMap[r.lecture_id]   = true })
     summaries?.forEach(r => { summaryMap[r.lecture_id] = true })

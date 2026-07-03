@@ -776,7 +776,7 @@ export default function LectureHub({
         </div>
 
         {/* ── READING PROGRESS CARD ── */}
-        {(activeTab === 'sheet' || activeTab === 'summary') && (
+        {!!user && (activeTab === 'sheet' || activeTab === 'summary') && (
           <div style={{ background: '#fff', borderRadius: '16px', border: `1px solid ${'#EAEDF2'}`, padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {sidebarCollapsed ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
@@ -918,7 +918,7 @@ export default function LectureHub({
         {!sidebarCollapsed && <NotesPanel lectureId={lecture.id} />}
 
         {/* ── ACTIONS CARD ── */}
-        {!sidebarCollapsed && (
+        {!sidebarCollapsed && !!user && (
           <div style={{ background: '#fff', borderRadius: '16px', border: `1px solid ${'#EAEDF2'}`, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Actions</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

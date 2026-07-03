@@ -24,6 +24,7 @@ export interface ParsedPYQ {
   explanation: string | null
   exam_year: number | null
   exam_type: string | null
+  batch_name: string | null
 }
 
 export interface ParseResult<T> {
@@ -128,6 +129,7 @@ export function parsePYQ(raw: string): ParseResult<ParsedPYQ> {
       return line ? line.replace(`${key}:`, '').trim() || null : null
     }
 
+    const batch_name_raw = getValue('BATCH')
     const exam_year_raw = getValue('EXAM_YEAR')
     const exam_type_raw = getValue('EXAM_TYPE')
 
@@ -175,6 +177,7 @@ export function parsePYQ(raw: string): ParseResult<ParsedPYQ> {
       explanation,
       exam_year: exam_year_raw ? parseInt(exam_year_raw, 10) || null : null,
       exam_type: exam_type_raw ? exam_type_raw.toLowerCase() : null,
+      batch_name: batch_name_raw ?? null,
     })
   }
 

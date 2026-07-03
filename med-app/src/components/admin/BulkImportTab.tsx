@@ -48,6 +48,7 @@ EXPLANATION: ACE inhibitors reduce mortality in heart failure with reduced EF.
 [/QUESTION]`,
 
   pyq: `[PYQ]
+BATCH: 2027
 EXAM_YEAR: 2025
 EXAM_TYPE: Final
 QUESTION: What is the normal ejection fraction?
@@ -61,6 +62,7 @@ EXPLANATION: Normal EF is 55–70%.
 [/PYQ]
 
 [PYQ]
+BATCH: 2027
 EXAM_YEAR: 2024
 EXAM_TYPE: Midterm
 QUESTION: What is the first-line treatment for systolic heart failure?

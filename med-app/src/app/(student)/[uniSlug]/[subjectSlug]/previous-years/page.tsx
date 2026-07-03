@@ -5,13 +5,13 @@ import PreviousYearsBankClient from '@/components/student/PreviousYearsBankClien
 
 interface PageProps {
   params: Promise<{
-    universityId: string
-    subjectId: string
+    uniSlug: string
+    subjectSlug: string
   }>
 }
 
 export default async function PreviousYearsBankPage({ params }: PageProps) {
-  const { universityId, subjectId } = await params
+  const { uniSlug, subjectSlug } = await params
   const supabase = await createServerClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -26,24 +26,19 @@ export default async function PreviousYearsBankPage({ params }: PageProps) {
     userId = profile?.id ?? null
   }
 
-  // Get subject info
-  const { data: subject } = await supabase
-    .from('subjects')
-    .select('id, name, access_mode, is_free')
-    .eq('id', subjectId)
-    .single()
+  // Resolve slugs to IDs
+  const [{ data: uniRow }, { data: subRow }] = await Promise.all([
+    supabase.from('universities').select('id, name').eq('slug', uniSlug).single(),
+    supabase.from('subjects').select('id, name, access_mode').eq('slug', subjectSlug).single(),
+  ])
 
-  if (!subject) redirect(`/${universityId}`)
+  if (!uniRow || !subRow) redirect('/')
 
-  // Get university info
-  const { data: university } = await supabase
-    .from('universities')
-    .select('id, name')
-    .eq('id', universityId)
-    .single()
+  const universityId = uniRow.id
+  const subjectId = subRow.id
 
   // Check subscription if subject is premium
-  let hasAccess = subject.is_free || subject.access_mode === 'free'
+  let hasAccess = subRow.access_mode === 'free'
   if (!hasAccess && userId) {
     const { data: sub } = await supabase
       .from('subject_subscriptions')
@@ -83,7 +78,7 @@ export default async function PreviousYearsBankPage({ params }: PageProps) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-10 text-center">
         <p className="text-slate-400">No lectures found in this subject.</p>
-        <Link href={`/${universityId}/${subjectId}`} className="text-blue-600 text-sm mt-2 inline-block">
+        <Link href={`/${uniSlug}/${subjectSlug}`} className="text-blue-600 text-sm mt-2 inline-block">
           ← Back to subject
         </Link>
       </div>
@@ -95,7 +90,7 @@ export default async function PreviousYearsBankPage({ params }: PageProps) {
   // Get ALL previous year questions from all lectures
   const { data: allQuestions } = await supabase
     .from('previous_year_questions')
-    .select('id, lecture_id, question, options, correct_answer, explanation, exam_year, exam_type')
+    .select('id, lecture_id, question, options, correct_answer, explanation, exam_year, exam_type, batch_name')
     .in('lecture_id', lectureIds)
     .order('exam_year', { ascending: false })
 
@@ -106,12 +101,12 @@ export default async function PreviousYearsBankPage({ params }: PageProps) {
 
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-slate-400 mb-6 flex-wrap">
-        <Link href={`/${universityId}`} className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-          {university?.name ?? 'University'}
+        <Link href={`/${uniSlug}`} className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+          {uniRow.name}
         </Link>
         <span>/</span>
-        <Link href={`/${universityId}/${subjectId}`} className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-          {subject.name}
+        <Link href={`/${uniSlug}/${subjectSlug}`} className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+          {subRow.name}
         </Link>
         <span>/</span>
         <span className="text-slate-700 dark:text-slate-200 font-medium">Previous Years Bank</span>
@@ -123,7 +118,7 @@ export default async function PreviousYearsBankPage({ params }: PageProps) {
           Previous Years Bank
         </h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-          {subject.name} — all previous exam questions in one place
+          {subRow.name} — all previous exam questions in one place
         </p>
       </div>
 
@@ -161,10 +156,10 @@ export default async function PreviousYearsBankPage({ params }: PageProps) {
             Access Required
           </h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Subscribe to {subject.name} to access the Previous Years Bank.
+            Subscribe to {subRow.name} to access the Previous Years Bank.
           </p>
           <Link
-            href={`/${universityId}/${subjectId}`}
+            href={`/${uniSlug}/${subjectSlug}`}
             className="mt-4 inline-block px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
             View Subject Details

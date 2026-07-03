@@ -445,9 +445,6 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
 
           <div style={{ flex: 1 }} />
 
-          {/* Theme toggle */}
-          <ThemeToggle />
-
           {isGuest ? (
             <Link href="/register" prefetch={false} style={{ display: 'flex', alignItems: 'center', height: '40px', padding: '0 18px', borderRadius: '10px', background: '#2563EB', color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
               Sign Up Free
@@ -579,23 +576,4 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
   )
 }
 
-// ── Theme Toggle ───────────────────────────────────────────────────────────
-function ThemeToggle() {
-  const { theme, setTheme } = useUIStore()
-  const cycle = () => {
-    if (theme === 'light') setTheme('dark')
-    else if (theme === 'dark') setTheme('system')
-    else setTheme('light')
-  }
-  return (
-    <button onClick={cycle} aria-label={`Theme: ${theme}`}
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#64748B', cursor: 'pointer', flexShrink: 0 }}>
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {theme === 'dark'
-          ? <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-          : <><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></>
-        }
-      </svg>
-    </button>
-  )
-}
+

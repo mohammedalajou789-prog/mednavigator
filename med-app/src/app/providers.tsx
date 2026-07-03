@@ -5,8 +5,6 @@ import { useState, useEffect } from 'react'
 import { useUIStore } from '@/stores/uiStore'
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Dark mode is scoped to lecture page only.
-  // Global html element stays light always.
   return <>{children}</>
 }
 

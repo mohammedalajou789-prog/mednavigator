@@ -277,16 +277,28 @@ function extractTable(lines: string[], start: number): { rows: string[][]; end: 
   return { rows, end: i }
 }
 
+function renderBold(text: string, keyPrefix: string): React.ReactNode {
+  const parts = text.split(/(\*\*.+?\*\*)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={keyPrefix + i}>{part.slice(2, -2)}</strong>
+    }
+    return <span key={keyPrefix + i}>{part}</span>
+  })
+}
+
 function renderInline(text: string): React.ReactNode {
-  const parts = text.split(/(==.+?==|\*\*.+?\*\*)/g)
+  const parts = text.split(/(==.+?==)/g)
   return parts.map((part, i) => {
     if (part.startsWith('==') && part.endsWith('==')) {
-      return <mark key={i} className="bg-yellow-200 dark:bg-yellow-500/40 text-gray-900 dark:text-yellow-100 px-0.5 rounded not-italic">{part.slice(2, -2)}</mark>
+      const inner = part.slice(2, -2)
+      return (
+        <mark key={i} className="bg-yellow-200 px-0.5 rounded not-italic text-gray-900">
+          {renderBold(inner, 'h' + i)}
+        </mark>
+      )
     }
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i} className="font-bold text-gray-900 dark:text-white">{part.slice(2, -2)}</strong>
-    }
-    return <span key={i}>{part}</span>
+    return <span key={i}>{renderBold(part, 'p' + i)}</span>
   })
 }
 

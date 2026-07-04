@@ -88,10 +88,10 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
     const isCorrect = q.correct_answer === option
     const isSelected = selected === option
     const isAnswered = !!selected
-    if (!isAnswered) return { border: '1.5px solid #E2E8F0', background: '#fff', color: '#374151' }
-    if (isCorrect) return { border: '1.5px solid #16A34A', background: '#F0FDF4', color: '#14532D' }
-    if (isSelected && !isCorrect) return { border: '1.5px solid #DC2626', background: '#FEF2F2', color: '#7F1D1D' }
-    return { border: '1.5px solid #F1F5F9', background: '#F8FAFC', color: '#94A3B8' }
+    if (!isAnswered) return { border: '1.5px solid rgb(226,232,240)', background: '#fff', color: 'rgb(15,23,42)' }
+    if (isCorrect) return { border: '1.5px solid rgb(184,237,211)', background: 'rgb(238,249,242)', color: 'rgb(19,138,90)' }
+    if (isSelected && !isCorrect) return { border: '1.5px solid rgb(250,215,211)', background: 'rgb(255,244,243)', color: 'rgb(220,72,66)' }
+    return { border: '1.5px solid rgb(226,232,240)', background: '#fff', color: 'rgb(15,23,42)' }
   }
 
   if (loading) {
@@ -151,134 +151,150 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px clamp(16px, 3vw, 26px) 60px', userSelect: 'none', position: 'relative' }} onContextMenu={e => e.preventDefault()}>
       {userName && <Watermark userName={userName} />}
+
       <div style={{ width: '100%', maxWidth: '640px', marginTop: '6px' }}>
 
-      {/* Stats bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <StatBadge label={`${questions.length} questions`} color="#EFF6FF" text="#2563EB" />
-        <StatBadge label={`${answeredCount} answered`} color="#F0FDF4" text="#16A34A" />
-        <StatBadge label={`${correctCount} correct`} color="#F0FDF4" text="#16A34A" />
-        {answeredCount > 0 && <StatBadge label={`${score}% score`} color="#EFF6FF" text="#2563EB" />}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-          {importantIds.size > 0 && (
-            <button
-              onClick={() => { setShowImportantOnly(p => !p); setCurrentIndex(0) }}
-              style={{ padding: '6px 12px', borderRadius: '8px', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer', background: showImportantOnly ? '#F59E0B' : '#FFFBEB', color: showImportantOnly ? '#fff' : '#D97706' }}>
-              ⭐ {showImportantOnly ? 'All' : 'Important'}
-            </button>
-          )}
+        {/* Stats bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '14px', marginBottom: '14px' }}>
+          <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'rgb(22,163,74)' }}>{correctCount} correct</span>
           <button
             onClick={() => setFinished(true)}
-            style={{ padding: '6px 16px', background: '#2563EB', color: '#fff', borderRadius: '8px', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+            style={{ height: '32px', padding: '0 14px', borderRadius: '9px', border: 'none', background: 'rgb(15,23,42)', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>
             Finish
           </button>
         </div>
-      </div>
 
-      {/* Question navigator */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '20px' }}>
-        {displayQuestions.map((q, i) => {
-          const answered = !!answers[q.id]
-          const correct = answers[q.id] === q.correct_answer
-          const isImportant = importantIds.has(q.id)
-          let bg = '#F1F5F9'; let color = '#64748B'
-          if (i === currentIndex) { bg = '#2563EB'; color = '#fff' }
-          else if (answered && correct) { bg = '#16A34A'; color = '#fff' }
-          else if (answered && !correct) { bg = '#DC2626'; color = '#fff' }
-          else if (isImportant) { bg = '#FEF3C7'; color = '#D97706' }
-          return (
-            <button
-              key={q.id}
-              onClick={() => setCurrentIndex(i)}
-              style={{ width: '32px', height: '32px', borderRadius: '8px', border: i === currentIndex ? '2px solid #2563EB' : '1px solid transparent', background: bg, color, fontSize: '11px', fontWeight: 700, cursor: 'pointer', position: 'relative', transition: 'all 0.15s' }}>
-              {i + 1}
-              {isImportant && !answered && <span style={{ position: 'absolute', top: '-4px', right: '-4px', fontSize: '8px' }}>⭐</span>}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Question card */}
-      <div style={{
-        background: 'linear-gradient(rgb(255,255,255) 0%,rgb(252,253,255) 100%)', borderRadius: '20px',
-        border: `1px solid ${isCurrentImportant ? '#FCD34D' : 'rgb(236,238,243)'}`,
-        padding: '28px 28px 24px', marginBottom: '16px',
-        boxShadow: 'rgba(255,255,255,0.6) 0px 1px 0px inset,rgba(16,24,40,0.04) 0px 1px 2px,rgba(16,24,40,0.12) 0px 10px 20px -12px,rgba(37,99,235,0.18) 0px 26px 46px -28px',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: '#2563EB', background: '#EFF6FF', padding: '3px 10px', borderRadius: '20px' }}>
-              Question {currentIndex + 1}/{total}
-            </span>
-            {showImportantOnly && <span style={{ fontSize: '11px', color: '#D97706' }}>⭐ Important only</span>}
+        {/* Progress row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+          <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'rgb(51,65,85)', whiteSpace: 'nowrap' }}>Question {currentIndex + 1} of {total}</span>
+          <div style={{ flex: 1, height: '3px', borderRadius: '99px', background: 'rgb(231,234,241)', overflow: 'hidden' }}>
+            <div style={{ height: '100%', borderRadius: '99px', background: 'rgb(37,99,235)', transition: 'width 0.35s', width: `${Math.round((currentIndex / total) * 100)}%` }} />
           </div>
-          {user && (
-            <button
-              onClick={() => toggleImportant(current.id)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', flexShrink: 0, lineHeight: 1, transition: 'transform 0.15s' }}>
-              {isCurrentImportant ? '⭐' : '☆'}
-            </button>
-          )}
+          <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'rgb(37,99,235)', whiteSpace: 'nowrap' }}>{answeredCount}/{total} answered</span>
         </div>
 
-        <p style={{ fontSize: '15px', fontWeight: 600, color: '#1E293B', marginBottom: '20px', lineHeight: 1.6 }}>
-          {current.question}
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {availableOptions.map(option => {
-            const label = getOptionLabel(current, option)
-            if (!label) return null
-            const answered = !!answers[current.id]
-            const isCorrect = current.correct_answer === option
-            const isSelected = answers[current.id] === option
+        {/* Question navigator */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '22px' }}>
+          {displayQuestions.map((q, i) => {
+            const answered = !!answers[q.id]
+            const correct = answers[q.id] === q.correct_answer
+            const isImportant = importantIds.has(q.id)
+            let bg = 'rgb(238,240,244)'; let color = 'rgb(100,116,139)'
+            if (i === currentIndex) { bg = 'rgb(238,240,244)'; color = 'rgb(100,116,139)' }
+            else if (answered && correct) { bg = 'rgb(220,243,231)'; color = 'rgb(19,138,90)' }
+            else if (answered && !correct) { bg = 'rgb(251,220,218)'; color = 'rgb(220,72,66)' }
+            else if (isImportant) { bg = '#FEF3C7'; color = '#D97706' }
             return (
               <button
-                key={option}
-                onClick={() => handleAnswer(current.id, option)}
-                disabled={answered}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '12px 16px', borderRadius: '12px', cursor: answered ? 'default' : 'pointer',
-                  textAlign: 'left', fontSize: '14px', fontWeight: 500, transition: 'all 0.15s',
-                  ...getOptionStyle(current, option),
-                }}>
-                <span style={{ width: '24px', height: '24px', borderRadius: '6px', background: isCorrect && answered ? '#16A34A' : isSelected && !isCorrect && answered ? '#DC2626' : '#F1F5F9', color: (isCorrect && answered) || (isSelected && answered) ? '#fff' : '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, flexShrink: 0 }}>
-                  {option}
-                </span>
-                <span style={{ flex: 1 }}>{label}</span>
-                {answered && isCorrect && <span style={{ color: '#16A34A', fontSize: '16px' }}>✓</span>}
-                {answered && isSelected && !isCorrect && <span style={{ color: '#DC2626', fontSize: '16px' }}>✗</span>}
+                key={q.id}
+                onClick={() => setCurrentIndex(i)}
+                style={{ width: '32px', height: '32px', borderRadius: '9px', border: i === currentIndex ? '2px solid rgb(37,99,235)' : 'transparent', background: bg, color, fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', position: 'relative', transition: 'all 0.15s' }}>
+                {i + 1}
+                {isImportant && !answered && <span style={{ position: 'absolute', top: '-4px', right: '-4px', fontSize: '8px' }}>⭐</span>}
               </button>
             )
           })}
         </div>
 
-        {showExplanation[current.id] && current.explanation && (
-          <div style={{ marginTop: '16px', padding: '14px 16px', display: 'flex', gap: '12px', background: 'rgb(238,243,255)', border: '1px solid rgb(220,230,253)', borderRadius: '14px' }}>
-            <span style={{ width: '26px', height: '26px', borderRadius: '8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgb(220,230,253)', color: 'rgb(37,99,235)', marginTop: '1px' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span><div><div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.08em', color: 'rgb(37,99,235)', marginBottom: '4px', textTransform: 'uppercase' }}>EXPLANATION</div>
-            <div style={{ fontSize: '14px', lineHeight: 1.65, color: 'rgb(60,70,97)' }}>{current.explanation}</div></div>
+        {/* Question card */}
+        <div style={{
+          background: 'linear-gradient(rgb(255,255,255) 0%,rgb(252,253,255) 100%)',
+          borderRadius: '20px',
+          border: `1px solid ${isCurrentImportant ? '#FCD34D' : 'rgb(236,238,243)'}`,
+          padding: '28px 28px 24px',
+          marginBottom: '16px',
+          boxShadow: 'rgba(255,255,255,0.6) 0px 1px 0px inset,rgba(16,24,40,0.04) 0px 1px 2px,rgba(16,24,40,0.12) 0px 10px 20px -12px,rgba(37,99,235,0.18) 0px 26px 46px -28px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '14px', marginBottom: '22px' }}>
+            <div style={{ display: 'flex', gap: '13px', alignItems: 'flex-start', minWidth: 0 }}>
+              <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '30px', height: '30px', padding: '0 9px', borderRadius: '9px', background: 'rgb(238,243,255)', color: 'rgb(37,99,235)', fontSize: '12.5px', fontWeight: 800, marginTop: '1px' }}>
+                Q{currentIndex + 1}
+              </span>
+              <div style={{ fontSize: '16.5px', fontWeight: 700, color: 'rgb(15,23,42)', lineHeight: 1.5 }}>
+                {current.question}
+              </div>
+            </div>
+            {user && (
+              <button
+                onClick={() => toggleImportant(current.id)}
+                title="Mark important"
+                style={{ width: '30px', height: '30px', borderRadius: '8px', border: '1px solid rgb(226,232,240)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: isCurrentImportant ? '#2563EB' : '#94A3B8', transition: 'transform 0.15s' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill={isCurrentImportant ? '#2563EB' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                </svg>
+              </button>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Navigation */}
-      <div style={{ display: 'flex', gap: '14px', marginTop: '18px' }}>
-        <button
-          onClick={() => setCurrentIndex(i => Math.max(i - 1, 0))}
-          disabled={currentIndex === 0}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', borderRadius: '12px', border: '1px solid #E2E8F0', background: '#fff', fontSize: '13px', fontWeight: 500, color: '#64748B', cursor: 'pointer', opacity: currentIndex === 0 ? 0.4 : 1 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          Previous
-        </button>
-        <button
-          onClick={() => setCurrentIndex(i => Math.min(i + 1, total - 1))}
-          disabled={currentIndex === total - 1}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', borderRadius: '12px', border: '1px solid #E2E8F0', background: '#fff', fontSize: '13px', fontWeight: 500, color: '#64748B', cursor: 'pointer', opacity: currentIndex === total - 1 ? 0.4 : 1 }}>
-          Next
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
-      </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {availableOptions.map(option => {
+              const label = getOptionLabel(current, option)
+              if (!label) return null
+              const answered = !!answers[current.id]
+              const isCorrect = current.correct_answer === option
+              const isSelected = answers[current.id] === option
+              return (
+                <button
+                  key={option}
+                  onClick={() => handleAnswer(current.id, option)}
+                  disabled={answered}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '14px 16px', borderRadius: '13px', cursor: answered ? 'default' : 'pointer',
+                    textAlign: 'left', transition: 'background 0.15s, border-color 0.15s, transform 0.12s',
+                    ...getOptionStyle(current, option),
+                  }}>
+                  <span style={{ width: '26px', height: '26px', borderRadius: '8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 800, background: isCorrect && answered ? 'rgb(19,138,90)' : isSelected && !isCorrect && answered ? 'rgb(220,72,66)' : 'rgb(241,245,249)', color: (isCorrect && answered) || (isSelected && answered) ? '#fff' : 'rgb(100,116,139)' }}>
+                    {option}
+                  </span>
+                  <span style={{ flex: 1, fontSize: '14.5px', lineHeight: 1.5 }}>{label}</span>
+                  {answered && isCorrect && (
+                    <span style={{ width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800, background: 'rgb(19,138,90)', color: '#fff' }}>✓</span>
+                  )}
+                  {answered && isSelected && !isCorrect && (
+                    <span style={{ width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800, background: 'rgb(220,72,66)', color: '#fff' }}>✕</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {showExplanation[current.id] && current.explanation && (
+            <div style={{ marginTop: '18px', display: 'flex', gap: '12px', padding: '16px 18px', borderRadius: '14px', background: 'rgb(238,243,255)', border: '1px solid rgb(220,230,253)' }}>
+              <span style={{ width: '26px', height: '26px', borderRadius: '8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgb(220,230,253)', color: 'rgb(37,99,235)', marginTop: '1px' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                  <path d="M2 17l10 5 10-5"/>
+                  <path d="M2 12l10 5 10-5"/>
+                </svg>
+              </span>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.08em', color: 'rgb(37,99,235)', marginBottom: '4px', textTransform: 'uppercase' }}>EXPLANATION</div>
+                <div style={{ fontSize: '14px', lineHeight: 1.65, color: 'rgb(60,70,97)' }}>{current.explanation}</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <div style={{ display: 'flex', gap: '14px', marginTop: '18px' }}>
+          <button
+            onClick={() => setCurrentIndex(i => Math.max(i - 1, 0))}
+            disabled={currentIndex === 0}
+            style={{ flex: 1, height: '52px', borderRadius: '14px', border: '1px solid rgb(226,232,240)', background: '#fff', color: 'rgb(71,85,105)', fontSize: '14px', fontWeight: 700, cursor: currentIndex === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: currentIndex === 0 ? 0.45 : 1, transition: 'transform 0.15s' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            Previous
+          </button>
+          <button
+            onClick={() => setCurrentIndex(i => Math.min(i + 1, total - 1))}
+            disabled={currentIndex === total - 1}
+            style={{ flex: 2, height: '52px', borderRadius: '14px', border: 'none', background: 'rgb(37,99,235)', color: '#fff', fontSize: '14.5px', fontWeight: 700, cursor: currentIndex === total - 1 ? 'not-allowed' : 'pointer', transition: 'transform 0.15s' }}>
+            Next question
+          </button>
+        </div>
+
       </div>
     </div>
   )

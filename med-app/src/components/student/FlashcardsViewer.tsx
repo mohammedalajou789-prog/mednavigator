@@ -1,7 +1,6 @@
 'use client'
-
 import { useState, useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import type { Flashcard } from '@/types/database'
 import MNRenderer from '@/components/student/MNRenderer'
 import { createClient } from '@/lib/supabase/client'
@@ -23,19 +22,18 @@ interface FlashcardsViewerProps {
 export default function FlashcardsViewer({ flashcards, userName, onStatsChange }: FlashcardsViewerProps) {
   const { user } = useUserStore()
   const supabase = createClient()
-
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [cards, setCards] = useState(flashcards)
   const [importantIds, setImportantIds] = useState<Set<string>>(new Set())
-  const [showImportantOnly, setShowImportantOnly] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [knownCount, setKnownCount] = useState(0)
+  const [reviewCount, setReviewCount] = useState(0)
 
-  const displayCards = showImportantOnly ? cards.filter(c => importantIds.has(c.id)) : cards
-  const current = displayCards[currentIndex]
-  const total = displayCards.length
+  const total = cards.length
+  const current = cards[currentIndex]
   const importantCount = importantIds.size
-  const progress = total > 0 ? Math.round(((currentIndex + 1) / total) * 100) : 0
+  const progressPct = total > 0 ? Math.round((currentIndex / total) * 100) : 0
 
   const { data: bookmarkData, isLoading: bookmarkLoading } = useQuery({
     queryKey: ['bookmarks', 'flashcard', user?.id],
@@ -61,8 +59,8 @@ export default function FlashcardsViewer({ flashcards, userName, onStatsChange }
   }, [bookmarkData, bookmarkLoading])
 
   useEffect(() => {
-    onStatsChange?.({ total, important: importantCount, current: currentIndex + 1, easy: 0, medium: 0, hard: 0 })
-  }, [currentIndex, total, importantCount])
+    onStatsChange?.({ total, important: importantCount, current: currentIndex + 1, easy: knownCount, medium: 0, hard: reviewCount })
+  }, [currentIndex, total, importantCount, knownCount, reviewCount])
 
   async function toggleImportant(cardId: string) {
     if (!user) return
@@ -79,6 +77,8 @@ export default function FlashcardsViewer({ flashcards, userName, onStatsChange }
     setCards([...cards].sort(() => Math.random() - 0.5))
     setCurrentIndex(0)
     setFlipped(false)
+    setKnownCount(0)
+    setReviewCount(0)
   }
 
   function handleNext() {
@@ -91,11 +91,25 @@ export default function FlashcardsViewer({ flashcards, userName, onStatsChange }
     setTimeout(() => setCurrentIndex(i => Math.max(i - 1, 0)), 150)
   }
 
+  function handleGotIt() {
+    setKnownCount(k => k + 1)
+    handleNext()
+  }
+
+  function handleNeedsReview() {
+    setReviewCount(r => r + 1)
+    handleNext()
+  }
+
   function renderContent(text: string) {
     if (text.includes('[') && text.includes(']')) {
       return <MNRenderer content={text} showWatermark={false} />
     }
-    return <p style={{ fontSize: '16px', color: '#1E293B', textAlign: 'center', lineHeight: 1.7, margin: 0 }}>{text}</p>
+    return (
+      <p style={{ fontSize: '16px', fontWeight: 600, color: '#22304F', textAlign: 'center', lineHeight: 1.65, margin: 0 }}>
+        {text}
+      </p>
+    )
   }
 
   if (loading) {
@@ -106,26 +120,12 @@ export default function FlashcardsViewer({ flashcards, userName, onStatsChange }
     )
   }
 
-  if (showImportantOnly && displayCards.length === 0) {
-    return (
-      <div style={{ maxWidth: '560px', margin: '0 auto', padding: '60px 24px', textAlign: 'center' }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>⭐</div>
-        <p style={{ fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>No important cards yet</p>
-        <p style={{ fontSize: '13px', color: '#94A3B8', marginBottom: '24px' }}>Mark cards as important while reviewing</p>
-        <button onClick={() => { setShowImportantOnly(false); setCurrentIndex(0) }}
-          style={{ padding: '10px 24px', background: '#2563EB', color: '#fff', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-          Show all cards
-        </button>
-      </div>
-    )
-  }
-
   if (!current) return null
   const isCurrentImportant = importantIds.has(current.id)
 
   return (
     <div
-      style={{ maxWidth: '680px', margin: '0 auto', padding: '24px 20px 80px', userSelect: 'none', position: 'relative' }}
+      style={{ maxWidth: '560px', margin: '0 auto', padding: '8px 0 60px', userSelect: 'none', position: 'relative' }}
       onContextMenu={e => e.preventDefault()}
     >
       {/* Watermark */}
@@ -139,140 +139,307 @@ export default function FlashcardsViewer({ flashcards, userName, onStatsChange }
         </div>
       )}
 
-      {/* Top bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-        <div>
-          <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1E293B' }}>
-            Card {currentIndex + 1} <span style={{ color: '#94A3B8', fontWeight: 400 }}>of {total}</span>
-          </p>
-          {importantCount > 0 && (
-            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#D97706' }}>⭐ {importantCount} important</p>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {importantCount > 0 && (
-            <button
-              onClick={() => { setShowImportantOnly(p => !p); setCurrentIndex(0); setFlipped(false) }}
-              style={{
-                padding: '7px 14px', borderRadius: '10px', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                background: showImportantOnly ? '#F59E0B' : '#FFFBEB',
-                color: showImportantOnly ? '#fff' : '#D97706',
-              }}>
-              ⭐ {showImportantOnly ? 'All cards' : 'Important'}
-            </button>
-          )}
+      {/* Top stats + actions row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', marginBottom: '14px' }}>
+        {/* Known count */}
+        <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 700, color: '#138A5A' }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          {knownCount}
+        </span>
+        {/* Review count */}
+        <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 700, color: '#D89A06' }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z" />
+          </svg>
+          {reviewCount}
+        </span>
+        {/* Shuffle */}
+        <button
+          onClick={handleShuffle}
+          title="Shuffle"
+          style={{ width: '32px', height: '32px', borderRadius: '9px', border: '1px solid #E2E8F0', background: '#fff', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="16 3 21 3 21 8" />
+            <line x1="4" y1="20" x2="21" y2="3" />
+            <polyline points="21 16 21 21 16 21" />
+            <line x1="15" y1="15" x2="21" y2="21" />
+            <line x1="4" y1="4" x2="9" y2="9" />
+          </svg>
+        </button>
+        {/* Important bookmark */}
+        {user && (
           <button
-            onClick={handleShuffle}
-            style={{ padding: '7px 14px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '12px', fontWeight: 500, cursor: 'pointer', background: '#fff', color: '#64748B' }}>
-            Shuffle
+            onClick={() => toggleImportant(current.id)}
+            title={isCurrentImportant ? 'Remove from important' : 'Mark as important'}
+            style={{ width: '32px', height: '32px', borderRadius: '9px', border: '1px solid #E2E8F0', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isCurrentImportant ? '#D97706' : '#94A3B8' }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill={isCurrentImportant ? '#FDE68A' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+            </svg>
           </button>
-        </div>
-      </div>
-
-      {/* Progress bar */}
-      <div style={{ height: '4px', background: '#EEF0F4', borderRadius: '999px', marginBottom: '24px', overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg, #3B82F6, #2563EB)', borderRadius: '999px', transition: 'width 0.3s ease' }} />
-      </div>
-
-      {/* Card */}
-      <div
-        onClick={() => setFlipped(!flipped)}
-        style={{
-          position: 'relative',
-          background: '#fff',
-          borderRadius: '20px',
-          border: `2px solid ${isCurrentImportant ? '#FCD34D' : '#E2E8F0'}`,
-          minHeight: '280px',
-          padding: '32px 28px',
-          cursor: 'pointer',
-          marginBottom: '16px',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
-          transition: 'border-color 0.2s, box-shadow 0.2s',
-        }}
-      >
-        {/* Label */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-          <span style={{
-            fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-            padding: '4px 10px', borderRadius: '20px',
-            background: flipped ? '#F0FDF4' : '#EFF6FF',
-            color: flipped ? '#16A34A' : '#2563EB',
-          }}>
-            {flipped ? 'Answer' : 'Question'}
-          </span>
-          {user && (
-            <button
-              onClick={e => { e.stopPropagation(); toggleImportant(current.id) }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', padding: '4px', lineHeight: 1, transition: 'transform 0.15s' }}
-              title={isCurrentImportant ? 'Remove from important' : 'Mark as important'}
-            >
-              {isCurrentImportant ? '⭐' : '☆'}
-            </button>
-          )}
-        </div>
-
-        {/* Content */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '160px' }}>
-          {renderContent(flipped ? current.back_text : current.front_text)}
-        </div>
-
-        {/* Flip hint */}
-        {!flipped && (
-          <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <span style={{ fontSize: '12px', color: '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                <path d="M3 3v5h5"/>
-              </svg>
-              Tap to reveal answer
-            </span>
-          </div>
         )}
       </div>
 
-      {/* Important status */}
-      <p style={{ textAlign: 'center', fontSize: '12px', color: isCurrentImportant ? '#D97706' : '#CBD5E1', marginBottom: '20px', height: '18px' }}>
-        {isCurrentImportant ? '⭐ Marked as important' : user ? 'Tap ☆ to mark as important' : ''}
-      </p>
-
-      {/* Navigation */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-        <button
-          onClick={handlePrev}
-          disabled={currentIndex === 0}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px',
-            borderRadius: '12px', border: '1px solid #E2E8F0', background: '#fff',
-            fontSize: '13px', fontWeight: 500, color: '#64748B', cursor: 'pointer',
-            opacity: currentIndex === 0 ? 0.4 : 1, transition: 'all 0.15s',
-          }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          Previous
-        </button>
-
-        <button
-          onClick={() => setFlipped(!flipped)}
-          style={{
-            padding: '10px 24px', borderRadius: '12px', border: 'none',
-            background: '#EFF6FF', color: '#2563EB',
-            fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-          }}>
-          Flip card
-        </button>
-
-        <button
-          onClick={handleNext}
-          disabled={currentIndex === total - 1}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px',
-            borderRadius: '12px', border: '1px solid #E2E8F0', background: '#fff',
-            fontSize: '13px', fontWeight: 500, color: '#64748B', cursor: 'pointer',
-            opacity: currentIndex === total - 1 ? 0.4 : 1, transition: 'all 0.15s',
-          }}>
-          Next
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
+      {/* Card counter + progress bar row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+        <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#33415A', whiteSpace: 'nowrap' }}>
+          Card {currentIndex + 1} of {total}
+        </span>
+        <div style={{ flex: 1, height: '3px', borderRadius: '99px', background: '#E7EAF1', overflow: 'hidden' }}>
+          <div style={{ height: '100%', borderRadius: '99px', background: '#2563EB', transition: 'width 0.35s', width: `${progressPct}%` }} />
+        </div>
+        <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#2563EB', whiteSpace: 'nowrap' }}>
+          {progressPct}% completed
+        </span>
       </div>
+
+      {/* Dot navigation */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '7px', marginBottom: '20px' }}>
+        {cards.map((_, i) => (
+          <span
+            key={i}
+            onClick={() => { setCurrentIndex(i); setFlipped(false) }}
+            style={{
+              width: i === currentIndex ? '22px' : '7px',
+              height: '7px',
+              borderRadius: '99px',
+              background: i === currentIndex ? '#2563EB' : '#D6DCE7',
+              transition: 'width 0.3s ease, background 0.3s ease',
+              cursor: 'pointer',
+              display: 'inline-block',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Card stack wrapper */}
+      <div style={{ position: 'relative', marginBottom: '16px' }}>
+        {/* Stack shadow cards */}
+        <div style={{ position: 'absolute', left: '24px', right: '24px', top: '14px', height: '100%', background: '#fff', border: '1px solid #ECEEF3', borderRadius: '24px', opacity: 0.45 }} />
+        <div style={{ position: 'absolute', left: '12px', right: '12px', top: '7px', height: '100%', background: '#fff', border: '1px solid #ECEEF3', borderRadius: '24px', opacity: 0.7 }} />
+
+        {/* Main card with 3D flip */}
+        <div style={{ position: 'relative', perspective: '2000px', width: '100%', height: 'clamp(270px, 42vw, 360px)' }}>
+          <div
+            onClick={() => setFlipped(!flipped)}
+            style={{
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+              transformStyle: 'preserve-3d',
+              transition: 'transform 0.55s cubic-bezier(0.34, 1.1, 0.64, 1)',
+              transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+              cursor: 'pointer',
+            }}
+          >
+            {/* FRONT FACE */}
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              background: 'linear-gradient(#ffffff 0%, #FCFDFF 100%)',
+              border: '1px solid #ECEEF3',
+              borderRadius: '24px',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(16,24,40,0.04), 0 10px 20px -10px rgba(16,24,40,0.12), 0 28px 50px -28px rgba(37,99,235,0.20)',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '30px 32px',
+              textAlign: 'center',
+            }}>
+              {/* Front header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.08em', color: '#2563EB', textTransform: 'uppercase', background: '#EEF3FF', padding: '5px 12px', borderRadius: '99px' }}>
+                  Term
+                </span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8' }}>
+                  Card {currentIndex + 1} / {total}
+                </span>
+              </div>
+              {/* Divider */}
+              <div style={{ height: '1px', background: '#F1F3F7', margin: '16px 0 0', flexShrink: 0 }} />
+              {/* Term content */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', minHeight: 0 }}>
+                <div style={{ fontSize: 'clamp(21px, 3.6vw, 28px)', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
+                  {renderContent(current.front_text)}
+                </div>
+              </div>
+              {/* Tap to reveal */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexShrink: 0, opacity: 0.75 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <span style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 500 }}>Tap to reveal</span>
+              </div>
+            </div>
+
+            {/* BACK FACE */}
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)',
+              background: 'linear-gradient(#F3F7FF 0%, #EAF1FF 100%)',
+              border: `1px solid ${isCurrentImportant ? '#FCD34D' : '#DBE9FE'}`,
+              borderRadius: '24px',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 2px rgba(16,24,40,0.04), 0 10px 20px -10px rgba(16,24,40,0.12), 0 28px 50px -28px rgba(37,107,255,0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '30px 32px',
+              textAlign: 'center',
+            }}>
+              {/* Back header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.08em', color: '#2563EB', textTransform: 'uppercase' }}>
+                  Definition
+                </span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#6C86C4' }}>
+                  Card {currentIndex + 1} / {total}
+                </span>
+              </div>
+              {/* Divider */}
+              <div style={{ height: '1px', background: 'rgba(37,99,235,0.12)', margin: '16px 0 0', flexShrink: 0 }} />
+              {/* Answer content */}
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
+                {renderContent(current.back_text)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      {!flipped ? (
+        /* Before reveal: Previous / Show Answer / Next */
+        <div style={{ display: 'flex', gap: '14px', marginTop: '24px' }}>
+          <button
+            onClick={handlePrev}
+            disabled={currentIndex === 0}
+            style={{
+              flex: 1,
+              height: '52px',
+              borderRadius: '14px',
+              border: '1px solid #E2E8F0',
+              background: '#fff',
+              color: '#475569',
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              opacity: currentIndex === 0 ? 0.45 : 1,
+              transition: 'transform 0.15s',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Previous
+          </button>
+          <button
+            onClick={() => setFlipped(true)}
+            style={{
+              flex: 2,
+              height: '52px',
+              borderRadius: '14px',
+              border: 'none',
+              background: '#2563EB',
+              color: '#fff',
+              fontSize: '14.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'transform 0.15s',
+            }}
+          >
+            Show Answer
+          </button>
+          <button
+            onClick={handleNext}
+            disabled={currentIndex === total - 1}
+            style={{
+              flex: 1,
+              height: '52px',
+              borderRadius: '14px',
+              border: '1px solid #E2E8F0',
+              background: '#fff',
+              color: '#475569',
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: currentIndex === total - 1 ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              opacity: currentIndex === total - 1 ? 0.45 : 1,
+              transition: 'transform 0.15s',
+            }}
+          >
+            Next
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
+      ) : (
+        /* After reveal: Needs review / Got it */
+        <div style={{ display: 'flex', gap: '14px', marginTop: '24px' }}>
+          <button
+            onClick={handleNeedsReview}
+            style={{
+              flex: 1,
+              height: '52px',
+              borderRadius: '14px',
+              border: '1px solid #FCD34D',
+              background: '#FFFBEB',
+              color: '#D97706',
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'transform 0.15s',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z" />
+            </svg>
+            Needs review
+          </button>
+          <button
+            onClick={handleGotIt}
+            style={{
+              flex: 2,
+              height: '52px',
+              borderRadius: '14px',
+              border: 'none',
+              background: '#16A34A',
+              color: '#fff',
+              fontSize: '14.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'transform 0.15s',
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            Got it
+          </button>
+        </div>
+      )}
     </div>
   )
 }

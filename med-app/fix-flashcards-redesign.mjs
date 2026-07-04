@@ -1,4 +1,6 @@
-'use client'
+import { writeFileSync } from 'fs'
+
+const newFile = `'use client'
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { Flashcard } from '@/types/database'
@@ -101,19 +103,12 @@ export default function FlashcardsViewer({ flashcards, userName, onStatsChange }
     handleNext()
   }
 
-  function renderContent(text: string, side: 'front' | 'back' = 'back') {
+  function renderContent(text: string) {
     if (text.includes('[') && text.includes(']')) {
       return <MNRenderer content={text} showWatermark={false} />
     }
-    if (side === 'front') {
-      return (
-        <p style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A', textAlign: 'center', lineHeight: 1.4, margin: 0, letterSpacing: '-0.01em' }}>
-          {text}
-        </p>
-      )
-    }
     return (
-      <p style={{ fontSize: '17px', fontWeight: 500, color: '#22304F', textAlign: 'center', lineHeight: 1.65, margin: 0 }}>
+      <p style={{ fontSize: '16px', fontWeight: 600, color: '#22304F', textAlign: 'center', lineHeight: 1.65, margin: 0 }}>
         {text}
       </p>
     )
@@ -132,14 +127,14 @@ export default function FlashcardsViewer({ flashcards, userName, onStatsChange }
 
   return (
     <div
-      style={{ maxWidth: '740px', margin: '0 auto', padding: '8px 0 60px', userSelect: 'none', position: 'relative' }}
+      style={{ maxWidth: '560px', margin: '0 auto', padding: '8px 0 60px', userSelect: 'none', position: 'relative' }}
       onContextMenu={e => e.preventDefault()}
     >
       {/* Watermark */}
       {userName && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 10, overflow: 'hidden', pointerEvents: 'none', opacity: 0.04 }}>
           {Array.from({ length: 20 }).map((_, i) => (
-            <div key={i} style={{ position: 'absolute', fontSize: '13px', fontWeight: 500, color: '#1E293B', whiteSpace: 'nowrap', top: `${(i % 5) * 22 + 5}%`, left: `${Math.floor(i / 5) * 26 - 5}%`, transform: 'rotate(-30deg)' }}>
+            <div key={i} style={{ position: 'absolute', fontSize: '13px', fontWeight: 500, color: '#1E293B', whiteSpace: 'nowrap', top: \`\${(i % 5) * 22 + 5}%\`, left: \`\${Math.floor(i / 5) * 26 - 5}%\`, transform: 'rotate(-30deg)' }}>
               {userName}
             </div>
           ))}
@@ -196,7 +191,7 @@ export default function FlashcardsViewer({ flashcards, userName, onStatsChange }
           Card {currentIndex + 1} of {total}
         </span>
         <div style={{ flex: 1, height: '3px', borderRadius: '99px', background: '#E7EAF1', overflow: 'hidden' }}>
-          <div style={{ height: '100%', borderRadius: '99px', background: '#2563EB', transition: 'width 0.35s', width: `${progressPct}%` }} />
+          <div style={{ height: '100%', borderRadius: '99px', background: '#2563EB', transition: 'width 0.35s', width: \`\${progressPct}%\` }} />
         </div>
         <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#2563EB', whiteSpace: 'nowrap' }}>
           {progressPct}% completed
@@ -270,8 +265,8 @@ export default function FlashcardsViewer({ flashcards, userName, onStatsChange }
               <div style={{ height: '1px', background: '#F1F3F7', margin: '16px 0 0', flexShrink: 0 }} />
               {/* Term content */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', minHeight: 0 }}>
-                <div style={{ width: '100%' }}>
-                  {renderContent(current.front_text, 'front')}
+                <div style={{ fontSize: 'clamp(21px, 3.6vw, 28px)', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
+                  {renderContent(current.front_text)}
                 </div>
               </div>
               {/* Tap to reveal */}
@@ -292,7 +287,7 @@ export default function FlashcardsViewer({ flashcards, userName, onStatsChange }
               WebkitBackfaceVisibility: 'hidden',
               transform: 'rotateY(180deg)',
               background: 'linear-gradient(#F3F7FF 0%, #EAF1FF 100%)',
-              border: `1px solid ${isCurrentImportant ? '#FCD34D' : '#DBE9FE'}`,
+              border: \`1px solid \${isCurrentImportant ? '#FCD34D' : '#DBE9FE'}\`,
               borderRadius: '24px',
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 2px rgba(16,24,40,0.04), 0 10px 20px -10px rgba(16,24,40,0.12), 0 28px 50px -28px rgba(37,107,255,0.25)',
               display: 'flex',
@@ -450,3 +445,10 @@ export default function FlashcardsViewer({ flashcards, userName, onStatsChange }
     </div>
   )
 }
+`
+
+writeFileSync('src/components/student/FlashcardsViewer.tsx', newFile, 'utf8')
+console.log('done')
+
+const lines = newFile.split('\n').length
+console.log('total lines: ' + lines)

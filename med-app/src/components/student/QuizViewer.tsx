@@ -151,6 +151,7 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px clamp(16px, 3vw, 26px) 60px', userSelect: 'none', position: 'relative' }} onContextMenu={e => e.preventDefault()}>
       {userName && <Watermark userName={userName} />}
+      <div style={{ width: '100%', maxWidth: '640px', marginTop: '6px' }}>
 
       {/* Stats bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
@@ -277,6 +278,7 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
           Next
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
+      </div>
       </div>
     </div>
   )

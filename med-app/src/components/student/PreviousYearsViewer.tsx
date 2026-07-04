@@ -172,7 +172,13 @@ export default function PreviousYearsViewer({ questions, userName, onStatsChange
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filtered.map((q, index) => {
-            const options = Array.isArray(q.options) ? q.options as string[] : []
+            const options: string[] = Array.isArray(q.options)
+              ? q.options.map((o: unknown) => {
+                  if (typeof o === 'string') return o
+                  if (o && typeof o === 'object' && 'text' in o) return (o as { text: string }).text
+                  return ''
+                }).filter(Boolean)
+              : []
             const optionLabels = ['A', 'B', 'C', 'D', 'E']
             const selected = answers[q.id]
             const answered = !!selected

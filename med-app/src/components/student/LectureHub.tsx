@@ -796,21 +796,7 @@ export default function LectureHub({
                   </div>
                 </div>
                 <span style={{ fontSize: '9px', fontWeight: 600, color: '#A0A8B8', letterSpacing: '0.04em' }}>READ</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+              </div>
             ) : (
               <>
                 <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Reading Progress</p>
@@ -845,53 +831,104 @@ export default function LectureHub({
             )}
           </div>
         )}
-        {/* ── COLLAPSED FLASHCARD STATS ── */}
-        {sidebarCollapsed && activeTab === 'flashcards' && (
-          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '10px 8px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-            <div style={{ background: '#EFF6FF', borderRadius: '8px', padding: '6px 8px', textAlign: 'center', width: '100%' }}>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: '#2563EB', lineHeight: 1 }}>{flashcardStats.total}</div>
-              <div style={{ fontSize: '8px', fontWeight: 700, color: '#93C5FD', textTransform: 'uppercase', marginTop: '2px', letterSpacing: '0.04em' }}>TOTAL</div>
-            </div>
-            <div style={{ background: '#FFFBEB', borderRadius: '8px', padding: '6px 8px', textAlign: 'center', width: '100%' }}>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: '#D97706', lineHeight: 1 }}>{flashcardStats.important}</div>
-              <div style={{ fontSize: '8px', fontWeight: 700, color: '#FCD34D', textTransform: 'uppercase', marginTop: '2px', letterSpacing: '0.04em' }}>IMP</div>
-            </div>
-          </div>
-        )}
 
         {/* ── FLASHCARD STATS CARD ── */}
-        {!sidebarCollapsed && activeTab === 'flashcards' && (
-          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Progress</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <StatPill label="Total"     value={flashcardStats.total}     color="blue"  />
-              <StatPill label="Important" value={flashcardStats.important} color="amber" />
-            </div>
+        {activeTab === 'flashcards' && (
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            {sidebarCollapsed ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                <div style={{ position: 'relative', width: '44px', height: '44px' }}>
+                  <svg width="44" height="44" viewBox="0 0 56 56">
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#2563EB" strokeWidth="5" strokeLinecap="round"
+                      strokeDasharray="138.23"
+                      strokeDashoffset={flashcardStats.total > 0 ? 138.23 - (138.23 * (flashcardStats.current - 1) / flashcardStats.total) : 138.23}
+                      transform="rotate(-90 28 28)"
+                      style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#2563EB' }}>{flashcardStats.current}/{flashcardStats.total}</span>
+                  </div>
+                </div>
+                <span style={{ fontSize: '9px', fontWeight: 600, color: '#A0A8B8', letterSpacing: '0.04em' }}>CARDS</span>
+              </div>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Progress</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <StatPill label="Total"     value={flashcardStats.total}     color="blue"  />
+                  <StatPill label="Important" value={flashcardStats.important} color="amber" />
+                </div>
+              </>
+            )}
           </div>
         )}
 
         {/* ── QUIZ STATS CARD ── */}
-        {!sidebarCollapsed && activeTab === 'quiz' && (
-          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Quiz Progress</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <StatPill label="Total"     value={quizStats.total}     color="blue"  />
-              <StatPill label="Correct"   value={quizStats.correct}   color="green" />
-              <StatPill label="Answered"  value={quizStats.answered}  color="slate" />
-              <StatPill label="Important" value={quizStats.important} color="amber" />
-            </div>
+        {activeTab === 'quiz' && (
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            {sidebarCollapsed ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                <div style={{ position: 'relative', width: '44px', height: '44px' }}>
+                  <svg width="44" height="44" viewBox="0 0 56 56">
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#16A34A" strokeWidth="5" strokeLinecap="round"
+                      strokeDasharray="138.23"
+                      strokeDashoffset={quizStats.total > 0 ? 138.23 - (138.23 * quizStats.correct / quizStats.total) : 138.23}
+                      transform="rotate(-90 28 28)"
+                      style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A' }}>{quizStats.answered > 0 ? Math.round(quizStats.correct / quizStats.answered * 100) : 0}%</span>
+                  </div>
+                </div>
+                <span style={{ fontSize: '9px', fontWeight: 600, color: '#A0A8B8', letterSpacing: '0.04em' }}>SCORE</span>
+              </div>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Quiz Progress</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <StatPill label="Total"     value={quizStats.total}     color="blue"  />
+                  <StatPill label="Correct"   value={quizStats.correct}   color="green" />
+                  <StatPill label="Answered"  value={quizStats.answered}  color="slate" />
+                  <StatPill label="Important" value={quizStats.important} color="amber" />
+                </div>
+              </>
+            )}
           </div>
         )}
-
-        {/* ── PYQ STATS CARD ── */}
-        {!sidebarCollapsed && activeTab === 'previous_years' && (
-          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Previous Years</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-              <StatPill label="Total"     value={pyqStats.total}     color="blue"  />
-              <StatPill label="Important" value={pyqStats.important} color="amber" />
-              <StatPill label="Answered"  value={pyqStats.answered}  color="green" />
-            </div>
+        {activeTab === 'previous_years' && (
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            {sidebarCollapsed ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                <div style={{ position: 'relative', width: '44px', height: '44px' }}>
+                  <svg width="44" height="44" viewBox="0 0 56 56">
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#D97706" strokeWidth="5" strokeLinecap="round"
+                      strokeDasharray="138.23"
+                      strokeDashoffset={pyqStats.total > 0 ? 138.23 - (138.23 * pyqStats.answered / pyqStats.total) : 138.23}
+                      transform="rotate(-90 28 28)"
+                      style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#D97706' }}>{pyqStats.answered}/{pyqStats.total}</span>
+                  </div>
+                </div>
+                <span style={{ fontSize: '9px', fontWeight: 600, color: '#A0A8B8', letterSpacing: '0.04em' }}>PYQ</span>
+              </div>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Previous Years</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                  <StatPill label="Total"     value={pyqStats.total}     color="blue"  />
+                  <StatPill label="Important" value={pyqStats.important} color="amber" />
+                  <StatPill label="Answered"  value={pyqStats.answered}  color="green" />
+                </div>
+              </>
+            )}
           </div>
         )}
 

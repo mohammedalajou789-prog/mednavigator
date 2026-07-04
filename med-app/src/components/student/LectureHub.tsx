@@ -796,6 +796,20 @@ export default function LectureHub({
                   </div>
                 </div>
                 <span style={{ fontSize: '9px', fontWeight: 600, color: '#A0A8B8', letterSpacing: '0.04em' }}>READ</span>
+                {activeTab === 'flashcards' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <div style={{ background: '#EFF6FF', borderRadius: '6px', padding: '3px 6px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 800, color: '#2563EB', lineHeight: 1 }}>{flashcardStats.total}</div>
+                        <div style={{ fontSize: '8px', fontWeight: 600, color: '#93C5FD', textTransform: 'uppercase', marginTop: '1px' }}>Total</div>
+                      </div>
+                      <div style={{ background: '#FFFBEB', borderRadius: '6px', padding: '3px 6px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 800, color: '#D97706', lineHeight: 1 }}>{flashcardStats.important}</div>
+                        <div style={{ fontSize: '8px', fontWeight: 600, color: '#FCD34D', textTransform: 'uppercase', marginTop: '1px' }}>Imp</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <>

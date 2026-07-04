@@ -149,7 +149,7 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
   const isCurrentImportant = importantIds.has(current.id)
 
   return (
-    <div style={{ maxWidth: '720px', margin: '0 auto', padding: '24px 20px 80px', userSelect: 'none', position: 'relative' }} onContextMenu={e => e.preventDefault()}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px clamp(16px, 3vw, 26px) 60px', userSelect: 'none', position: 'relative' }} onContextMenu={e => e.preventDefault()}>
       {userName && <Watermark userName={userName} />}
 
       {/* Stats bar */}
@@ -199,10 +199,10 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
 
       {/* Question card */}
       <div style={{
-        background: '#fff', borderRadius: '20px',
-        border: `2px solid ${isCurrentImportant ? '#FCD34D' : '#E2E8F0'}`,
-        padding: '24px', marginBottom: '16px',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+        background: 'linear-gradient(rgb(255,255,255) 0%,rgb(252,253,255) 100%)', borderRadius: '20px',
+        border: `1px solid ${isCurrentImportant ? '#FCD34D' : 'rgb(236,238,243)'}`,
+        padding: '28px 28px 24px', marginBottom: '16px',
+        boxShadow: 'rgba(255,255,255,0.6) 0px 1px 0px inset,rgba(16,24,40,0.04) 0px 1px 2px,rgba(16,24,40,0.12) 0px 10px 20px -12px,rgba(37,99,235,0.18) 0px 26px 46px -28px',
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -254,15 +254,15 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
         </div>
 
         {showExplanation[current.id] && current.explanation && (
-          <div style={{ marginTop: '16px', padding: '14px 16px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '12px' }}>
-            <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: 700, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Explanation</p>
-            <p style={{ margin: 0, fontSize: '13.5px', color: '#1E3A8A', lineHeight: 1.6 }}>{current.explanation}</p>
+          <div style={{ marginTop: '16px', padding: '14px 16px', display: 'flex', gap: '12px', background: 'rgb(238,243,255)', border: '1px solid rgb(220,230,253)', borderRadius: '14px' }}>
+            <span style={{ width: '26px', height: '26px', borderRadius: '8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgb(220,230,253)', color: 'rgb(37,99,235)', marginTop: '1px' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span><div><div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.08em', color: 'rgb(37,99,235)', marginBottom: '4px', textTransform: 'uppercase' }}>EXPLANATION</div>
+            <div style={{ fontSize: '14px', lineHeight: 1.65, color: 'rgb(60,70,97)' }}>{current.explanation}</div></div>
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', gap: '14px', marginTop: '18px' }}>
         <button
           onClick={() => setCurrentIndex(i => Math.max(i - 1, 0))}
           disabled={currentIndex === 0}

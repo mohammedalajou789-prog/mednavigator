@@ -132,7 +132,7 @@ export default function FlashcardsViewer({ flashcards, userName, onStatsChange }
 
   return (
     <div
-      style={{ maxWidth: '740px', margin: '0 auto', padding: '8px 0 60px', userSelect: 'none', position: 'relative' }}
+      style={{ maxWidth: '100%', margin: '0 auto', padding: '8px 0 60px', userSelect: 'none', position: 'relative' }}
       onContextMenu={e => e.preventDefault()}
     >
       {/* Watermark */}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { notifyNewSubject } from '@/lib/services/notifications'
 
 interface University {
   id: string
@@ -70,6 +71,18 @@ export default function NewSubjectPage() {
           is_active: true,
         })
       if (insertError) { setError('Failed to create subject. ' + insertError.message); return }
+
+      // Notify university students of new subject
+      if (form.is_published) {
+        const uni = universities.find(u => u.id === form.university_id)
+        if (uni) {
+          await notifyNewSubject({
+            universityId: form.university_id,
+            universityName: uni.name,
+            subjectName: form.name.trim(),
+          })
+        }
+      }
       router.push('/owner/subjects')
       router.refresh()
     } finally {

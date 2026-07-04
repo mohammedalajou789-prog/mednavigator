@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { notifySubscriptionGranted } from '@/lib/services/notifications'
 
 interface User {
   id: string
@@ -84,6 +85,16 @@ export default function NewSubscriptionPage() {
         })
 
       if (insertError) { setError('Failed to grant access. ' + insertError.message); return }
+
+      // Notify student of new subscription
+      const subjectData = subjects.find(s => s.id === form.subjectId)
+      if (subjectData) {
+        await notifySubscriptionGranted({
+          userId: form.userId,
+          subjectName: subjectData.name,
+          endDate: endDate.toISOString(),
+        })
+      }
       router.push('/owner/subscriptions')
       router.refresh()
     } finally {

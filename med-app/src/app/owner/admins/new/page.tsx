@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { notifyAdminAssigned } from '@/lib/services/notifications'
 
 interface University {
   id: string
@@ -137,6 +138,19 @@ export default function NewAdminPage() {
         await supabase.from('admin_assignments').insert(assignmentRows)
       }
 
+
+      // Notify admin of their new subject assignments
+      for (const a of assignments) {
+        const uni = universities.find(u => u.id === a.universityId)
+        const sub = subjects.find(s => s.id === a.subjectId)
+        if (uni && sub) {
+          await notifyAdminAssigned({
+            adminUserId: userRecord.id,
+            subjectName: sub.name,
+            universityName: uni.name,
+          })
+        }
+      }
       router.push('/owner/admins')
       router.refresh()
     } finally {

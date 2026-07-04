@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils/cn'
 import type { University } from '@/types/database'
+import { notifyOwnerUniversityRequest } from '@/lib/services/notifications'
 
 const registerSchema = z.object({
   full_name: z.string().min(2, 'Full name must be at least 2 characters'),
@@ -94,6 +95,20 @@ export default function RegisterPage() {
             status: 'pending',
           })
         }
+
+          // Notify owner of university request
+          const { data: ownerRecord } = await supabase
+            .from('users')
+            .select('id')
+            .eq('role', 'owner')
+            .maybeSingle()
+          if (ownerRecord) {
+            await notifyOwnerUniversityRequest({
+              ownerUserId: ownerRecord.id,
+              requestedName: formData.requested_university_name?.trim() ?? '',
+              studentName: formData.full_name,
+            })
+          }
       }
 
       // Step 4 — Immediately sign in with the same credentials (auto-login)

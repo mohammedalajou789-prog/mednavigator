@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { notifyNewUniversity } from '@/lib/services/notifications'
 
 export default function NewUniversityPage() {
   const router = useRouter()
@@ -63,6 +64,9 @@ export default function NewUniversityPage() {
           slug,
         } as any)
       if (insertError) { setError('Failed to create university. Please try again.'); return }
+
+      // Notify all users of new university
+      await notifyNewUniversity({ universityName: form.name.trim() })
       router.push('/owner/universities')
       router.refresh()
     } finally {

@@ -996,13 +996,6 @@ export default function LectureHub({
           <div style={{ background: '#fff', borderRadius: '16px', border: `1px solid ${'#EAEDF2'}`, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Actions</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button onClick={handleMarkComplete}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, background: isCompleted ? '#16A34A' : '#EEF3FF', color: isCompleted ? '#fff' : '#2563EB', transition: 'all 0.15s ease' }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  {isCompleted ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></> : <circle cx="12" cy="12" r="10"/>}
-                </svg>
-                {isCompleted ? 'Completed' : 'Mark as Completed'}
-              </button>
               <button onClick={handleToggleBookmark}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', border: '1px solid #EAEDF2', cursor: 'pointer', fontSize: '13px', fontWeight: 500, background: isBookmarked ? '#FFF7ED' : '#fff', color: isBookmarked ? '#D97706' : '#6B7280', transition: 'all 0.15s ease' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? '#D97706' : 'none'} stroke={isBookmarked ? '#D97706' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

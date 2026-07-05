@@ -77,35 +77,33 @@ export default async function SubjectPage({ params }: PageProps) {
     last_accessed_at: string | null
     progress_percentage: number
   }
-  let progressRows: ProgressRow[] = []
+  type ChecklistRow = { lecture_id: string; stars: number }
+  let checklistRows: ChecklistRow[] = []
 
   if (userId && lectureIds.length > 0) {
     const { data } = await supabase
-      .from('user_progress')
-      .select('lecture_id,completed,last_accessed_at,progress_percentage')
+      .from('checklist_progress')
+      .select('lecture_id,stars')
       .eq('user_id', userId)
       .in('lecture_id', lectureIds)
-    progressRows = (data ?? []) as ProgressRow[]
+    checklistRows = (data ?? []) as ChecklistRow[]
   }
 
-  const progressByLecture: Record<string, ProgressRow> = {}
-  progressRows.forEach(r => {
-    if (!progressByLecture[r.lecture_id] || r.progress_percentage > progressByLecture[r.lecture_id].progress_percentage)
-      progressByLecture[r.lecture_id] = r
-  })
+  const starsByLecture: Record<string, number> = {}
+  checklistRows.forEach(r => { starsByLecture[r.lecture_id] = r.stars })
 
-  const completedCount  = Object.values(progressByLecture).filter(r => r.completed).length
-  const progressPercent = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0
+  const totalStars    = Object.values(starsByLecture).reduce((s, n) => s + n, 0)
+  const progressPercent = totalLectures > 0 ? Math.round((totalStars / (totalLectures * 3)) * 100) : 0
 
   const groupStats = groups.map(group => {
     const gLectures  = lectureList.filter((l: any) => isSystem ? l.sub_subject_id === group.id : l.chapter_id === group.id)
     const gTotal     = gLectures.length
-    const gCompleted = gLectures.filter((l: any) => progressByLecture[l.id]?.completed).length
+    const gStars     = gLectures.reduce((s: number, l: any) => s + (starsByLecture[l.id] ?? 0), 0)
     const gFlash     = gLectures.reduce((s: number, l: any) => s + (flashMap[l.id] ?? 0), 0)
     const gQuiz      = gLectures.reduce((s: number, l: any) => s + (quizMap[l.id]  ?? 0), 0)
     const gPyq       = gLectures.reduce((s: number, l: any) => s + (pyqMap[l.id]   ?? 0), 0)
-    const gPct       = gTotal > 0 ? Math.round((gCompleted / gTotal) * 100) : 0
-    return { group, gTotal, gCompleted, gFlash, gQuiz, gPyq, gPct }
+    const gPct       = gTotal > 0 ? Math.round((gStars / (gTotal * 3)) * 100) : 0
+    return { group, gTotal, gStars, gFlash, gQuiz, gPyq, gPct }
   }).filter(s => s.gTotal > 0)
 
   const typeBadge   = subject.subject_type === 'system' ? 'System' : subject.subject_type === 'standard' ? 'Standard' : 'Clinical'
@@ -170,7 +168,7 @@ export default async function SubjectPage({ params }: PageProps) {
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                   <div style={{ fontSize: 38, fontWeight: 800, color: '#2F6BFF', letterSpacing: '-0.03em' }}>{progressPercent}%</div>
-                  <div style={{ fontSize: 11, color: 'rgba(27,35,53,0.55)', fontWeight: 600 }}>{completedCount} of {totalLectures} done</div>
+                  <div style={{ fontSize: 11, color: 'rgba(27,35,53,0.55)', fontWeight: 600 }}>{Math.round(totalStars / 3 * 10) / 10} of {totalLectures} lectures</div>
                 </div>
               </div>
             </div>
@@ -188,7 +186,7 @@ export default async function SubjectPage({ params }: PageProps) {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {groupStats.map(({ group, gTotal, gCompleted, gFlash, gQuiz, gPyq, gPct }) => {
+              {groupStats.map(({ group, gTotal, gStars, gFlash, gQuiz, gPyq, gPct }) => {
                 const isDone = gPct === 100
                 return (
                   <Link
@@ -223,11 +221,11 @@ export default async function SubjectPage({ params }: PageProps) {
                         </div>
                       </div>
                       <div style={{ height: 5, background: 'var(--bg-2)', marginTop: 16, borderRadius: 99 }}>
-                        <div style={{ height: '100%', width: `${gPct}%`, background: isDone ? 'var(--success)' : 'var(--primary)', borderRadius: 99 }} />
+                        <div style={{ height: '100%', width: `${gPct}%`, background: gPct === 100 ? 'var(--success)' : 'var(--primary)', borderRadius: 99 }} />
                       </div>
-                      {gCompleted > 0 && (
+                      {gStars > 0 && (
                         <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--ink-3)', fontWeight: 600 }}>
-                          {gCompleted} of {gTotal} lectures completed
+                          {Math.round(gStars / 3 * 10) / 10} of {gTotal} lectures
                         </div>
                       )}
                     </div>

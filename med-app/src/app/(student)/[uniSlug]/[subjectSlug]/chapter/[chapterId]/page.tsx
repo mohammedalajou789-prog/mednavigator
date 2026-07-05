@@ -2,6 +2,7 @@ import { getAuthUser } from '@/lib/services/user'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import LectureStarsClient from '@/components/student/LectureStarsClient'
 
 interface PageProps {
   params: Promise<{ uniSlug: string; subjectSlug: string; chapterId: string }>
@@ -18,8 +19,8 @@ export default async function ChapterPage({ params }: PageProps) {
   ])
   if (!uniRow || !subRow) notFound()
 
-  const subjectId = subRow.id
-  const isSystem  = subRow.subject_type === 'system'
+  const subjectId  = subRow.id
+  const isSystem   = subRow.subject_type === 'system'
   const groupLabel = isSystem ? 'Sub-Subject' : 'Chapter'
 
   // Resolve the chapter or sub_subject
@@ -72,27 +73,25 @@ export default async function ChapterPage({ params }: PageProps) {
     })
   }
 
-  type ProgressRow = { lecture_id: string; completed: boolean; last_accessed_at: string | null; progress_percentage: number }
-  let progressRows: ProgressRow[] = []
+  // ── STARS PROGRESS (checklist_progress) ───────────────────────────────────
+  type ChecklistRow = { lecture_id: string; stars: number }
+  let checklistRows: ChecklistRow[] = []
 
   if (userId && lectureIds.length > 0) {
     const { data } = await supabase
-      .from('user_progress')
-      .select('lecture_id,completed,last_accessed_at,progress_percentage')
+      .from('checklist_progress')
+      .select('lecture_id,stars')
       .eq('user_id', userId)
       .in('lecture_id', lectureIds)
-    progressRows = (data ?? []) as ProgressRow[]
+    checklistRows = (data ?? []) as ChecklistRow[]
   }
 
-  const progressByLecture: Record<string, ProgressRow> = {}
-  progressRows.forEach(r => {
-    if (!progressByLecture[r.lecture_id] || r.progress_percentage > progressByLecture[r.lecture_id].progress_percentage)
-      progressByLecture[r.lecture_id] = r
-  })
+  const starsByLecture: Record<string, number> = {}
+  checklistRows.forEach(r => { starsByLecture[r.lecture_id] = r.stars })
 
-  const completedCount  = Object.values(progressByLecture).filter(r => r.completed).length
+  const totalStars      = Object.values(starsByLecture).reduce((s, n) => s + n, 0)
   const totalLectures   = lectureList.length
-  const progressPercent = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0
+  const progressPercent = totalLectures > 0 ? Math.round((totalStars / (totalLectures * 3)) * 100) : 0
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)', fontFamily: '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif' }}>
@@ -116,7 +115,7 @@ export default async function ChapterPage({ params }: PageProps) {
             <h1 style={{ margin: '0 0 10px', fontSize: 'clamp(22px,5vw,34px)', fontWeight: 800, letterSpacing: '-0.03em', color: '#15203A' }}>{groupRow.title}</h1>
             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 13.5, color: 'rgba(27,35,53,0.6)', fontWeight: 600 }}>{totalLectures} lecture{totalLectures !== 1 ? 's' : ''}</span>
-              <span style={{ fontSize: 13.5, color: 'rgba(27,35,53,0.6)', fontWeight: 600 }}>{completedCount} completed</span>
+              <span style={{ fontSize: 13.5, color: 'rgba(27,35,53,0.6)', fontWeight: 600 }}>{Math.round(totalStars / 3 * 10) / 10} of {totalLectures} reviewed</span>
             </div>
           </div>
           <div style={{ position: 'relative', width: 80, height: 80, flexShrink: 0 }}>
@@ -138,18 +137,19 @@ export default async function ChapterPage({ params }: PageProps) {
               No lectures in this {groupLabel.toLowerCase()} yet.
             </div>
           ) : lectureList.map((lecture: any, idx: number) => {
-            const lp          = progressByLecture[lecture.id]
-            const isDone      = lp?.completed ?? false
-            const pct         = lp?.progress_percentage ?? 0
-            const hasSheet    = sheetMap[lecture.id]   ?? false
-            const hasSummary  = summaryMap[lecture.id] ?? false
-            const hasFl       = (flashMap[lecture.id]  ?? 0) > 0
-            const hasQuiz     = (quizMap[lecture.id]   ?? 0) > 0
-            const hasPYQ      = (pyqMap[lecture.id]    ?? 0) > 0
-            const lectureSlug = lecture.slug ?? lecture.id
-            const statusLabel = isDone ? 'Completed' : pct > 0 ? `${pct}%` : 'Not started'
-            const statusColor = isDone ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--ink-3)'
-            const statusBg    = isDone ? 'rgba(19,138,90,0.11)' : pct > 0 ? 'rgba(216,154,6,0.11)' : 'var(--bg-2)'
+            const lectureStars = starsByLecture[lecture.id] ?? 0
+            const starsPct     = Math.round((lectureStars / 3) * 100)
+            const hasSheet     = sheetMap[lecture.id]   ?? false
+            const hasSummary   = summaryMap[lecture.id] ?? false
+            const hasFl        = (flashMap[lecture.id]  ?? 0) > 0
+            const hasQuiz      = (quizMap[lecture.id]   ?? 0) > 0
+            const hasPYQ       = (pyqMap[lecture.id]    ?? 0) > 0
+            const lectureSlug  = lecture.slug ?? lecture.id
+
+            // Star-based status
+            const statusLabel = lectureStars === 3 ? 'Mastered' : lectureStars === 2 ? 'Almost There' : lectureStars === 1 ? 'Need Review' : 'Not started'
+            const statusColor = lectureStars === 3 ? 'var(--success)' : lectureStars > 0 ? 'var(--warn)' : 'var(--ink-3)'
+            const statusBg    = lectureStars === 3 ? 'rgba(19,138,90,0.11)' : lectureStars > 0 ? 'rgba(216,154,6,0.11)' : 'var(--bg-2)'
 
             return (
               <div key={lecture.id}>
@@ -160,13 +160,16 @@ export default async function ChapterPage({ params }: PageProps) {
                     prefetch={false}
                     style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit', borderRadius: 12, padding: '8px 10px', margin: '-8px -10px', background: 'rgba(47,107,255,0.025)', border: '1px solid rgba(47,107,255,0.07)' }}
                   >
-                    <div style={{ width: 48, height: 48, borderRadius: 14, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDone ? 'rgba(19,138,90,0.11)' : 'rgba(47,107,255,0.11)', color: isDone ? 'var(--success)' : 'var(--primary)' }}>
-                      {isDone ? (
+                    {/* Icon */}
+                    <div style={{ width: 48, height: 48, borderRadius: 14, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: lectureStars === 3 ? 'rgba(19,138,90,0.11)' : 'rgba(47,107,255,0.11)', color: lectureStars === 3 ? 'var(--success)' : 'var(--primary)' }}>
+                      {lectureStars === 3 ? (
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                       ) : (
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>
                       )}
                     </div>
+
+                    {/* Title + subtitle */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>{lecture.title}</div>
                       <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginTop: 3 }}>
@@ -175,13 +178,28 @@ export default async function ChapterPage({ params }: PageProps) {
                         {(quizMap[lecture.id]  ?? 0) > 0 && `${quizMap[lecture.id]} questions`}
                       </div>
                     </div>
-                    <span style={{ fontSize: 11.5, fontWeight: 700, color: statusColor, padding: '5px 11px', borderRadius: 8, background: statusBg, flexShrink: 0 }}>
-                      {statusLabel}
-                    </span>
+
+                    {/* Stars + status badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      {userId && (
+                        <LectureStarsClient
+                          lectureId={lecture.id}
+                          initialStars={lectureStars}
+                          userId={userId}
+                        />
+                      )}
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: statusColor, padding: '5px 11px', borderRadius: 8, background: statusBg }}>
+                        {statusLabel}
+                      </span>
+                    </div>
                   </Link>
+
+                  {/* Progress bar — based on stars */}
                   <div style={{ height: 4, background: 'var(--bg-2)', margin: '14px 0 12px', borderRadius: 99 }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: isDone ? 'var(--success)' : 'var(--primary)', borderRadius: 99 }} />
+                    <div style={{ height: '100%', width: `${starsPct}%`, background: lectureStars === 3 ? 'var(--success)' : 'var(--primary)', borderRadius: 99 }} />
                   </div>
+
+                  {/* Content badges */}
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {hasSheet && (
                       <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} prefetch={false} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 36, padding: '0 14px', borderRadius: 9, border: '1px solid color-mix(in srgb,var(--primary) 30%,var(--line))', background: 'rgba(47,107,255,0.09)', color: 'var(--primary)', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>

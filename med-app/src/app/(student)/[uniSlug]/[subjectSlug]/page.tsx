@@ -193,7 +193,7 @@ export default async function SubjectPage({ params }: PageProps) {
                 return (
                   <Link
                     key={group.id}
-                    href={`/${uniSlug}/${subjectSlug}/${group.id}`}
+                    href={`/${uniSlug}/${subjectSlug}/chapter/${group.id}`}
                     prefetch={false}
                     style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
                   >

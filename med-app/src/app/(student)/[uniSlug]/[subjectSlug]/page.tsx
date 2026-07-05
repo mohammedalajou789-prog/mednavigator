@@ -2,6 +2,7 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import ChapterAccordion from '@/components/student/ChapterAccordion'
 
 interface PageProps {
   params: Promise<{ uniSlug: string; subjectSlug: string }>
@@ -10,7 +11,6 @@ interface PageProps {
 export default async function SubjectPage({ params }: PageProps) {
   const { uniSlug, subjectSlug } = await params
 
-  // ── resolve slugs + auth in parallel ─────────────────────────────
   const supabase = await createServerClient()
   const [
     { data: uniRow },
@@ -32,7 +32,6 @@ export default async function SubjectPage({ params }: PageProps) {
     userId = profile?.id ?? null
   }
 
-  // ── base data (fetched by id now that slugs are resolved) ──────────
   const [{ data: university }, { data: subject }] = await Promise.all([
     supabase.from('universities').select('id,name').eq('id', universityId).single(),
     supabase.from('subjects').select('id, name, description, access_mode, subject_type').eq('id', subjectId).eq('is_published', true).single(),
@@ -59,7 +58,6 @@ export default async function SubjectPage({ params }: PageProps) {
   const lectureList = lectures ?? []
   const lectureIds  = lectureList.map((l: any) => l.id)
 
-  // ── content counts per lecture ─────────────────────────────────────
   const sheetMap:   Record<string, boolean> = {}
   const summaryMap: Record<string, boolean> = {}
   const flashMap:   Record<string, number>  = {}
@@ -85,7 +83,6 @@ export default async function SubjectPage({ params }: PageProps) {
     })
   }
 
-  // ── user progress ──────────────────────────────────────────────────
   type ProgressRow = {
     lecture_id: string
     completed: boolean
@@ -118,22 +115,6 @@ export default async function SubjectPage({ params }: PageProps) {
   const totalLectures   = lectureList.length
   const progressPercent = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0
 
-  // continue-reading
-  const continueLecture  = continueRow ? lectureList.find((l: any) => l.id === continueRow!.lecture_id) : null
-  const continueGroup    = continueLecture
-    ? groups.find(g => g.id === (isSystem ? (continueLecture as any).sub_subject_id : (continueLecture as any).chapter_id))
-    : null
-  const continueProgress = continueRow?.progress_percentage ?? 0
-  const continueCta      = continueProgress > 0 ? 'Resume reading →' : 'Start reading →'
-  const continueLabel    = continueRow?.completed ? 'COMPLETED · REREAD' : continueProgress > 0 ? 'CONTINUE READING' : 'START READING'
-
-  // recently completed (max 3)
-  const recentlyCompleted = progressRows
-    .filter(r => r.completed)
-    .sort((a, b) => new Date(b.last_accessed_at ?? 0).getTime() - new Date(a.last_accessed_at ?? 0).getTime())
-    .slice(0, 3)
-
-  // badges
   const typeBadge   = subject.subject_type === 'system' ? 'System' : subject.subject_type === 'standard' ? 'Standard' : 'Clinical'
   const accessBadge = subject.access_mode  === 'free'   ? 'Free'   : subject.access_mode  === 'mixed'    ? 'Mixed'    : 'Premium'
 
@@ -141,9 +122,31 @@ export default async function SubjectPage({ params }: PageProps) {
     osce: 'OSCE Stations', mini_osce: 'Mini-OSCE', oral_exam: 'Oral Exam',
   }
 
-  
+  // Build serialisable data for the client component
+  const groupsData = groups.map(group => {
+    const groupLectures = lectureList.filter((l: any) =>
+      isSystem ? l.sub_subject_id === group.id : l.chapter_id === group.id)
+    return {
+      id: group.id,
+      title: group.title,
+      lectures: groupLectures.map((lecture: any) => {
+        const lp = progressByLecture[lecture.id]
+        return {
+          id: lecture.id,
+          title: lecture.title,
+          slug: (lecture as any).slug ?? lecture.id,
+          completed: lp?.completed ?? false,
+          progress: lp?.progress_percentage ?? 0,
+          hasSheet:   sheetMap[lecture.id]  ?? false,
+          hasSummary: summaryMap[lecture.id] ?? false,
+          flashCount: flashMap[lecture.id]  ?? 0,
+          quizCount:  quizMap[lecture.id]   ?? 0,
+          pyqCount:   pyqMap[lecture.id]    ?? 0,
+        }
+      }),
+    }
+  }).filter(g => g.lectures.length > 0)
 
-  // ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)', fontFamily: '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif' }}>
       <main style={{ maxWidth: 1080, margin: '0 auto', padding: 'clamp(16px, 4vw, 28px) clamp(16px, 4vw, 28px) 64px' }}>
@@ -158,21 +161,20 @@ export default async function SubjectPage({ params }: PageProps) {
         </div>
 
         {/* Hero Banner */}
-        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: 'clamp(18px, 4vw, 32px) clamp(18px, 4vw, 34px)', marginBottom: 18, background: 'linear-gradient(120deg,rgb(232,240,255) 0%,rgb(239,244,255) 46%,rgb(250,251,255) 100%)', border: '1px solid rgb(223,232,251)', boxShadow: 'none' }}>
-          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 320, height: 160, background: 'radial-gradient(rgba(249,168,212,0.3) 0%,rgba(216,180,254,0.15) 55%,transparent 75%)', pointerEvents: 'none', borderRadius: '50%', filter: 'blur(24px)', zIndex: 0 }} />
+        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 24, padding: 'clamp(18px, 4vw, 32px) clamp(18px, 4vw, 34px)', marginBottom: 32, background: 'linear-gradient(120deg,rgb(232,240,255) 0%,rgb(239,244,255) 46%,rgb(250,251,255) 100%)', border:'1px solid rgb(223,232,251)' }}>
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 320, height: 160, background: 'radial-gradient(rgba(249,168,212,0.3) 0%,rgba(216,180,254,0.15) 55%,transparent 75%)', pointerEvents: 'none', borderRadius:'50%', filter: 'blur(24px)', zIndex: 0 }} />
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 30, flexWrap: 'wrap-reverse' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '5px 13px', borderRadius: 999, background: 'rgb(239,244,255)', border: '1px solid rgb(213,226,255)', color: '#2F6BFF' }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#5BE0A8' }} />
-                  {typeBadge}
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#5BE0A8' }} />{typeBadge}
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '5px 13px', borderRadius: 999, background: 'rgb(255,246,224)', border: '1px solid rgb(243,225,174)', color: '#A1730A' }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15 9 22 9 16.5 13.5 18.5 21 12 16.5 5.5 21 7.5 13.5 2 9 9 9"/></svg>
                   {accessBadge}
                 </span>
               </div>
-              <h1 style={{ margin: '0 0 10px', fontSize: 'clamp(24px, 6vw, 40px)', fontWeight: 800, letterSpacing: '-0.035em', color: '#15203A' }}>{subject.name}</h1>
+              <h1 style={{ margin: '0 0 10px', fontSize: 'clamp(24px, 6vw, 40px)', fontWeight: 800, letterSpacing: '-0.035em', color:'#15203A' }}>{subject.name}</h1>
               {subject.description && (
                 <p style={{ margin: '0 0 22px', fontSize: 14.5, lineHeight: 1.55, color: 'rgba(27,35,53,0.65)', maxWidth: 680 }}>{subject.description}</p>
               )}
@@ -184,137 +186,56 @@ export default async function SubjectPage({ params }: PageProps) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(47,107,255,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: '#15203A' }}>{groups.length}</span>
-                  <span style={{ fontSize: 13, color: 'rgba(27,35,53,0.55)' }}>{isSystem ? 'Sub-Subjects' : 'Chapter'}{groups.length !== 1 ? 's' : ''}</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#15203A' }}>{groupsData.length}</span>
+                  <span style={{ fontSize: 13, color: 'rgba(27,35,53,0.55)' }}>{isSystem ? 'Sub-Subject' : 'Chapter'}{groupsData.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(47,107,255,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#15203A' }}>{progressPercent}%</span>
+                  <span style={{ fontSize: 13, color: 'rgba(27,35,53,0.55)' }}>Complete</span>
                 </div>
               </div>
             </div>
             {/* Progress Ring */}
-            <div className="hidden sm:flex" style={{ flexShrink: 0, flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-              <div style={{ position: 'relative', width: 160, height: 160 }}>
-                <svg width="160" height="160" viewBox="0 0 124 124" style={{ transform: 'rotate(-90deg)' }}>
+            <div className="hidden sm:flex" style={{ flexShrink: 0, flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ position: 'relative', width: 140, height: 140 }}>
+                <svg width="140" height="140" viewBox="0 0 124 124" style={{ transform: 'rotate(-90deg)' }}>
                   <circle cx="62" cy="62" r="54" fill="none" stroke="rgba(47,107,255,0.18)" strokeWidth="10"/>
                   <circle cx="62" cy="62" r="54" fill="none" stroke="#2F6BFF" strokeWidth="10" strokeLinecap="round"
                     strokeDasharray="339.3" strokeDashoffset={339.3 * (1 - progressPercent / 100)}/>
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ fontSize: 38, fontWeight: 800, color: '#2F6BFF', letterSpacing: '-0.03em' }}>{progressPercent}%</div>
-                  <div style={{ fontSize: 11, color: 'rgba(27,35,53,0.55)', fontWeight: 600 }}>{completedCount} of {totalLectures} done</div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: '#2F6BFF', letterSpacing: '-0.03em' }}>{progressPercent}%</div>
+                  <div style={{ fontSize: 11, color: 'rgba(27,35,53,0.55)', fontWeight: 600 }}>{completedCount}/{totalLectures}</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        
+        {/* Main layout: chapters left, sidebar right */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 280px', gap: 28, alignItems: 'start' }}>
 
-        {/* Two Column Layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 420px), 1fr))', gap: 24, alignItems: 'start' }}>
-
-          {/* LEFT: Lectures */}
+          {/* LEFT: Chapter Accordion */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em' }}>Lectures</h2>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>{totalLectures} units</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+                {isSystem ? 'Sub-Subjects' : 'Chapters'}
+              </h2>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-3)' }}>{groupsData.length} {isSystem ? 'sub-subjects' : 'chapters'} · {totalLectures} lectures</span>
             </div>
-
-            {groups.map(group => {
-              const groupLectures = lectureList.filter((l: any) =>
-                isSystem ? l.sub_subject_id === group.id : l.chapter_id === group.id)
-              if (groupLectures.length === 0) return null
-              return (
-                <div key={group.id} style={{ marginTop: 18 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--ink-3)', marginBottom: 12 }}>
-                    {group.title.toUpperCase()}
-                  </div>
-                  <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, boxShadow: 'var(--shadow)', overflow: 'hidden' }}>
-                    {groupLectures.map((lecture: any, idx: number) => {
-                      const lp     = progressByLecture[lecture.id]
-                      const isDone = lp?.completed ?? false
-                      const pct    = lp?.progress_percentage ?? 0
-                      const hasSheet   = sheetMap[lecture.id]   ?? false
-                      const hasSummary = summaryMap[lecture.id] ?? false
-                      const hasFl      = (flashMap[lecture.id]  ?? 0) > 0
-                      const hasQuiz    = (quizMap[lecture.id]   ?? 0) > 0
-                      const hasPYQ     = (pyqMap[lecture.id]    ?? 0) > 0
-                      const lectureSlug = (lecture as any).slug ?? lecture.id
-                      const statusLabel = isDone ? 'Completed' : pct > 0 ? `${pct}%` : 'Not started'
-                      const statusColor = isDone ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--ink-3)'
-                      const statusBg    = isDone ? 'rgba(19,138,90,0.11)' : pct > 0 ? 'rgba(216,154,6,0.11)' : 'var(--bg-2)'
-
-                      return (
-                        <div key={lecture.id}>
-                          {idx > 0 && <div style={{ height: 1, background: 'var(--line)', margin: '0 20px' }} />}
-                          <div style={{ padding: '18px 20px' }}>
-                            <Link
-                              href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} prefetch={false}
-                              style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit', borderRadius: 12, padding: '6px 8px', margin: '-6px -8px', transition: 'background 0.15s', background: 'rgba(47,107,255,0.03)', border: '1px solid rgba(47,107,255,0.08)' }}
-                            >
-                              <div style={{ width: 46, height: 46, borderRadius: 13, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDone ? 'rgba(19,138,90,0.11)' : 'rgba(47,107,255,0.11)', color: isDone ? 'var(--success)' : 'var(--primary)' }}>
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 16, fontWeight: 700 }}>{lecture.title}</div>
-                                <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginTop: 2 }}>
-                                  {group.title}
-                                  {(flashMap[lecture.id] ?? 0) > 0 && ` · ${flashMap[lecture.id]} flashcards`}
-                                  {(quizMap[lecture.id] ?? 0) > 0 && ` · ${quizMap[lecture.id]} questions`}
-                                </div>
-                              </div>
-                              <span style={{ fontSize: 11.5, fontWeight: 700, color: statusColor, padding: '5px 11px', borderRadius: 8, background: statusBg }}>
-                                {statusLabel}
-                              </span>
-                            </Link>
-                            <div style={{ height: 4, background: 'var(--bg-2)', margin: '14px 0', borderRadius: 99 }}>
-                              <div style={{ height: '100%', width: `${pct}%`, background: isDone ? 'var(--success)' : 'var(--primary)', borderRadius: 99 }} />
-                            </div>
-                            <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
-                              {hasSheet && (
-                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} prefetch={false} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid color-mix(in srgb,var(--primary) 30%,var(--line))', background: 'rgba(47,107,255,0.09)', color: 'var(--primary)', fontSize: 13.5, fontWeight: 700, textDecoration: 'none' }}>
-                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                                  Sheet
-                                </Link>
-                              )}
-                              {hasSummary && (
-                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} prefetch={false} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
-                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                                  Summary
-                                </Link>
-                              )}
-                              {hasFl && (
-                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} prefetch={false} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
-                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-                                  Flashcards
-                                </Link>
-                              )}
-                              {hasQuiz && (
-                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} prefetch={false} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
-                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                                  Quiz
-                                </Link>
-                              )}
-                              {hasPYQ && (
-                                <Link href={`/${uniSlug}/${subjectSlug}/${lectureSlug}`} prefetch={false} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--ink-2)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>
-                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                  Previous Years
-                                </Link>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
+            <ChapterAccordion
+              groups={groupsData}
+              uniSlug={uniSlug}
+              subjectSlug={subjectSlug}
+              isSystem={isSystem}
+            />
           </div>
 
           {/* RIGHT: Sidebar */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--ink-3)' }}>MORE IN THIS SUBJECT</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--ink-3)', marginBottom: 4 }}>MORE IN THIS SUBJECT</div>
 
-            {/* Videos */}
             {videos && videos.length > 0 && (
               <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow)', overflow: 'hidden' }}>
                 <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 13 }}>
@@ -323,11 +244,11 @@ export default async function SubjectPage({ params }: PageProps) {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14.5, fontWeight: 700 }}>Video Lectures</div>
-                    <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{videos[0]?.title ?? ''}{videos.length > 1 ? ` · +${videos.length - 1} more` : ''}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{videos.length} video{videos.length !== 1 ? 's' : ''}</div>
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)' }}>{videos.length}</span>
                 </div>
-                {videos.slice(0, 2).map((v, i) => (
+                {videos.slice(0, 2).map((v) => (
                   <div key={v.id}>
                     <div style={{ height: 1, background: 'var(--line)', margin: '0 18px' }} />
                     <a href={v.video_url} target="_blank" rel="noopener noreferrer" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit' }}>
@@ -340,7 +261,6 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             )}
 
-            {/* Previous Years */}
             <Link href={`/${uniSlug}/${subjectSlug}/previous-years`} style={{ textDecoration: 'none', display: 'block' }}>
               <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow)', padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 13, cursor: 'pointer' }}>
                 <div style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(110,107,216,0.11)', color: 'var(--violet)' }}>
@@ -354,9 +274,8 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             </Link>
 
-            {/* Quiz Bank */}
             <Link href={`/${uniSlug}/${subjectSlug}/quiz-bank`} style={{ textDecoration: 'none', display: 'block' }}>
-              <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow)',padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 13, cursor: 'pointer' }}>
+              <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow)', padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 13, cursor: 'pointer' }}>
                 <div style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(22,163,74,0.11)', color: 'var(--success)' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 </div>
@@ -368,9 +287,8 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             </Link>
 
-            {/* Flashcards Bank */}
             <Link href={`/${uniSlug}/${subjectSlug}/flashcards-bank`} style={{ textDecoration: 'none', display: 'block' }}>
-              <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow)',padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 13, cursor: 'pointer' }}>
+              <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow)', padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 13, cursor: 'pointer' }}>
                 <div style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(234,179,8,0.11)', color: '#A1730A' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                 </div>
@@ -382,7 +300,6 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             </Link>
 
-            {/* Clinical Modules */}
             {clinicalModules && clinicalModules.length > 0 && (
               <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--shadow)', overflow: 'hidden' }}>
                 <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 13 }}>

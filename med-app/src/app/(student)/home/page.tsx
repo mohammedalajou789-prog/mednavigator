@@ -251,13 +251,24 @@ export default async function StudentDashboard() {
   const bookmarkCount  = bookmarkResult.count ?? 0
   const activeSubjectCount = activeSubsResult.count ?? 0
 
+  // Accurate progress: count ALL lectures in subscribed subjects, not just touched ones
+  const subjectIds = (subsResult.data ?? []).map((s: any) => s.subject_id).filter(Boolean)
+  let totalLectureCount = Math.max(checklistData.length, 1)
+  if (subjectIds.length > 0) {
+    const { count: lecCount } = await supabase
+      .from('lectures')
+      .select('id', { count: 'exact', head: true })
+      .in('subject_id', subjectIds)
+    totalLectureCount = Math.max(lecCount ?? 0, checklistData.length, 1)
+  }
+
   // ── Continue Learning: last accessed lecture ────────────────────────────
   const lastChecklist = checklistData[0] ?? null
 
   // ── Overall progress from checklist ────────────────────────────────────
   const totalStars    = checklistData.reduce((s, r) => s + (r.stars ?? 0), 0)
-  const overallPercent = checklistData.length > 0
-    ? Math.round((totalStars / (checklistData.length * 3)) * 100)
+  const overallPercent = totalLectureCount > 0
+    ? Math.round((totalStars / (totalLectureCount * 3)) * 100)
     : 0
 
   const masteredCount = checklistData.filter(r => r.stars === 3).length

@@ -200,10 +200,10 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           SIDEBAR
       ════════════════════════════════════════════════════════ */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-30 flex flex-col transition-transform duration-200
-          ${sidebarVisible ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          ${!sidebarOpen && 'lg:hidden'}`}
-        style={{ width: '264px', flexShrink: 0, background: SIDEBAR_BG, color: MUTED_COLOR, borderRight: `1px solid ${SIDEBAR_BORDER}` }}
+      className={`fixed lg:static inset-y-0 left-0 z-30 flex flex-col transition-all duration-200
+          ${sidebarVisible ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        style={{ width: sidebarOpen ? '264px' : '0px', flexShrink: 0, background: SIDEBAR_BG, color: MUTED_COLOR, borderRight: sidebarOpen ? `1px solid ${SIDEBAR_BORDER}` : 'none', overflow: 'hidden' }}
+
       >
 
         {/* ── Logo ── */}

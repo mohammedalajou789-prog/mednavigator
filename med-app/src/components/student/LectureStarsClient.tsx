@@ -29,6 +29,7 @@ export default function LectureStarsClient({
         body: JSON.stringify({ lecture_id: lectureId, stars: newValue }),
       })
       setStars(newValue)
+      window.dispatchEvent(new CustomEvent('star-changed', { detail: { lectureId, stars: newValue } }))
     } catch {
       // silent fail
     } finally {

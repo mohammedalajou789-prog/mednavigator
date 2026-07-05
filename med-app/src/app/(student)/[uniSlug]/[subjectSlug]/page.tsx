@@ -53,7 +53,7 @@ export default async function SubjectPage({ params }: PageProps) {
     supabase.from('clinical_modules').select('id,module_type').eq('subject_id', subjectId).is('archived_at', null),
   ])
 
-  const groups      = isSystem ? (subSubjects ?? []) : (chapters ?? [])
+  const groups = (isSystem ? (subSubjects ?? []) : (chapters ?? [])) as unknown as { id: string; title: string; display_order: number; slug: string }[]
   const lectureList = lectures ?? []
   const lectureIds  = lectureList.map((l: any) => l.id)
   const totalLectures = lectureList.length

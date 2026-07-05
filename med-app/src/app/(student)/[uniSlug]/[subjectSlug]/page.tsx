@@ -46,8 +46,8 @@ export default async function SubjectPage({ params }: PageProps) {
     { data: videos },
     { data: clinicalModules },
   ] = await Promise.all([
-    supabase.from('chapters').select('id,title,display_order').eq('subject_id', subjectId).is('archived_at', null).order('display_order'),
-    supabase.from('sub_subjects').select('id,title,display_order').eq('subject_id', subjectId).is('archived_at', null).order('display_order'),
+    supabase.from('chapters').select('id,title,display_order,slug').eq('subject_id', subjectId).is('archived_at', null).order('display_order'),
+    supabase.from('sub_subjects').select('id,title,display_order,slug').eq('subject_id', subjectId).is('archived_at', null).order('display_order'),
     supabase.from('lectures').select('id,title,chapter_id,sub_subject_id,display_order,slug' as any).eq('subject_id', subjectId).eq('status', 'published').order('display_order') as any,
     supabase.from('videos').select('id,title,video_url,is_preview,display_order').eq('subject_id', subjectId).is('archived_at', null).order('display_order'),
     supabase.from('clinical_modules').select('id,module_type').eq('subject_id', subjectId).is('archived_at', null),
@@ -193,7 +193,7 @@ export default async function SubjectPage({ params }: PageProps) {
                 return (
                   <Link
                     key={group.id}
-                    href={`/${uniSlug}/${subjectSlug}/chapter/${group.id}`}
+                    href={`/${uniSlug}/${subjectSlug}/chapter/${(group as any).slug ?? group.id}`}
                     prefetch={false}
                     style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
                   >

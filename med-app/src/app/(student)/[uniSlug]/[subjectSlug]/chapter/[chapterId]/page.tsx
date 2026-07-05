@@ -26,7 +26,7 @@ export default async function ChapterPage({ params }: PageProps) {
   const groupTable = isSystem ? 'sub_subjects' : 'chapters'
   const { data: groupRow } = await (supabase.from(groupTable as any) as any)
     .select('id,title')
-    .eq('id', chapterId)
+    .eq('slug' as any, chapterId)
     .eq('subject_id', subjectId)
     .is('archived_at', null)
     .single()
@@ -44,7 +44,7 @@ export default async function ChapterPage({ params }: PageProps) {
   const { data: lectures } = await (supabase.from('lectures') as any)
     .select('id,title,display_order,slug')
     .eq('subject_id', subjectId)
-    .eq(colName, chapterId)
+    .eq(colName, groupRow.id)
     .eq('status', 'published')
     .order('display_order')
 

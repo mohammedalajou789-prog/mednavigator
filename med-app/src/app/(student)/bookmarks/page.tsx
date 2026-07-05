@@ -41,7 +41,7 @@ export default async function BookmarksPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)', fontFamily: '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif' }}>
-      <main style={{ maxWidth: 1080, margin: '0 auto', padding: '28px 28px 64px' }}>
+      <main style={{ padding: '28px 28px 64px' }}>
 
         {/* Header */}
         <div style={{ marginBottom: 28 }}>

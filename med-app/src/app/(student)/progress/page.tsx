@@ -6,10 +6,13 @@ export default async function ProgressPage() {
   const supabase = await createServerClient()
   const profile  = await requireAuth()
 
+  // ── Step 1: get active subscriptions + free subjects the user accessed ──
   const [
     { data: checklistData },
+    { data: allLecturesData },
     { count: bookmarksCount },
   ] = await Promise.all([
+    // All star ratings by this user
     supabase
       .from('checklist_progress')
       .select(`
@@ -30,13 +33,50 @@ export default async function ProgressPage() {
       `)
       .eq('user_id', profile.id)
       .order('updated_at', { ascending: false }),
+
+    // All published lectures from subjects the user has interacted with
+    // (has at least one checklist entry)
+    supabase
+      .from('checklist_progress')
+      .select('lecture_id, lectures!inner(subject_id)')
+      .eq('user_id', profile.id),
+
     supabase
       .from('bookmarks')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', profile.id),
   ])
 
-  // ── Group by subject ────────────────────────────────────────────────────
+  // ── Step 2: collect subject IDs from checklist ─────────────────────────
+  const subjectIdsSet = new Set<string>()
+  checklistData?.forEach(row => {
+    const lecture = row.lectures as any
+    if (lecture?.subject_id) subjectIdsSet.add(lecture.subject_id)
+  })
+  const subjectIds = Array.from(subjectIdsSet)
+
+  // ── Step 3: fetch ALL lectures for those subjects ──────────────────────
+  let totalLecturesBySubject: Record<string, number> = {}
+
+  if (subjectIds.length > 0) {
+    const { data: lecturesInSubjects } = await supabase
+      .from('lectures')
+      .select('id, subject_id')
+      .in('subject_id', subjectIds)
+      .eq('status', 'published')
+
+    lecturesInSubjects?.forEach((l: any) => {
+      totalLecturesBySubject[l.subject_id] = (totalLecturesBySubject[l.subject_id] ?? 0) + 1
+    })
+  }
+
+  // ── Step 4: build star map ─────────────────────────────────────────────
+  const starsByLecture: Record<string, number> = {}
+  checklistData?.forEach(row => {
+    if (row.lecture_id) starsByLecture[row.lecture_id] = row.stars ?? 0
+  })
+
+  // ── Step 5: build subject map ──────────────────────────────────────────
   type LectureEntry = {
     id: string
     title: string
@@ -49,12 +89,12 @@ export default async function ProgressPage() {
     name: string
     universityName: string
     universitySlug: string
-    subjectSlug: string
+    totalLectures: number
     lectures: LectureEntry[]
   }> = {}
 
   checklistData?.forEach(row => {
-    const lecture = row.lectures as any
+    const lecture    = row.lectures as any
     if (!lecture) return
     const subject    = lecture.subjects as any
     if (!subject) return
@@ -66,7 +106,7 @@ export default async function ProgressPage() {
         name:           subject.name,
         universityName: university?.name ?? '',
         universitySlug: university?.slug ?? '',
-        subjectSlug:    subject.id,
+        totalLectures:  totalLecturesBySubject[subject.id] ?? 0,
         lectures:       [],
       }
     }
@@ -84,16 +124,14 @@ export default async function ProgressPage() {
 
   const subjects = Object.values(subjectMap)
 
-  // ── KPI calculations ────────────────────────────────────────────────────
-  const allLectures    = subjects.flatMap(s => s.lectures)
-  const totalLectures  = allLectures.length
-  const masteredCount  = allLectures.filter(l => l.stars === 3).length
-  const totalStars     = allLectures.reduce((s, l) => s + l.stars, 0)
-  const overallPercent = totalLectures > 0
-    ? Math.round((totalStars / (totalLectures * 3)) * 100)
+  // ── Step 6: KPI calculations using TOTAL lectures per subject ──────────
+  const totalStarsAll    = subjects.reduce((s, sub) => s + sub.lectures.reduce((a, l) => a + l.stars, 0), 0)
+  const totalLecturesAll = subjects.reduce((s, sub) => s + sub.totalLectures, 0)
+  const masteredCount    = subjects.reduce((s, sub) => s + sub.lectures.filter(l => l.stars === 3).length, 0)
+  const overallPercent   = totalLecturesAll > 0
+    ? Math.round((totalStarsAll / (totalLecturesAll * 3)) * 100)
     : 0
 
-  // ── Recent activity ─────────────────────────────────────────────────────
   const recentActivity = (checklistData ?? []).slice(0, 10)
 
   function formatDate(dateStr: string | null) {
@@ -109,12 +147,8 @@ export default async function ProgressPage() {
   }
 
   const STAR_LABELS: Record<number, string> = {
-    0: 'Not started',
-    1: 'Need Review',
-    2: 'Almost There',
-    3: 'Mastered',
+    0: 'Not started', 1: 'Need Review', 2: 'Almost There', 3: 'Mastered',
   }
-
   const STAR_COLORS: Record<number, { bg: string; color: string }> = {
     0: { bg: '#F1F5F9', color: '#94A3B8' },
     1: { bg: '#FEF2F2', color: '#EF4444' },
@@ -139,7 +173,7 @@ export default async function ProgressPage() {
         />
         <KpiCard
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>}
-          label="Mastered" value={`${masteredCount}`} sub={`of ${totalLectures} lectures`} color="#16A34A" bg="#F0FDF4"
+          label="Mastered" value={`${masteredCount}`} sub={`of ${totalLecturesAll} lectures`} color="#16A34A" bg="#F0FDF4"
         />
         <KpiCard
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>}
@@ -168,8 +202,8 @@ export default async function ProgressPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {subjects.map(subject => {
                 const subjectStars   = subject.lectures.reduce((s, l) => s + l.stars, 0)
-                const subjectPercent = subject.lectures.length > 0
-                  ? Math.round((subjectStars / (subject.lectures.length * 3)) * 100)
+                const subjectPercent = subject.totalLectures > 0
+                  ? Math.round((subjectStars / (subject.totalLectures * 3)) * 100)
                   : 0
                 const masteredInSubject = subject.lectures.filter(l => l.stars === 3).length
 
@@ -182,7 +216,7 @@ export default async function ProgressPage() {
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <p style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#2563EB' }}>{subjectPercent}%</p>
-                        <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--ink-3)' }}>{masteredInSubject}/{subject.lectures.length} mastered</p>
+                        <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--ink-3)' }}>{masteredInSubject}/{subject.totalLectures} mastered</p>
                       </div>
                     </div>
 
@@ -192,7 +226,6 @@ export default async function ProgressPage() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {subject.lectures.slice(0, 5).map(lecture => {
-                        const starPct   = Math.round((lecture.stars / 3) * 100)
                         const starColor = STAR_COLORS[lecture.stars]
                         return (
                           <div key={lecture.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '10px', background: 'var(--bg-2)' }}>
@@ -213,9 +246,9 @@ export default async function ProgressPage() {
                           </div>
                         )
                       })}
-                      {subject.lectures.length > 5 && (
+                      {subject.totalLectures > 5 && (
                         <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--ink-3)', textAlign: 'center' }}>
-                          +{subject.lectures.length - 5} more lectures
+                          +{subject.totalLectures - subject.lectures.length} more lectures not yet started
                         </p>
                       )}
                     </div>
@@ -233,7 +266,7 @@ export default async function ProgressPage() {
             <p style={{ margin: '0 0 16px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Summary</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <SummaryRow label="Overall Progress" value={`${overallPercent}%`} color="#2563EB" percent={overallPercent} />
-              <SummaryRow label="Mastered" value={`${masteredCount}/${totalLectures}`} color="#16A34A" percent={totalLectures > 0 ? Math.round((masteredCount / totalLectures) * 100) : 0} />
+              <SummaryRow label="Mastered" value={`${masteredCount}/${totalLecturesAll}`} color="#16A34A" percent={totalLecturesAll > 0 ? Math.round((masteredCount / totalLecturesAll) * 100) : 0} />
               <SummaryRow label="Subjects" value={`${subjects.length}`} color="#7C3AED" percent={100} />
               <SummaryRow label="Bookmarks" value={`${bookmarksCount ?? 0}`} color="#D97706" percent={100} />
             </div>

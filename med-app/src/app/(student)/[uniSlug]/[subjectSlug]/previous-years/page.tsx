@@ -28,8 +28,8 @@ export default async function PreviousYearsBankPage({ params }: PageProps) {
 
   // Resolve slugs to IDs
   const [{ data: uniRow }, { data: subRow }] = await Promise.all([
-    supabase.from('universities').select('id, name').eq('slug', uniSlug).single(),
-    supabase.from('subjects').select('id, name, access_mode').eq('slug', subjectSlug).single(),
+    supabase.from('universities').select('id, name').eq('slug' as any, uniSlug).single(),
+    supabase.from('subjects').select('id, name, access_mode').eq('slug' as any, subjectSlug).single(),
   ])
 
   if (!uniRow || !subRow) redirect('/')
@@ -90,7 +90,7 @@ export default async function PreviousYearsBankPage({ params }: PageProps) {
   // Get ALL previous year questions from all lectures
   const { data: allQuestions } = await supabase
     .from('previous_year_questions')
-    .select('id, lecture_id, question, options, correct_answer, explanation, exam_year, exam_type, batch_name')
+    .select('id, lecture_id, question, options, correct_answer, explanation, exam_year, exam_type')
     .in('lecture_id', lectureIds)
     .order('exam_year', { ascending: false })
 

@@ -110,7 +110,6 @@ export async function POST(request: NextRequest) {
         explanation: item.explanation,
         exam_year: item.exam_year,
         exam_type: item.exam_type,
-        batch_name: item.batch_name ?? null,
       }))
 
       const { data, error } = await supabase

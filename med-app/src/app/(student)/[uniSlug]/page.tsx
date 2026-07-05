@@ -117,7 +117,7 @@ export default async function UniversityPage({ params }: PageProps) {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 'clamp(12px, 3vw, 18px)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 'clamp(12px, 3vw, 18px)' }}>
                   {section.list.map(subject => {
                     const ts  = typeStyle[subject.subject_type]  ?? typeStyle.standard
                     const as_ = accessStyle[subject.access_mode] ?? accessStyle.free

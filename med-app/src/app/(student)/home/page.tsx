@@ -505,7 +505,7 @@ export default async function StudentDashboard() {
             )}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '14px' }}>
             {pinnedSubjects.map(({ subject_id, subject }) => (
               <Link key={subject_id}
                 href={`/${(subject.university as any)?.slug ?? subject.university_id}/${subject.slug ?? subject_id}`}

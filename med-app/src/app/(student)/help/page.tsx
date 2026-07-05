@@ -37,7 +37,7 @@ export default function HelpPage() {
 
         <div style={{ marginBottom: 28 }}>
           <h2 style={{ margin: '0 0 14px', fontSize: 17, fontWeight: 700, color: 'var(--ink)' }}>Quick Guides</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))', gap: 14 }}>
             {guides.map((g) => (
               <div key={g.title} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, color: 'var(--ink)' }}>{g.title}</div>

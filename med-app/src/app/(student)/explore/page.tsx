@@ -50,7 +50,7 @@ export default async function ExplorePage() {
             <div style={{ fontSize: 14 }}>No universities available yet.</div>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 'clamp(12px, 3vw, 18px)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: 'clamp(12px, 3vw, 18px)' }}>
             {unis.map((uni) => {
               const subjectCount = countMap[uni.id] ?? 0
               return (

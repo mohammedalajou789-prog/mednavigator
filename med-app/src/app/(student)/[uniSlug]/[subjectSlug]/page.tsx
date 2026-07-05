@@ -176,7 +176,7 @@ export default async function SubjectPage({ params }: PageProps) {
         </div>
 
         {/* Two Column Layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', gap: 24, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 420px), 1fr))', gap: 24, alignItems: 'start' }}>
 
           {/* LEFT: Chapter / Sub-Subject Cards */}
           <div>

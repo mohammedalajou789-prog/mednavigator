@@ -8,7 +8,7 @@ export default async function BookmarksPage() {
 
   const { data: bookmarks } = await supabase
     .from('bookmarks')
-    .select('id, bookmark_type, created_at, subjects(id, name, university_id), lectures(id, title, subject_id)')
+    .select('id, bookmark_type, created_at, lecture_id, subject_id, lectures(id, title, subject_id, subjects(id, name, university_id)), subjects(id, name, university_id)')
     .eq('user_id', profile.id)
     .order('created_at', { ascending: false })
 
@@ -67,19 +67,24 @@ export default async function BookmarksPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {bookmarks.map(bm => {
-              const subject = bm.subjects as Record<string, unknown> | null
+              const directSubject = bm.subjects as Record<string, unknown> | null
               const lecture = bm.lectures as Record<string, unknown> | null
+              const lectureSubject = lecture?.subjects as Record<string, unknown> | null
+
               const label = bm.bookmark_type === 'subject'
-                ? String(subject?.name ?? 'Unknown Subject')
+                ? String(directSubject?.name ?? 'Unknown Subject')
                 : String(lecture?.title ?? 'Unknown Lecture')
-              const sublabel = bm.bookmark_type === 'lecture' && subject
-                ? `Lecture · ${String(subject.name ?? '')}`
+
+              const sublabel = bm.bookmark_type === 'lecture' && lectureSubject
+                ? `Lecture · ${String(lectureSubject.name ?? '')}`
                 : bm.bookmark_type === 'subject' ? 'Subject' : bm.bookmark_type
-              const href = bm.bookmark_type === 'subject' && subject
-                ? `/${subject.university_id}/${subject.id}`
-                : lecture && subject
-                ? `/${subject.university_id}/${subject.id}/${lecture.id}`
+
+              const href = bm.bookmark_type === 'subject' && directSubject
+                ? `/${directSubject.university_id}/${directSubject.id}`
+                : lecture && lectureSubject
+                ? `/${lectureSubject.university_id}/${lectureSubject.id}/${lecture.id}`
                 : '#'
+
               const config = TYPE_CONFIG[bm.bookmark_type] ?? TYPE_CONFIG.lecture
               const dateStr = bm.created_at
                 ? new Date(bm.created_at).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })

@@ -8,7 +8,36 @@ export default async function BookmarksPage() {
 
   const { data: bookmarks } = await supabase
     .from('bookmarks')
-    .select('id, bookmark_type, created_at, lecture_id, subject_id, lectures(id, title, subject_id, subjects(id, name, university_id)), subjects(id, name, university_id)')
+    .select(`
+      id,
+      bookmark_type,
+      created_at,
+      lecture_id,
+      subject_id,
+      lectures(
+        id,
+        title,
+        slug:slug,
+        subjects(
+          id,
+          name,
+          slug:slug,
+          universities(
+            id,
+            slug:slug
+          )
+        )
+      ),
+      subjects(
+        id,
+        name,
+        slug:slug,
+        universities(
+          id,
+          slug:slug
+        )
+      )
+    `)
     .eq('user_id', profile.id)
     .order('created_at', { ascending: false })
 
@@ -67,9 +96,14 @@ export default async function BookmarksPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {bookmarks.map(bm => {
-              const directSubject = bm.subjects as Record<string, unknown> | null
+              // For lecture bookmarks: lecture → subject → university (nested chain)
               const lecture = bm.lectures as Record<string, unknown> | null
               const lectureSubject = lecture?.subjects as Record<string, unknown> | null
+              const lectureUni = lectureSubject?.universities as Record<string, unknown> | null
+
+              // For subject bookmarks: subject → university (direct)
+              const directSubject = bm.subjects as Record<string, unknown> | null
+              const directUni = directSubject?.universities as Record<string, unknown> | null
 
               const label = bm.bookmark_type === 'subject'
                 ? String(directSubject?.name ?? 'Unknown Subject')
@@ -79,10 +113,10 @@ export default async function BookmarksPage() {
                 ? `Lecture · ${String(lectureSubject.name ?? '')}`
                 : bm.bookmark_type === 'subject' ? 'Subject' : bm.bookmark_type
 
-              const href = bm.bookmark_type === 'subject' && directSubject
-                ? `/${directSubject.university_id}/${directSubject.id}`
-                : lecture && lectureSubject
-                ? `/${lectureSubject.university_id}/${lectureSubject.id}/${lecture.id}`
+              const href = bm.bookmark_type === 'subject' && directSubject && directUni
+                ? `/${directUni.slug}/${directSubject.slug}`
+                : lecture && lectureSubject && lectureUni
+                ? `/${lectureUni.slug}/${lectureSubject.slug}/${lecture.slug}`
                 : '#'
 
               const config = TYPE_CONFIG[bm.bookmark_type] ?? TYPE_CONFIG.lecture

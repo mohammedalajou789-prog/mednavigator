@@ -30,6 +30,7 @@ function LandingPageClient({ universities }: { universities: University[] }) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
         * { box-sizing: border-box; }
+        html, body { overflow-x: hidden; max-width: 100vw; }
         @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:none; } }
         @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
         @keyframes drift { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(24px,-18px) scale(1.08)} }
@@ -38,11 +39,11 @@ function LandingPageClient({ universities }: { universities: University[] }) {
         @keyframes floatC { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
         @keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.45;transform:scale(.7)} }
 
-        .mn-hero { max-width:1200px; margin:0 auto; padding:70px 26px 60px; display:grid; grid-template-columns:1.02fr 1.18fr; gap:56px; align-items:center; }
+        .mn-hero { max-width:1200px; margin:0 auto; padding:70px 26px 60px; display:grid; grid-template-columns:1.02fr 1.18fr; gap:56px; align-items:center; width:100%; }
         .mn-mockup { display:block !important; }
-        .mn-features { max-width:1200px; margin:0 auto; padding:40px 26px 30px; }
+        .mn-features { max-width:1200px; margin:0 auto; padding:40px 26px 30px; width:100%; }
         .mn-features-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
-        .mn-unis { max-width:1200px; margin:0 auto; padding:56px 26px 30px; }
+        .mn-unis { max-width:1200px; margin:0 auto; padding:56px 26px 30px; width:100%; }
 
         @media (max-width:900px) {
           .mn-hero { grid-template-columns:1fr; gap:40px; padding:50px 20px 40px; }

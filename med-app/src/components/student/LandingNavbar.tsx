@@ -19,7 +19,7 @@ export default function LandingNavbar({ universities }: LandingNavbarProps) {
   }
 
   return (
-    <nav style={{ position: 'sticky', top: 0, zIndex: 60, background: 'rgba(246,248,252,0.82)', backdropFilter: 'blur(14px)', borderBottom: '1px solid #E8ECF2', overflow: 'hidden' }}>
+    <nav style={{ position: 'sticky', top: 0, zIndex: 60, background: 'rgba(246,248,252,0.82)', backdropFilter: 'blur(14px)', borderBottom: '1px solid #E8ECF2' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '13px 16px', display: 'flex', alignItems: 'center', gap: '16px' }}>
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '11px', textDecoration: 'none', cursor: 'pointer' }}>
           <div style={{ width: '36px', height: '36px', borderRadius: '11px', background: 'linear-gradient(150deg,#16273F,#0D1B2A)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 16px -5px rgba(13,27,42,.5)' }}>

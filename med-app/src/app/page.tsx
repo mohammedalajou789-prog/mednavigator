@@ -55,18 +55,19 @@ function LandingPageClient({ universities }: { universities: University[] }) {
         }
 
         @media (max-width:600px) {
-          .mn-hero { padding:36px 18px 32px; gap:28px; }
+          .mn-hero { padding:24px 16px 20px; gap:16px; display:flex !important; flex-direction:column; }
           .mn-mockup { display:none !important; }
-          .mn-features-grid { grid-template-columns:1fr; }
-          .mn-features { padding:28px 18px 20px; }
-          .mn-unis { padding:36px 18px 20px; }
-          .mn-h1 { font-size:34px !important; line-height:1.08 !important; }
-          .mn-hero-p { font-size:14.5px !important; }
-          .mn-btns { flex-direction:column !important; }
-          .mn-btns a, .mn-btns > * { width:100% !important; justify-content:center !important; }
+          .mn-features-grid { grid-template-columns:1fr !important; gap:10px; }
+          .mn-features { padding:24px 16px 16px; }
+          .mn-unis { padding:24px 16px 16px; }
+          .mn-h1 { font-size:28px !important; line-height:1.1 !important; margin-bottom:12px !important; }
+          .mn-hero-p { font-size:13px !important; margin-bottom:18px !important; line-height:1.5 !important; }
+          .mn-btns { flex-direction:column !important; gap:10px !important; }
+          .mn-btns a, .mn-btns > * { width:100% !important; justify-content:center !important; padding:13px 20px !important; font-size:14px !important; }
           .mn-badge { display:none !important; }
-          .mn-feat-h2 { font-size:26px !important; }
-          .mn-uni-h2 { font-size:26px !important; }
+          .mn-feat-h2 { font-size:20px !important; }
+          .mn-uni-h2 { font-size:20px !important; }
+          .mn-uni-grid { grid-template-columns:1fr !important; }
         }
       `}</style>
     </div>
@@ -356,7 +357,7 @@ function UniversitiesSection({ universities }: { universities: University[] }) {
               <div style={{ background: '#fff', border: '1px solid #E8ECF2', borderRadius: '18px', padding: '28px 24px 20px', textAlign: 'center', cursor: 'pointer' }}>
                 <div style={{ width: '74px', height: '74px', borderRadius: '50%', margin: '0 auto 16px', background: 'linear-gradient(135deg,#EEF2FF,#F5F3FF)', border: '1px solid #E8ECF2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {uni.logo_url
-                    ? <img src={uni.logo_url} alt={uni.name} style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
+                    ? <img src={uni.logo_url} alt={uni.name} style={{ width: '66px', height: '66px', borderRadius: '50%', objectFit: 'cover' }} />
                     : (
                       <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1 2.5 2.5 6 2.5s6-1.5 6-2.5v-5"/>

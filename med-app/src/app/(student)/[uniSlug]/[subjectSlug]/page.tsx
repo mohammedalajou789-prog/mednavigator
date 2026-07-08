@@ -130,8 +130,6 @@ export default async function SubjectPage({ params }: PageProps) {
       color: 'rgb(60, 70, 97)',
     }}>
       <main style={{
-        maxWidth: 1180,
-        margin: '0 auto',
         padding: '30px 34px 80px',
       }}>
 

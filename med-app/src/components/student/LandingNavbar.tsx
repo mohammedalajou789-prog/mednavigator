@@ -36,7 +36,7 @@ export default function LandingNavbar({ universities }: LandingNavbarProps) {
         </Link>
         <div style={{ flex: 1 }} />
         <div style={{ position: 'relative' }}>
-          <button onClick={() => setDropdownOpen(!dropdownOpen)}
+          <button className="mn-nav-uni-btn" onClick={() => setDropdownOpen(!dropdownOpen)}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', border: '1px solid #E8ECF2', background: '#fff', borderRadius: '11px', fontSize: '13px', fontWeight: 600, color: '#64748B', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 2px rgba(15,23,42,.03)' }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 21h18"/><path d="M5 21V8l7-4 7 4v13"/><path d="M9 21v-6h6v6"/>
@@ -84,7 +84,7 @@ export default function LandingNavbar({ universities }: LandingNavbarProps) {
       </div>
       <style>{`
         @media (max-width: 600px) {
-          .mn-nav-uni { display: none !important; }
+          .mn-nav-uni-btn { display: none !important; }
           .mn-nav-register { display: none !important; }
           .mn-nav-login { padding: 7px 14px !important; font-size: 13px !important; }
         }

@@ -66,6 +66,7 @@ function LandingPageClient({ universities }: { universities: University[] }) {
           .mn-btns a, .mn-btns > * { width:100% !important; justify-content:center !important; padding:13px 20px !important; font-size:14px !important; }
           .mn-badge { display:none !important; }
           .mn-feat-h2 { font-size:20px !important; }
+          .mn-features { display:none !important; }
           .mn-uni-h2 { font-size:20px !important; }
           .mn-uni-grid { grid-template-columns:1fr !important; }
         }

@@ -69,6 +69,7 @@ function LandingPageClient({ universities }: { universities: University[] }) {
           .mn-features { display:none !important; }
           .mn-uni-h2 { font-size:20px !important; }
           .mn-uni-grid { grid-template-columns:1fr !important; }
+          .mn-mobile-features { display:flex !important; }
         }
       `}</style>
     </div>
@@ -116,6 +117,24 @@ function HeroSection() {
             <span style={{ fontSize: '13px', color: '#64748B' }}>2,400+ students</span>
           </div>
         </div>
+      </div>
+
+      {/* Mobile-only feature highlights */}
+      <div className="mn-mobile-features" style={{ display: 'none', flexDirection: 'column' as const, gap: '10px', marginTop: '24px' }}>
+        {([
+          { icon: '📚', title: 'Lectures & Sheets', desc: 'Organized content for every subject' },
+          { icon: '🃏', title: 'Flashcards & Quizzes', desc: 'Study smarter with active recall' },
+          { icon: '📅', title: 'Previous Years Bank', desc: 'Past papers sorted by year and type' },
+          { icon: '📈', title: 'Progress Tracking', desc: 'Track your learning with star ratings' },
+        ] as { icon: string; title: string; desc: string }[]).map((f) => (
+          <div key={f.title} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#fff', border: '1px solid #E8ECF2', borderRadius: '14px', padding: '14px 16px' }}>
+            <span style={{ fontSize: '22px', flexShrink: 0 }}>{f.icon}</span>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>{f.title}</div>
+              <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>{f.desc}</div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Mockup — hidden on mobile via CSS */}

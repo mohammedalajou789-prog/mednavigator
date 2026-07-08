@@ -78,7 +78,7 @@ export default function LandingNavbar({ universities }: LandingNavbarProps) {
         <Link href="/login" style={{ padding: '9px 18px', borderRadius: '11px', border: '1px solid #E8ECF2', background: '#fff', fontFamily: 'inherit', fontSize: '13.5px', fontWeight: 700, color: '#0F172A', textDecoration: 'none' }}>
           Login
         </Link>
-        <Link href="/register" style={{ padding: '9px 20px', borderRadius: '11px', border: 'none', background: 'linear-gradient(135deg,#2563EB,#4F46E5)', color: '#fff', fontFamily: 'inherit', fontSize: '13.5px', fontWeight: 700, textDecoration: 'none', boxShadow: '0 8px 20px -6px rgba(37,99,235,.6)' }}>
+        <Link href="/register" className="mn-nav-register" style={{ padding: '9px 20px', borderRadius: '11px', border: 'none', background: 'linear-gradient(135deg,#2563EB,#4F46E5)', color: '#fff', fontFamily: 'inherit', fontSize: '13.5px', fontWeight: 700, textDecoration: 'none', boxShadow: '0 8px 20px -6px rgba(37,99,235,.6)' }}>
           Register
         </Link>
       </div>

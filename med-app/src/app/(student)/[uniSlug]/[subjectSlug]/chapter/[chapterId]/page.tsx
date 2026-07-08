@@ -104,7 +104,7 @@ export default async function ChapterPage({ params }: PageProps) {
       fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
       color: 'rgb(60, 70, 97)',
     }}>
-      <main style={{ maxWidth: 1180, margin: '0 auto', padding: '30px 34px 80px' }}>
+      <main style={{ width: '100%', padding: '30px 34px 80px' }}>
 
         {/* ── Breadcrumb ── */}
         <nav style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, fontWeight: 600, marginBottom: 20 }}>
@@ -117,23 +117,7 @@ export default async function ChapterPage({ params }: PageProps) {
           <span style={{ color: 'rgb(21, 32, 58)' }}>{groupRow.title}</span>
         </nav>
 
-        {/* ── Back Button ── */}
-        <Link
-          href={`/${uniSlug}/${subjectSlug}`}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            marginBottom: 18, padding: '8px 15px',
-            borderRadius: 11, border: '1px solid rgb(228, 234, 245)',
-            background: 'rgb(255, 255, 255)', color: 'rgb(85, 97, 125)',
-            fontSize: 13.5, fontWeight: 700, textDecoration: 'none',
-            transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
-          }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
-          </svg>
-          Back to {subRow.name}
-        </Link>
+      
 
         {/* ── Chapter Hero Banner ── */}
         <section style={{

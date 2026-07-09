@@ -80,7 +80,7 @@ export default async function ContentBuilderPage({ params }: Props) {
   ] = await Promise.all([
     supabase.from('flashcards').select('id, front_text, back_text, tags').eq('lecture_id', lectureId).order('display_order'),
     supabase.from('quiz_questions').select('id, question, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, tags').eq('lecture_id', lectureId),
-    supabase.from('previous_year_questions').select('id, question, options, correct_answer, explanation, exam_year, exam_type').eq('lecture_id', lectureId),
+    supabase.from('previous_year_questions').select('id, question, options, correct_answer, explanation, exam_year, exam_type, batch_name').eq('lecture_id', lectureId),
     supabase.from('videos').select('id, title, description, video_url, is_preview, display_order').eq('lecture_id', lectureId).order('display_order'),
     supabase.from('clinical_modules').select('id, module_type, clinical_topics(id, title, description, display_order, clinical_sheets(id, title, content))').eq('subject_id', subjectId).is('archived_at', null),
     sheet?.id

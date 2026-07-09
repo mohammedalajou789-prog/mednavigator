@@ -140,6 +140,7 @@ type BlockType =
   | 'must_memorize' | 'previous_year'
   | 'table' | 'text' | 'empty' | 'image_slot'
   | 'card_group_start' | 'card_group_end'
+  | 'doctor_notes' | 'source'
 
 interface Block {
   type: BlockType
@@ -148,6 +149,7 @@ interface Block {
   cards?: CardBlock[]
   slotNumber?: number
   slotDescription?: string
+  sourceName?: string
 }
 
 interface CardBlock {
@@ -240,6 +242,23 @@ function parseContent(raw: string): Block[] {
       blocks.push({ type: 'previous_year', content })
       i = end + 1; continue
     }
+    if (line === '[doctor notes]') {
+      const { content: blockContent, end } = extractBlock(lines, i + 1, '[/doctor notes]')
+      blocks.push({ type: 'doctor_notes', content: blockContent })
+      i = end + 1; continue
+    }
+
+    const sourceMatch = line.match(/^[\*(.+?)\*]$/)
+    if (sourceMatch) {
+      const sourceName = sourceMatch[1]
+      const closeTag = `[/*${sourceName}*]`
+      // skip to close tag
+      let j = i + 1
+      while (j < lines.length && lines[j].trim() !== closeTag) { j++ }
+      blocks.push({ type: 'source', content: '', sourceName })
+      i = j + 1; continue
+    }
+
     if (line === '[TABLE]') {
       const { rows, end } = extractTable(lines, i + 1)
       blocks.push({ type: 'table', content: '', rows })
@@ -499,6 +518,32 @@ function renderBlock(
               ))}
             </tbody>
           </table>
+        </div>
+      )
+    }
+
+
+    case 'doctor_notes': {
+      const id = nextOccurrenceId?.('doctor_notes')
+      return (
+        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'flex', gap: '14px', padding: '18px 20px', borderRadius: '14px', background: 'linear-gradient(180deg,#FFFBF0,#FFFDF8)', border: '1px solid #F0D9A0', marginBottom: '16px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: '#FEF3C7', color: '#92400E', flexShrink: 0, marginTop: '2px' }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </span>
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '.1em', color: '#92400E', marginBottom: '5px' }}>DOCTOR NOTES</div>
+            <div style={{ margin: 0, fontSize: '15.5px', lineHeight: 1.65, color: '#78350F', fontStyle: 'italic' }}>{renderMultiLine(block.content)}</div>
+          </div>
+        </div>
+      )
+    }
+
+    case 'source': {
+      const id = nextOccurrenceId?.('source')
+      return (
+        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '999px', background: '#F1F5F9', border: '1px solid #CBD5E1', marginBottom: '10px' }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', letterSpacing: '0.02em' }}>{block.sourceName}</span>
         </div>
       )
     }

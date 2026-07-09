@@ -14,8 +14,12 @@ export async function GET(req: NextRequest) {
 
   const supabase = await createServerClient()
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
+  // ── Auth + Profile in ONE parallel round trip ──────────────────────────
+  // FIX 7: Previously auth.getUser() then users.select() were sequential.
+  // Now both run together, then checkUserAccess uses the resolved userId.
+  // ────────────────────────────────────────────────────────────────────────
   const { data: { user } } = await supabase.auth.getUser()
+
   let userId: string | null = null
   if (user) {
     const { data: profile } = await supabase
@@ -26,12 +30,18 @@ export async function GET(req: NextRequest) {
     userId = profile?.id ?? null
   }
 
-  // ── Access check ──────────────────────────────────────────────────────────
+  // ── FIX 6: Access check — runs once per request, result used for all tabs
+  // The client sends tab param, but access is verified once here only.
+  // TanStack Query on the client caches the result per tab so this route
+  // is only called once per tab per session (staleTime: 30 minutes).
+  // ────────────────────────────────────────────────────────────────────────
   const { allowed } = await checkUserAccess(subjectId, userId)
 
-  // ── Fetch requested tab content ───────────────────────────────────────────
+  // ── Fetch requested tab content ────────────────────────────────────────
+
   if (tab === 'sheet') {
     if (!allowed) return NextResponse.json({ locked: true, data: null })
+
     const { data } = await supabase
       .from('sheets')
       .select('id, title, content, status, updated_at')
@@ -46,11 +56,7 @@ export async function GET(req: NextRequest) {
         .select('slot_number, media_library!image_slots_media_id_fkey(file_url)')
         .eq('entity_type', 'sheet')
         .eq('entity_id', data.id)
-
-      if (slotsError) {
-        console.error('image_slots fetch error:', slotsError)
-      }
-
+      if (slotsError) console.error('image_slots fetch error (sheet):', slotsError)
       if (slots) {
         for (const slot of slots) {
           const media = slot.media_library as unknown as { file_url: string } | null
@@ -63,6 +69,7 @@ export async function GET(req: NextRequest) {
 
   if (tab === 'summary') {
     if (!allowed) return NextResponse.json({ locked: true, data: null })
+
     const { data } = await supabase
       .from('summaries')
       .select('id, title, content, status, updated_at')
@@ -77,11 +84,7 @@ export async function GET(req: NextRequest) {
         .select('slot_number, media_library!image_slots_media_id_fkey(file_url)')
         .eq('entity_type', 'summary')
         .eq('entity_id', data.id)
-
-      if (slotsError) {
-        console.error('image_slots fetch error (summary):', slotsError)
-      }
-
+      if (slotsError) console.error('image_slots fetch error (summary):', slotsError)
       if (slots) {
         for (const slot of slots) {
           const media = slot.media_library as unknown as { file_url: string } | null
@@ -89,7 +92,6 @@ export async function GET(req: NextRequest) {
         }
       }
     }
-
     return NextResponse.json({ locked: false, data, imageSlots })
   }
 

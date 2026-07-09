@@ -550,6 +550,8 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
     { label: 'Must Memorize', syntax: '\n[MUST_MEMORIZE]\n\n[/MUST_MEMORIZE]\n' },
     { label: 'Previous Year', syntax: '\n[PREVIOUS_YEAR]\n\n[/PREVIOUS_YEAR]\n' },
     { label: 'Highlight',     syntax: '\n[HIGHLIGHT]\n\n[/HIGHLIGHT]\n' },
+    { label: 'Doctor Notes',  syntax: '\n[doctor notes]\n\n[/doctor notes]\n' },
+    { label: 'Source',        syntax: '\n[*Source Name*]\n[/*Source Name*]\n' },
     { label: 'Table',         syntax: '\n[TABLE]\n| Column 1 | Column 2 |\n|----------|----------|\n| Value 1  | Value 2  |\n[/TABLE]\n' },
   ]
 

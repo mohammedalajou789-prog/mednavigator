@@ -248,7 +248,7 @@ function parseContent(raw: string): Block[] {
       i = end + 1; continue
     }
 
-    const sourceMatch = line.match(/^[\*(.+?)\*]$/)
+    const sourceMatch = line.match(/^\[\*(.+?)\*\]$/)
     if (sourceMatch) {
       const sourceName = sourceMatch[1]
       const closeTag = `[/*${sourceName}*]`

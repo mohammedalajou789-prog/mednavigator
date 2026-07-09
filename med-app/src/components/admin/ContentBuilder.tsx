@@ -952,7 +952,18 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Question {index + 1}</span>
                     {pyqs.length > 1 && (
-                      <button onClick={() => setPyqs(prev => prev.filter((_, i) => i !== index))} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                      <button onClick={async () => {
+                        const updated = pyqs.filter((_, i) => i !== index)
+                        setPyqs(updated)
+                        const valid = updated.filter(q => q.question.trim() && q.correct_answer.trim())
+                        if (valid.length === 0) return
+                        await fetch('/api/admin/previous-year-questions', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ lecture_id: lectureId, questions: valid }),
+                        })
+                        router.refresh()
+                      }} className="text-xs text-red-500 hover:text-red-700">Remove</button>
                     )}
                   </div>
                   <div className="space-y-3">

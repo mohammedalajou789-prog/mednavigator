@@ -257,6 +257,7 @@ function parseContent(raw: string): Block[] {
       let j = i + 1
       while (j < lines.length && lines[j].trim().replace(/\r/g, '') !== closeTag) { sourceLines.push(lines[j]); j++ }
       blocks.push({ type: 'source', content: sourceLines.join('\n').replace(/^\n+|\n+$/g, ''), sourceName })
+      i = j + 1; continue
     }
 
     if (line === '[TABLE]') {

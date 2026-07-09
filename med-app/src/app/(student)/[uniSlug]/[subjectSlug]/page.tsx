@@ -12,11 +12,6 @@ export default async function SubjectPage({ params }: PageProps) {
 
   const supabase = await createServerClient()
 
-  // ── STEP 1 ──────────────────────────────────────────────────────────────
-  // FIX 5: Resolve slugs + auth in ONE parallel round trip.
-  // Previously this was 3 sequential Promise.all blocks.
-  // Now: slugs + auth run together, then everything else runs together.
-  // ────────────────────────────────────────────────────────────────────────
   const [
     { data: uniRow },
     { data: subRow },
@@ -34,7 +29,6 @@ export default async function SubjectPage({ params }: PageProps) {
   const university   = uniRow
   const subject      = subRow
 
-  // Resolve userId from auth
   let userId: string | null = null
   if (authUser) {
     const { data: profile } = await supabase
@@ -44,9 +38,6 @@ export default async function SubjectPage({ params }: PageProps) {
 
   const isSystem = subject.subject_type === 'system'
 
-  // ── STEP 2 ──────────────────────────────────────────────────────────────
-  // All remaining data in ONE parallel round trip.
-  // ────────────────────────────────────────────────────────────────────────
   const [
     { data: chapters },
     { data: subSubjects },
@@ -116,9 +107,6 @@ export default async function SubjectPage({ params }: PageProps) {
     osce: 'OSCE Stations', mini_osce: 'Mini-OSCE', oral_exam: 'Oral Exam',
   }
 
-  // FIX 6: Show the first lecture as "Continue Learning" placeholder.
-  // The real last-accessed logic requires a join with user_progress
-  // which will be added when the progress system is fully wired.
   const lastAccessedLecture = lectureList.length > 0 ? lectureList[0] as any : null
 
   const ringCircumference = 389.56
@@ -131,10 +119,43 @@ export default async function SubjectPage({ params }: PageProps) {
       fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
       color: 'rgb(60, 70, 97)',
     }}>
-      <main style={{ padding: '30px 34px 80px' }}>
+      {/* ── Responsive styles ── */}
+      <style>{`
+        .subject-main { padding: 20px 16px 80px; }
+        .hero-section { padding: 20px 18px; }
+        .hero-inner { flex-direction: column; gap: 20px; }
+        .hero-ring { display: flex; justify-content: center; }
+        .hero-title { font-size: 28px; }
+        .continue-inner { flex-wrap: wrap; gap: 14px; padding: 16px; }
+        .continue-stars { display: none; }
+        .continue-resume { width: 100%; justify-content: center; }
+        .subject-grid { grid-template-columns: 1fr; gap: 20px; }
+        .chapter-card { padding: 16px; gap: 12px; }
+        .chapter-view { display: none; }
+        @media (min-width: 640px) {
+          .subject-main { padding: 24px 24px 80px; }
+          .hero-section { padding: 24px 28px; }
+          .hero-title { font-size: 34px; }
+          .continue-inner { flex-wrap: nowrap; padding: 18px 20px; }
+          .continue-stars { display: block; }
+          .continue-resume { width: auto; }
+        }
+        @media (min-width: 900px) {
+          .subject-main { padding: 30px 34px 80px; }
+          .hero-section { padding: 30px 34px; }
+          .hero-inner { flex-direction: row; gap: 30px; }
+          .hero-ring { display: flex; }
+          .hero-title { font-size: 42px; }
+          .subject-grid { grid-template-columns: 1fr 348px; gap: 34px; }
+          .chapter-card { padding: 22px 24px; gap: 16px; }
+          .chapter-view { display: inline-flex; }
+        }
+      `}</style>
+
+      <main className="subject-main">
 
         {/* Breadcrumb */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, fontWeight: 600, marginBottom: 20 }}>
+        <nav style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, fontWeight: 600, marginBottom: 18, flexWrap: 'wrap' }}>
           <Link href="/home" style={{ color: 'rgb(107, 118, 144)', textDecoration: 'none' }}>Home</Link>
           <span style={{ color: 'rgb(194, 202, 219)' }}>/</span>
           <Link href={`/${uniSlug}`} style={{ color: 'rgb(107, 118, 144)', textDecoration: 'none' }}>{university.name}</Link>
@@ -143,68 +164,68 @@ export default async function SubjectPage({ params }: PageProps) {
         </nav>
 
         {/* Hero Banner */}
-        <section style={{
-          position: 'relative', overflow: 'hidden', borderRadius: 22,
-          padding: '30px 34px', marginBottom: 30,
+        <section className="hero-section" style={{
+          position: 'relative', overflow: 'hidden', borderRadius: 20,
+          marginBottom: 20,
           background: 'linear-gradient(120deg, rgb(237, 243, 255) 0%, rgb(243, 247, 255) 52%, rgb(252, 253, 255) 100%)',
           border: '1px solid rgb(226, 234, 251)',
           boxShadow: 'rgba(16, 24, 40, 0.04) 0px 1px 2px, rgba(40, 90, 200, 0.5) 0px 24px 50px -34px',
         }}>
           <div style={{ position: 'absolute', top: -60, right: 260, width: 300, height: 180, background: 'radial-gradient(rgba(147, 197, 253, 0.32) 0%, rgba(196, 181, 253, 0.12) 55%, transparent 75%)', filter: 'blur(30px)', pointerEvents: 'none' }} />
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 30, position: 'relative' }}>
+          <div className="hero-inner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
             {/* Left */}
-            <div style={{ minWidth: 0, maxWidth: 640 }}>
-              <div style={{ display: 'flex', gap: 9, marginBottom: 18 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 13px', borderRadius: 20, background: 'rgb(231, 247, 239)', border: '1px solid rgb(199, 235, 216)', color: 'rgb(19, 138, 90)', fontSize: 12.5, fontWeight: 700 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgb(23, 166, 107)' }} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 20, background: 'rgb(231, 247, 239)', border: '1px solid rgb(199, 235, 216)', color: 'rgb(19, 138, 90)', fontSize: 12, fontWeight: 700 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgb(23, 166, 107)' }} />
                   {typeBadge}
                 </span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 13px', borderRadius: 20, background: 'rgb(255, 246, 224)', border: '1px solid rgb(243, 225, 174)', color: 'rgb(161, 115, 10)', fontSize: 12.5, fontWeight: 700 }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="#E5A700" stroke="#E5A700" strokeWidth="1">
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 20, background: 'rgb(255, 246, 224)', border: '1px solid rgb(243, 225, 174)', color: 'rgb(161, 115, 10)', fontSize: 12, fontWeight: 700 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#E5A700" stroke="#E5A700" strokeWidth="1">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                   </svg>
                   {accessBadge}
                 </span>
               </div>
 
-              <h1 style={{ margin: 0, fontSize: 42, lineHeight: 1.05, fontWeight: 800, letterSpacing: '-0.03em', color: 'rgb(21, 32, 58)' }}>{subject.name}</h1>
+              <h1 className="hero-title" style={{ margin: 0, lineHeight: 1.08, fontWeight: 800, letterSpacing: '-0.03em', color: 'rgb(21, 32, 58)' }}>{subject.name}</h1>
 
               {subject.description && (
-                <p style={{ margin: '16px 0 0', fontSize: 15, lineHeight: 1.62, color: 'rgb(85, 97, 125)', maxWidth: 600 }}>{subject.description}</p>
+                <p style={{ margin: '12px 0 0', fontSize: 14, lineHeight: 1.6, color: 'rgb(85, 97, 125)' }}>{subject.description}</p>
               )}
 
-              <div style={{ display: 'flex', gap: 26, marginTop: 24 }}>
+              <div style={{ display: 'flex', gap: 20, marginTop: 18, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 10, background: 'rgb(255, 255, 255)', border: '1px solid rgb(226, 234, 251)', color: 'rgb(47, 107, 255)' }}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 9, background: 'rgb(255, 255, 255)', border: '1px solid rgb(226, 234, 251)', color: 'rgb(47, 107, 255)' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                     </svg>
                   </span>
                   <div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: 'rgb(21, 32, 58)', lineHeight: 1 }}>{totalLectures}</div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 3 }}>Lecture{totalLectures !== 1 ? 's' : ''}</div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: 'rgb(21, 32, 58)', lineHeight: 1 }}>{totalLectures}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 2 }}>Lecture{totalLectures !== 1 ? 's' : ''}</div>
                   </div>
                 </div>
                 <div style={{ width: 1, background: 'rgb(222, 231, 248)' }} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 10, background: 'rgb(255, 255, 255)', border: '1px solid rgb(226, 234, 251)', color: 'rgb(47, 107, 255)' }}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 9, background: 'rgb(255, 255, 255)', border: '1px solid rgb(226, 234, 251)', color: 'rgb(47, 107, 255)' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18" />
                     </svg>
                   </span>
                   <div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: 'rgb(21, 32, 58)', lineHeight: 1 }}>{groupStats.length}</div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 3 }}>{groupLabel}{groupStats.length !== 1 ? 's' : ''}</div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: 'rgb(21, 32, 58)', lineHeight: 1 }}>{groupStats.length}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 2 }}>{groupLabel}{groupStats.length !== 1 ? 's' : ''}</div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Progress ring */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-              <div style={{ position: 'relative', width: 148, height: 148 }}>
-                <svg width="148" height="148" viewBox="0 0 148 148" style={{ transform: 'rotate(-90deg)' }}>
+            <div className="hero-ring" style={{ flexShrink: 0, flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ position: 'relative', width: 120, height: 120 }}>
+                <svg width="120" height="120" viewBox="0 0 148 148" style={{ transform: 'rotate(-90deg)' }}>
                   <circle cx="74" cy="74" r="62" fill="none" stroke="#E1E9FA" strokeWidth="13" />
                   <circle cx="74" cy="74" r="62" fill="none" stroke="url(#pgGrad)" strokeWidth="13" strokeLinecap="round" strokeDasharray={ringCircumference} strokeDashoffset={ringOffset} style={{ transition: 'stroke-dashoffset 1.1s cubic-bezier(0.4,0,0.2,1)' }} />
                   <defs>
@@ -215,8 +236,8 @@ export default async function SubjectPage({ params }: PageProps) {
                   </defs>
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ fontSize: 30, fontWeight: 800, color: 'rgb(36, 86, 214)', letterSpacing: '-0.02em', lineHeight: 1 }}>{progressPercent}%</div>
-                  <div style={{ fontSize: 11.5, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 4 }}>{Math.floor(totalStars / 3)} of {totalLectures} lectures</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: 'rgb(36, 86, 214)', letterSpacing: '-0.02em', lineHeight: 1 }}>{progressPercent}%</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 3, textAlign: 'center' }}>{Math.floor(totalStars / 3)} of {totalLectures}</div>
                 </div>
               </div>
             </div>
@@ -225,81 +246,83 @@ export default async function SubjectPage({ params }: PageProps) {
 
         {/* Continue Learning Banner */}
         {lastAccessedLecture && (
-          <div style={{ background: 'linear-gradient(120deg, rgba(37, 99, 235, 0.06), rgb(255, 255, 255) 60%)', border: '1px solid rgb(226, 232, 240)', borderRadius: 18, overflow: 'hidden', marginBottom: 34, boxShadow: 'rgba(15, 23, 42, 0.04) 0px 1px 3px, rgba(15, 23, 42, 0.10) 0px 10px 24px -16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '22px 24px' }}>
-              <div style={{ width: 54, height: 54, flexShrink: 0, borderRadius: 15, background: 'rgb(37, 99, 235)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'rgba(37, 99, 235, 0.35) 0px 6px 16px' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="7 4 20 12 7 20 7 4" /></svg>
+          <div style={{ background: 'linear-gradient(120deg, rgba(37, 99, 235, 0.06), rgb(255, 255, 255) 60%)', border: '1px solid rgb(226, 232, 240)', borderRadius: 16, overflow: 'hidden', marginBottom: 24, boxShadow: 'rgba(15, 23, 42, 0.04) 0px 1px 3px, rgba(15, 23, 42, 0.10) 0px 10px 24px -16px' }}>
+            <div className="continue-inner" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ width: 46, height: 46, flexShrink: 0, borderRadius: 13, background: 'rgb(37, 99, 235)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'rgba(37, 99, 235, 0.35) 0px 6px 16px' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><polygon points="7 4 20 12 7 20 7 4" /></svg>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', color: 'rgb(37, 99, 235)', marginBottom: 3 }}>CONTINUE LEARNING</div>
-                <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em', color: 'rgb(15, 23, 42)' }}>{lastAccessedLecture.title}</div>
-                <div style={{ fontSize: 13, color: 'rgb(100, 116, 139)', marginTop: 2 }}>Pick up where you left off</div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'rgb(37, 99, 235)', marginBottom: 2 }}>CONTINUE LEARNING</div>
+                <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em', color: 'rgb(15, 23, 42)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lastAccessedLecture.title}</div>
+                <div style={{ fontSize: 12, color: 'rgb(100, 116, 139)', marginTop: 2 }}>Pick up where you left off</div>
               </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div className="continue-stars" style={{ textAlign: 'right', flexShrink: 0 }}>
                 <div style={{ display: 'flex', gap: 3 }}>
                   {[['#EF4444'], ['#F59E0B'], ['#22C55E']].map(([c], i) => (
-                    <svg key={i} width="18" height="18" viewBox="0 0 24 24" fill={c} stroke={c} strokeWidth="1.5">
+                    <svg key={i} width="16" height="16" viewBox="0 0 24 24" fill={c} stroke={c} strokeWidth="1.5">
                       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                     </svg>
                   ))}
                 </div>
-                <div style={{ fontSize: 11.5, color: 'rgb(148, 163, 184)', fontWeight: 600, marginTop: 4 }}>Mastered</div>
+                <div style={{ fontSize: 11, color: 'rgb(148, 163, 184)', fontWeight: 600, marginTop: 3 }}>Mastered</div>
               </div>
               <Link
+                className="continue-resume"
                 href={`/${uniSlug}/${subjectSlug}/lecture/${(lastAccessedLecture as any).slug ?? lastAccessedLecture.id}`}
-                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 8, height: 44, padding: '0 20px', border: 'none', borderRadius: 12, background: 'rgb(37, 99, 235)', color: 'rgb(255, 255, 255)', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }}>
-                Resume
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
-                </svg>
+                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 8, height: 42, padding: '0 18px', border: 'none', borderRadius: 11, background: 'rgb(37, 99, 235)', color: 'rgb(255, 255, 255)', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }}>
+                Resume →
               </Link>
             </div>
-            <div style={{ height: 5, background: 'rgba(37, 99, 235, 0.12)' }}>
+            <div style={{ height: 4, background: 'rgba(37, 99, 235, 0.12)' }}>
               <div style={{ height: '100%', width: `${progressPercent}%`, background: 'rgb(37, 99, 235)', transition: 'width 0.6s' }} />
             </div>
           </div>
         )}
 
-        {/* Two Column Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 348px', gap: 34, alignItems: 'start' }}>
+        {/* Grid: Chapters + Sidebar */}
+        <div className="subject-grid" style={{ display: 'grid', alignItems: 'start' }}>
 
           {/* LEFT: Chapters */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 18 }}>
-              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: 'rgb(21, 32, 58)' }}>{groupLabel}s</h2>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em', color: 'rgb(21, 32, 58)' }}>{groupLabel}s</h2>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'rgb(47, 107, 255)' }}>{groupStats.length} {groupLabel.toLowerCase()}{groupStats.length !== 1 ? 's' : ''}</span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {groupStats.map(({ group, gTotal, gFlash, gQuiz, gPyq, gPct }) => (
                 <Link key={group.id} href={`/${uniSlug}/${subjectSlug}/chapter/${(group as any).slug ?? group.id}`} prefetch={false} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '22px 24px', borderRadius: 18, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', cursor: 'pointer', boxShadow: 'rgba(16, 24, 40, 0.04) 0px 1px 2px, rgba(40, 90, 200, 0.4) 0px 14px 34px -26px', transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 50, height: 50, borderRadius: 14, background: 'rgb(238, 243, 255)', color: 'rgb(47, 107, 255)', flexShrink: 0 }}>
-                      <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <div className="chapter-card" style={{ display: 'flex', alignItems: 'center', borderRadius: 16, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', cursor: 'pointer', boxShadow: 'rgba(16, 24, 40, 0.04) 0px 1px 2px, rgba(40, 90, 200, 0.4) 0px 14px 34px -26px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 12, background: 'rgb(238, 243, 255)', color: 'rgb(47, 107, 255)', flexShrink: 0 }}>
+                      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                       </svg>
                     </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'rgb(21, 32, 58)', letterSpacing: '-0.01em' }}>{group.title}</h3>
-                        <span style={{ padding: '3px 10px', borderRadius: 999, background: gPct === 100 ? 'rgb(231, 247, 239)' : gPct > 0 ? 'rgb(255, 246, 224)' : 'rgb(238, 241, 248)', border: `1px solid ${gPct === 100 ? 'rgb(199, 235, 216)' : gPct > 0 ? 'rgb(243, 225, 174)' : 'rgb(222, 226, 238)'}`, color: gPct === 100 ? 'rgb(19, 138, 90)' : gPct > 0 ? 'rgb(161, 115, 10)' : 'rgb(136, 146, 168)', fontSize: 11.5, fontWeight: 700 }}>
+                    <div style={{ flex: 1, minWidth: 0, marginLeft: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'rgb(21, 32, 58)', letterSpacing: '-0.01em' }}>{group.title}</h3>
+                        <span style={{ padding: '2px 9px', borderRadius: 999, background: gPct === 100 ? 'rgb(231, 247, 239)' : gPct > 0 ? 'rgb(255, 246, 224)' : 'rgb(238, 241, 248)', border: `1px solid ${gPct === 100 ? 'rgb(199, 235, 216)' : gPct > 0 ? 'rgb(243, 225, 174)' : 'rgb(222, 226, 238)'}`, color: gPct === 100 ? 'rgb(19, 138, 90)' : gPct > 0 ? 'rgb(161, 115, 10)' : 'rgb(136, 146, 168)', fontSize: 11, fontWeight: 700 }}>
                           {gPct === 100 ? 'Done' : gPct > 0 ? `${gPct}%` : 'Not started'}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 9, fontSize: 13, fontWeight: 600, color: 'rgb(136, 146, 168)' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 6, fontSize: 12.5, fontWeight: 600, color: 'rgb(136, 146, 168)' }}>
                         <span>{gTotal} lecture{gTotal !== 1 ? 's' : ''}</span>
                         {gFlash > 0 && <span>{gFlash} flashcard{gFlash !== 1 ? 's' : ''}</span>}
-                        {gQuiz > 0  && <span>{gQuiz} question{gQuiz !== 1 ? 's' : ''}</span>}
-                        {gPyq > 0   && <span>{gPyq} PYQ{gPyq !== 1 ? 's' : ''}</span>}
+                        {gQuiz > 0  && <span>{gQuiz} Q</span>}
+                        {gPyq > 0   && <span>{gPyq} PYQ</span>}
                       </div>
-                      <div style={{ marginTop: 13, height: 7, borderRadius: 999, background: 'rgb(234, 240, 251)', overflow: 'hidden', maxWidth: 340 }}>
+                      <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'rgb(234, 240, 251)', overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${gPct}%`, borderRadius: 999, background: gPct === 100 ? 'linear-gradient(90deg, rgb(23, 166, 107), rgb(16, 128, 81))' : 'linear-gradient(90deg, rgb(59, 121, 255), rgb(36, 86, 214))' }} />
                       </div>
                     </div>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 700, color: 'rgb(47, 107, 255)', flexShrink: 0 }}>
+                    <span className="chapter-view" style={{ alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 700, color: 'rgb(47, 107, 255)', flexShrink: 0, marginLeft: 12 }}>
                       View lectures
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
                     </span>
+                    <span className="chapter-view" style={{ display: 'none' }} />
+                    <svg className="chapter-arrow-mobile" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgb(47, 107, 255)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginLeft: 8 }}>
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
                   </div>
                 </Link>
               ))}
@@ -308,104 +331,96 @@ export default async function SubjectPage({ params }: PageProps) {
 
           {/* RIGHT: Sidebar */}
           <aside>
-            <h2 style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'rgb(136, 146, 168)' }}>More in this subject</h2>
+            <h2 style={{ margin: '20px 0 12px', fontSize: 12, fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'rgb(136, 146, 168)' }}>More in this subject</h2>
 
             {/* Video Lectures */}
             {videos && videos.length > 0 && (
-              <div style={{ borderRadius: 16, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '18px 18px 16px', marginBottom: 14, cursor: 'pointer', transition: 'background 0.16s ease, border-color 0.16s ease' }}>
+              <div style={{ borderRadius: 14, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '16px 16px 14px', marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 11, background: 'rgb(238, 243, 255)', color: 'rgb(47, 107, 255)', flexShrink: 0 }}>
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, background: 'rgb(238, 243, 255)', color: 'rgb(47, 107, 255)', flexShrink: 0 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" />
                     </svg>
                   </span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'rgb(21, 32, 58)' }}>Video Lectures</div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 2 }}>{videos[0]?.title}{videos.length > 1 ? ` · +${videos.length - 1} more` : ''}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'rgb(21, 32, 58)' }}>Video Lectures</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 1 }}>{videos[0]?.title}{videos.length > 1 ? ` · +${videos.length - 1} more` : ''}</div>
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 800, color: 'rgb(47, 107, 255)' }}>{videos.length}</span>
-                </div>
-                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {videos.slice(0, 2).map((v: any) => (
-                    <a key={v.id} href={v.video_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 9, fontSize: 13.5, fontWeight: 600, color: 'rgb(85, 97, 125)', cursor: 'pointer', textDecoration: 'none' }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgb(47, 107, 255)' }} />
-                      {v.title}
-                    </a>
-                  ))}
                 </div>
               </div>
             )}
 
             {/* Previous Years */}
-            <Link href={`/${uniSlug}/${subjectSlug}/previous-years`} style={{ textDecoration: 'none', display: 'block', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 13, borderRadius: 16, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '16px 18px', cursor: 'pointer', transition: 'background 0.16s ease, border-color 0.16s ease' }}>
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 11, background: 'rgb(238, 243, 255)', color: 'rgb(47, 107, 255)', flexShrink: 0 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <Link href={`/${uniSlug}/${subjectSlug}/previous-years`} style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 14, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '14px 16px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, background: 'rgb(238, 243, 255)', color: 'rgb(47, 107, 255)', flexShrink: 0 }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
                   </svg>
                 </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'rgb(21, 32, 58)' }}>Previous Years</div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 2 }}>Past papers &amp; MCQ bank</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'rgb(21, 32, 58)' }}>Previous Years</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 1 }}>Past papers & MCQ bank</div>
                 </div>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
               </div>
             </Link>
 
             {/* Quiz Bank */}
-            <Link href={`/${uniSlug}/${subjectSlug}/quiz-bank`} style={{ textDecoration: 'none', display: 'block', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 13, borderRadius: 16, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '16px 18px', cursor: 'pointer', transition: 'background 0.16s ease, border-color 0.16s ease' }}>
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 11, background: 'rgb(238, 246, 238)', color: 'rgb(23, 166, 107)', flexShrink: 0 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <Link href={`/${uniSlug}/${subjectSlug}/quiz-bank`} style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 14, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '14px 16px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, background: 'rgb(238, 246, 238)', color: 'rgb(23, 166, 107)', flexShrink: 0 }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" />
                   </svg>
                 </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'rgb(21, 32, 58)' }}>Quiz Bank</div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 2 }}>All quiz questions in one place</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'rgb(21, 32, 58)' }}>Quiz Bank</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 1 }}>All quiz questions in one place</div>
                 </div>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
               </div>
             </Link>
 
             {/* Flashcards Bank */}
-            <Link href={`/${uniSlug}/${subjectSlug}/flashcards-bank`} style={{ textDecoration: 'none', display: 'block', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 13, borderRadius: 16, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '16px 18px', cursor: 'pointer', transition: 'background 0.16s ease, border-color 0.16s ease' }}>
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 11, background: 'rgb(255, 246, 224)', color: 'rgb(201, 148, 0)', flexShrink: 0 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <Link href={`/${uniSlug}/${subjectSlug}/flashcards-bank`} style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 14, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '14px 16px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, background: 'rgb(255, 246, 224)', color: 'rgb(201, 148, 0)', flexShrink: 0 }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="6" width="20" height="14" rx="2" /><path d="M6 3h12" /><path d="M4 6h16" />
                   </svg>
                 </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'rgb(21, 32, 58)' }}>Flashcards Bank</div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 2 }}>All flashcards in one place</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'rgb(21, 32, 58)' }}>Flashcards Bank</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 1 }}>All flashcards in one place</div>
                 </div>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
               </div>
             </Link>
 
             {/* Clinical Modules */}
             {clinicalModules && clinicalModules.length > 0 && (
-              <div style={{ borderRadius: 16, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', marginBottom: 12, overflow: 'hidden' }}>
-                <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 11, background: 'rgb(231, 247, 239)', color: 'rgb(23, 166, 107)', flexShrink: 0 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div style={{ borderRadius: 14, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', marginBottom: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, background: 'rgb(231, 247, 239)', color: 'rgb(23, 166, 107)', flexShrink: 0 }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M4.8 2.3A.3.3 0 1 0 5 2a.3.3 0 0 0-.2.3" /><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4" /><path d="M16 11V3" /><path d="M8 2v3a4 4 0 0 0 8 0V2" />
                     </svg>
                   </span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'rgb(21, 32, 58)' }}>OSCE &amp; Oral</div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 2 }}>Clinical examination</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'rgb(21, 32, 58)' }}>OSCE & Oral</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 1 }}>Clinical examination</div>
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 800, color: 'rgb(23, 166, 107)' }}>{clinicalModules.length}</span>
                 </div>
                 {clinicalModules.map(mod => (
                   <div key={mod.id}>
-                    <div style={{ height: 1, background: 'rgb(231, 236, 246)', margin: '0 18px' }} />
-                    <Link href={`/${uniSlug}/${subjectSlug}/clinical/${mod.id}`} style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit' }}>
+                    <div style={{ height: 1, background: 'rgb(231, 236, 246)', margin: '0 16px' }} />
+                    <Link href={`/${uniSlug}/${subjectSlug}/clinical/${mod.id}`} style={{ padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit' }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgb(23, 166, 107)' }} />
-                      <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: 'rgb(85, 97, 125)' }}>{moduleLabels[mod.module_type] ?? mod.module_type}</span>
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'rgb(85, 97, 125)' }}>{moduleLabels[mod.module_type] ?? mod.module_type}</span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
                     </Link>
                   </div>
                 ))}

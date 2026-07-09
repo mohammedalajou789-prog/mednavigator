@@ -5,7 +5,12 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerClient()
 
-    const { data: { user } } = await supabase.auth.getUser()
+    // FIX: auth + profile + body parsed in parallel
+    const [{ data: { user } }, body] = await Promise.all([
+      supabase.auth.getUser(),
+      request.json(),
+    ])
+
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { data: profile } = await supabase
@@ -16,7 +21,6 @@ export async function POST(request: NextRequest) {
 
     if (!profile) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    const body = await request.json()
     const { lecture_id, stars } = body
 
     if (!lecture_id || stars === undefined) {
@@ -34,9 +38,7 @@ export async function POST(request: NextRequest) {
         lecture_id,
         stars,
         updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id,lecture_id',
-      })
+      }, {})
       .select()
       .single()
 

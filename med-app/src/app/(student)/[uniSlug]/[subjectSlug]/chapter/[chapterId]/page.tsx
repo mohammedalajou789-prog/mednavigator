@@ -104,7 +104,7 @@ export default async function ChapterPage({ params }: PageProps) {
       fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
       color: 'rgb(60, 70, 97)',
     }}>
-      <main style={{ width: '100%', padding: '30px 34px 80px' }}>
+      <main style={{ width: '100%', padding: 'clamp(16px, 4vw, 30px) clamp(16px, 4vw, 34px) 80px' }}>
 
         {/* ── Breadcrumb ── */}
         <nav style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, fontWeight: 600, marginBottom: 20 }}>

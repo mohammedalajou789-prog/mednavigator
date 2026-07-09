@@ -11,16 +11,14 @@ interface University {
 export default async function ExplorePage() {
   const supabase = await createClient()
 
-  const { data: universities } = await supabase
-    .from('universities')
-    .select('id, name, logo_url, slug')
-    .eq('is_active', true)
-    .order('name')
-
-  const { data: subjectCounts } = await supabase
-    .from('subjects')
-    .select('university_id')
-    .eq('is_published', true)
+  // FIX: merge two separate queries into one parallel Promise.all
+  const [
+    { data: universities },
+    { data: subjectCounts },
+  ] = await Promise.all([
+    supabase.from('universities').select('id, name, logo_url, slug').eq('is_active', true).order('name'),
+    supabase.from('subjects').select('university_id').eq('is_published', true),
+  ])
 
   const countMap: Record<string, number> = {}
   ;(subjectCounts ?? []).forEach((row: { university_id: string }) => {
@@ -54,27 +52,11 @@ export default async function ExplorePage() {
             {unis.map((uni) => {
               const subjectCount = countMap[uni.id] ?? 0
               return (
-                <Link
-                  key={uni.id}
-                  href={`/${uni.slug ?? uni.id}`}
-                  style={{ textDecoration: 'none', display: 'block' }}
-                >
-                  <div style={{
-                    background: 'var(--card)',
-                    border: '1px solid var(--line)',
-                    borderRadius: 18,
-                    boxShadow: 'var(--shadow)',
-                    overflow: 'hidden',
-                    cursor: 'pointer',
-                  }}>
-                    {/* Top section */}
+                <Link key={uni.id} href={`/${uni.slug ?? uni.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+                  <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, boxShadow: 'var(--shadow)', overflow: 'hidden', cursor: 'pointer' }}>
                     <div style={{ padding: '22px 22px 18px', display: 'flex', alignItems: 'center', gap: 16 }}>
                       {uni.logo_url ? (
-                        <img
-                          src={uni.logo_url}
-                          alt={uni.name}
-                          style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid var(--line)' }}
-                        />
+                        <img src={uni.logo_url} alt={uni.name} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid var(--line)' }} />
                       ) : (
                         <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#2F6BFF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 18, flexShrink: 0 }}>
                           {uni.name.charAt(0)}
@@ -89,12 +71,8 @@ export default async function ExplorePage() {
                         </div>
                       </div>
                     </div>
-
-                    {/* Footer */}
                     <div style={{ padding: '14px 22px', borderTop: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--primary)' }}>
-                        BROWSE SUBJECTS
-                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--primary)' }}>BROWSE SUBJECTS</span>
                       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="5" y1="12" x2="19" y2="12"/>
                         <polyline points="12 5 19 12 12 19"/>
@@ -104,8 +82,6 @@ export default async function ExplorePage() {
                 </Link>
               )
             })}
-
-            
           </div>
         )}
 

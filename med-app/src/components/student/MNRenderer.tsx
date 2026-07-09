@@ -255,7 +255,7 @@ function parseContent(raw: string): Block[] {
       // collect content between tags
       const sourceLines: string[] = []
       let j = i + 1
-      while (j < lines.length && lines[j].trim() !== closeTag) { sourceLines.push(lines[j]); j++ }
+      while (j < lines.length && lines[j].trim().replace(/\r/g, '') !== closeTag) { sourceLines.push(lines[j]); j++ }
       blocks.push({ type: 'source', content: sourceLines.join('\n').replace(/^\n+|\n+$/g, ''), sourceName })
     }
 

@@ -114,9 +114,7 @@ interface LectureHubProps {
   subjectSlug?: string
   userName?: string
   userId?: string
-  // Access
   accessAllowed: boolean
-  // Tab existence flags — no content, just booleans/counts
   hasSheet: boolean
   hasSummary: boolean
   flashcardsCount: number
@@ -249,19 +247,16 @@ export default function LectureHub({
 }: LectureHubProps) {
   const { user } = useUserStore()
   const supabase = useMemo(() => createClient(), [])
-
-  // FIX 5: removed unused sidebarOpen
   const { setSidebarOpen } = useUIStore()
 
   const availableTabs = [
-    hasSheet          && 'sheet',
-    hasSummary        && 'summary',
-    flashcardsCount > 0 && 'flashcards',
-    quizCount > 0       && 'quiz',
-    pyqCount > 0        && 'previous_years',
+    hasSheet             && 'sheet',
+    hasSummary           && 'summary',
+    flashcardsCount > 0  && 'flashcards',
+    quizCount > 0        && 'quiz',
+    pyqCount > 0         && 'previous_years',
   ].filter(Boolean) as string[]
 
-  // If access is locked, all tabs are still shown but content is locked
   const allTabs = availableTabs.length > 0
     ? availableTabs
     : ['sheet', 'summary', 'flashcards', 'quiz', 'previous_years']
@@ -273,6 +268,13 @@ export default function LectureHub({
   const [isCompleted, setIsCompleted]           = useState(false)
   const [isBookmarked, setIsBookmarked]         = useState(false)
 
+  // ── FIX 1: Throttle refs for progress DB writes ────────────────────────
+  const progressSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSavedPct      = useRef<number>(-1)
+
+  // ── FIX 3: TOC scroll — only call scrollIntoView when section changes ──
+  const prevSectionId = useRef<string>('')
+
   const [flashcardStats, setFlashcardStats] = useState<FlashcardStats>({
     total: flashcardsCount, easy: 0, medium: 0, hard: 0, current: 1, important: 0,
   })
@@ -283,7 +285,7 @@ export default function LectureHub({
     total: pyqCount, important: 0, answered: 0,
   })
 
-  // ── Lazy content fetching — only fetch when tab is first activated ──────
+  // ── Lazy content fetching ──────────────────────────────────────────────
   const { data: sheetPayload, isLoading: sheetLoading } = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'sheet'],
     queryFn:  () => fetchTabContent(lecture.id, subject.id, 'sheet'),
@@ -329,25 +331,23 @@ export default function LectureHub({
     refetchOnMount: false,
   })
 
-  // Extract content from payloads
-  const sheet:              Sheet | null              = sheetPayload?.data ?? null
-  const sheetLocked:        boolean                   = sheetPayload?.locked ?? !accessAllowed
+  const sheet:     Sheet | null   = sheetPayload?.data ?? null
+  const sheetLocked: boolean      = sheetPayload?.locked ?? !accessAllowed
   const sheetImageSlots: Record<number, string> = Object.fromEntries(
-  Object.entries(sheetPayload?.imageSlots ?? {}).map(([k, v]) => [Number(k), String(v)])
-)
-  const summary:            Summary | null            = summaryPayload?.data ?? null
+    Object.entries(sheetPayload?.imageSlots ?? {}).map(([k, v]) => [Number(k), String(v)])
+  )
+  const summary:   Summary | null = summaryPayload?.data ?? null
   const summaryImageSlots: Record<number, string> = Object.fromEntries(
-  Object.entries(summaryPayload?.imageSlots ?? {}).map(([k, v]) => [Number(k), String(v)])
-)
-  const summaryLocked:      boolean                   = summaryPayload?.locked ?? !accessAllowed
-  const flashcards:         Flashcard[]               = flashcardsPayload?.data ?? []
-  const flashcardsLocked:   boolean                   = flashcardsPayload?.locked ?? !accessAllowed
-  const quizQuestions:      QuizQuestion[]            = quizPayload?.data ?? []
-  const quizLocked:         boolean                   = quizPayload?.locked ?? !accessAllowed
+    Object.entries(summaryPayload?.imageSlots ?? {}).map(([k, v]) => [Number(k), String(v)])
+  )
+  const summaryLocked: boolean           = summaryPayload?.locked ?? !accessAllowed
+  const flashcards: Flashcard[]          = flashcardsPayload?.data ?? []
+  const flashcardsLocked: boolean        = flashcardsPayload?.locked ?? !accessAllowed
+  const quizQuestions: QuizQuestion[]    = quizPayload?.data ?? []
+  const quizLocked: boolean              = quizPayload?.locked ?? !accessAllowed
   const previousYearQuestions: PreviousYearQuestion[] = pyqPayload?.data ?? []
-  const pyqLocked:          boolean                   = pyqPayload?.locked ?? !accessAllowed
+  const pyqLocked: boolean               = pyqPayload?.locked ?? !accessAllowed
 
-  // FIX 4: memoize tocSections
   const tocSections: TocSection[] = useMemo(() => {
     if (activeTab === 'sheet')   return extractToc(sheet?.content ?? '')
     if (activeTab === 'summary') return extractToc(summary?.content ?? '')
@@ -368,30 +368,34 @@ export default function LectureHub({
     (activeTab === 'quiz'           && quizLoading)       ||
     (activeTab === 'previous_years' && pyqLoading)
 
-  // FIX 3: added setSidebarOpen to dependency array
   useEffect(() => {
     setSidebarOpen(false)
     return () => setSidebarOpen(true)
   }, [setSidebarOpen])
 
-  // FIX 1: added activeTab to queryKey
+  // ── FIX 2: progress query — no activeTab in key, fetch all at once ─────
   const { data: progressData } = useQuery({
-    queryKey: ['progress', user?.id, lecture.id, activeTab],
+    queryKey: ['progress', user?.id, lecture.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('user_progress')
-        .select('progress_percentage, completed')
+        .select('content_type, progress_percentage, completed')
         .eq('user_id', user!.id)
         .eq('lecture_id', lecture.id)
-        .eq('content_type', activeTab)
-        .maybeSingle()
-      return data ?? null
+      return data ?? []
     },
     enabled: !!user?.id,
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   })
+
+  // Derive current tab's progress from the fetched array
+  const currentTabProgress = useMemo(() => {
+    if (!progressData) return null
+    return (progressData as { content_type: string; progress_percentage: number; completed: boolean }[])
+      .find(r => r.content_type === activeTab) ?? null
+  }, [progressData, activeTab])
 
   const { data: bookmarkData } = useQuery({
     queryKey: ['bookmark', 'lecture', user?.id, lecture.id],
@@ -412,14 +416,15 @@ export default function LectureHub({
   })
 
   useEffect(() => {
-    setProgressPercent(progressData?.progress_percentage ?? 0)
-    setIsCompleted(progressData?.completed ?? false)
-  }, [progressData])
+    setProgressPercent(currentTabProgress?.progress_percentage ?? 0)
+    setIsCompleted(currentTabProgress?.completed ?? false)
+  }, [currentTabProgress])
 
   useEffect(() => {
     setIsBookmarked(!!bookmarkData)
   }, [bookmarkData])
 
+  // ── FIX 3: TOC scroll handler — scrollIntoView only on section change ──
   useEffect(() => {
     if (tocSections.length === 0) return
     const scrollContainer = document.getElementById('lecture-content-scroll')
@@ -434,8 +439,13 @@ export default function LectureHub({
         if (top <= 140) current = section.id
       }
       setActiveSectionId(current)
-      const activeBtn = document.getElementById(`toc-btn-${current}`)
-      if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+
+      // Only call scrollIntoView when the active section actually changes
+      if (current !== prevSectionId.current) {
+        prevSectionId.current = current
+        const activeBtn = document.getElementById(`toc-btn-${current}`)
+        if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      }
     }
 
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
@@ -488,23 +498,30 @@ export default function LectureHub({
     }
   }
 
+  // ── FIX 1: Throttled progress update — max 1 DB write per 3 seconds ────
   function handleProgressUpdate(pct: number) {
     setProgressPercent(pct)
     if (!user) return
-    supabase.from('user_progress').upsert({
-      user_id:             user.id,
-      lecture_id:          lecture.id,
-      content_type:        activeTab,
-      progress_percentage: pct,
-      completed:           pct >= 100,
-      last_accessed_at:    new Date().toISOString(),
-      updated_at:          new Date().toISOString(),
-    }, { onConflict: 'user_id,lecture_id,content_type' })
+    // Skip if change is less than 3%
+    if (Math.abs(pct - lastSavedPct.current) < 3) return
+    // Debounce: cancel previous timer and wait 3s after last scroll
+    if (progressSaveTimer.current) clearTimeout(progressSaveTimer.current)
+    progressSaveTimer.current = setTimeout(() => {
+      lastSavedPct.current = pct
+      supabase.from('user_progress').upsert({
+        user_id:             user.id,
+        lecture_id:          lecture.id,
+        content_type:        activeTab,
+        progress_percentage: pct,
+        completed:           pct >= 100,
+        last_accessed_at:    new Date().toISOString(),
+        updated_at:          new Date().toISOString(),
+      }, { onConflict: 'user_id,lecture_id,content_type' })
+    }, 3000)
   }
 
   const displayName = userName ?? user?.full_name ?? ''
 
-  // ── Tab loading skeleton ───────────────────────────────────────────────
   const ContentSkeleton = () => (
     <div style={{ padding: '24px 0' }}>
       {[...Array(6)].map((_, i) => (
@@ -520,8 +537,6 @@ export default function LectureHub({
       <style>{`@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} } div { background-size: 200% 100%; }`}</style>
     </div>
   )
-
-  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="flex" style={{ height: 'calc(100vh - 72px)', overflow: 'hidden', position: 'relative' }}>
@@ -575,7 +590,6 @@ export default function LectureHub({
           <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '20px', padding: '22px 26px', marginBottom: '16px', background: 'linear-gradient(120deg,rgb(237,243,255) 0%,rgb(243,247,255) 52%,rgb(252,253,255) 100%)', border: '1px solid rgb(226,234,251)', boxShadow: 'rgba(16,24,40,0.04) 0px 1px 2px,rgba(40,90,200,0.4) 0px 20px 42px -30px' }}>
             <div style={{ position: 'absolute', top: '-40px', right: '70px', width: '230px', height: '130px', background: 'radial-gradient(rgba(147,197,253,0.34) 0%,rgba(196,181,253,0.13) 55%,transparent 75%)', filter: 'blur(28px)', pointerEvents: 'none' }} />
 
-            {/* Desktop badges */}
             <div className="hidden sm:flex" style={{ position: 'absolute', top: '24px', right: '28px', flexDirection: 'column', alignItems: 'flex-end', gap: '9px' }}>
               {isCompleted ? (
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', background: '#E7F7EF', border: '1px solid #C7EBD8', color: '#138A5A', fontSize: '12.5px', fontWeight: 700 }}>
@@ -594,7 +608,6 @@ export default function LectureHub({
               </span>
             </div>
 
-            {/* Mobile badges */}
             <div className="flex sm:hidden gap-2 mb-3 flex-wrap">
               {isCompleted ? (
                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#E7F7EF', border: '1px solid #C7EBD8', color: '#138A5A', fontSize: '11px', fontWeight: 700 }}>✓ Completed</span>
@@ -642,7 +655,7 @@ export default function LectureHub({
                   imageSlots={sheetImageSlots}
                 />
               )}
-            {activeTab === 'summary' && summary && (
+              {activeTab === 'summary' && summary && (
                 <SheetReader
                   content={summary.content ?? ''}
                   title={lecture.title}
@@ -680,89 +693,51 @@ export default function LectureHub({
         </div>
       </div>
 
-      {/* ── RIGHT SIDEBAR — desktop only ── */}
+      {/* ── RIGHT SIDEBAR ── */}
       <aside
         id="lecture-right-sidebar"
         className="hidden lg:flex"
         style={{
-          width:      sidebarCollapsed ? '64px' : '272px',
-          height:     'calc(100vh - 72px)',
-          overflowY:  'auto',
-          borderLeft: '1px solid #EEF0F4',
-          background: '#F7F8FA',
+          width:         sidebarCollapsed ? '64px' : '272px',
+          height:        'calc(100vh - 72px)',
+          overflowY:     'auto',
+          borderLeft:    '1px solid #EEF0F4',
+          background:    '#F7F8FA',
           flexDirection: 'column',
-          gap:        '12px',
-          padding:    sidebarCollapsed ? '16px 8px' : '16px 12px',
-          flexShrink: 0,
-          transition: 'width 0.25s ease, padding 0.25s ease',
+          gap:           '12px',
+          padding:       sidebarCollapsed ? '16px 8px' : '16px 12px',
+          flexShrink:    0,
+          transition:    'width 0.25s ease, padding 0.25s ease',
         }}
       >
-        {/* Toggle Button */}
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: '100%', height: 36, borderRadius: 10, border: '1px solid #EAEDF2',
-            background: '#fff', cursor: 'pointer',
-            color: '#6B7280', flexShrink: 0,
-          }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 36, borderRadius: 10, border: '1px solid #EAEDF2', background: '#fff', cursor: 'pointer', color: '#6B7280', flexShrink: 0 }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {sidebarCollapsed
-              ? <polyline points="15 18 9 12 15 6"/>
-              : <polyline points="9 18 15 12 9 6"/>
-            }
+            {sidebarCollapsed ? <polyline points="15 18 9 12 15 6"/> : <polyline points="9 18 15 12 9 6"/>}
           </svg>
         </button>
-        {/* ── CONTENT TABS CARD ── */}
+
+        {/* Content Tabs */}
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           <div style={{ padding: sidebarCollapsed ? '8px' : '14px 16px 10px' }}>
             {!sidebarCollapsed && (
-              <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                Content
-              </p>
+              <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Content</p>
             )}
-            <div style={{
-              display: 'flex', flexDirection: 'column', gap: '2px',
-              ...(sidebarCollapsed && {
-                maxHeight: '300px',
-                overflowY: 'auto',
-                scrollbarWidth: 'none',
-              }),
-            }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', ...(sidebarCollapsed && { maxHeight: '300px', overflowY: 'auto', scrollbarWidth: 'none' }) }}>
               {allTabs.map((tabId) => {
                 const cfg      = TAB_CONFIG[tabId]
                 const isActive = activeTab === tabId
                 return (
-                  <button
-                    key={tabId}
-                    onClick={() => setActiveTab(tabId)}
-                    title={cfg.label}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center',
-                      justifyContent: sidebarCollapsed ? 'center' : 'space-between',
-                      padding: sidebarCollapsed ? '10px' : '10px 12px',
-                      borderRadius: '10px', border: 'none', cursor: 'pointer',
-                      background: isActive ? '#EEF3FF' : 'transparent',
-                      color: isActive ? '#2563EB' : '#6B7280',
-                      transition: 'all 0.15s ease', textAlign: 'left',
-                    }}
+                  <button key={tabId} onClick={() => setActiveTab(tabId)} title={cfg.label}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', padding: sidebarCollapsed ? '10px' : '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer', background: isActive ? '#EEF3FF' : 'transparent', color: isActive ? '#2563EB' : '#6B7280', transition: 'all 0.15s ease', textAlign: 'left' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: sidebarCollapsed ? 0 : '10px' }}>
-                      <span style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: '32px', height: '32px', borderRadius: '8px',
-                        background: isActive ? '#DBEAFE' : '#F3F4F6',
-                        color: isActive ? '#2563EB' : '#9CA3AF',
-                        flexShrink: 0, transition: 'all 0.15s ease',
-                      }}>
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: isActive ? '#DBEAFE' : '#F3F4F6', color: isActive ? '#2563EB' : '#9CA3AF', flexShrink: 0, transition: 'all 0.15s ease' }}>
                         {cfg.icon}
                       </span>
-                      {!sidebarCollapsed && (
-                        <span style={{ fontSize: '13.5px', fontWeight: isActive ? 600 : 500 }}>
-                          {cfg.label}
-                        </span>
-                      )}
+                      {!sidebarCollapsed && <span style={{ fontSize: '13.5px', fontWeight: isActive ? 600 : 500 }}>{cfg.label}</span>}
                     </div>
                     {!sidebarCollapsed && (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isActive ? '#2563EB' : '#D1D5DB'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -776,20 +751,15 @@ export default function LectureHub({
           </div>
         </div>
 
-        {/* ── READING PROGRESS CARD ── */}
+        {/* Reading Progress */}
         {!!user && (activeTab === 'sheet' || activeTab === 'summary') && (
-          <div style={{ background: '#fff', borderRadius: '16px', border: `1px solid ${'#EAEDF2'}`, padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {sidebarCollapsed ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                 <div style={{ position: 'relative', width: '44px', height: '44px' }}>
                   <svg width="44" height="44" viewBox="0 0 56 56">
                     <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
-                    <circle cx="28" cy="28" r="22" fill="none" stroke="#2563EB" strokeWidth="5" strokeLinecap="round"
-                      strokeDasharray="138.23"
-                      strokeDashoffset={138.23 - (138.23 * progressPercent / 100)}
-                      transform="rotate(-90 28 28)"
-                      style={{ transition: 'stroke-dashoffset 0.4s ease' }}
-                    />
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#2563EB" strokeWidth="5" strokeLinecap="round" strokeDasharray="138.23" strokeDashoffset={138.23 - (138.23 * progressPercent / 100)} transform="rotate(-90 28 28)" style={{ transition: 'stroke-dashoffset 0.4s ease' }}/>
                   </svg>
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: '10px', fontWeight: 800, color: '#2563EB' }}>{progressPercent}%</span>
@@ -804,24 +774,15 @@ export default function LectureHub({
                   <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
                     <svg width="56" height="56" viewBox="0 0 56 56">
                       <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
-                      <circle cx="28" cy="28" r="22" fill="none" stroke="#2563EB" strokeWidth="5" strokeLinecap="round"
-                        strokeDasharray="138.23"
-                        strokeDashoffset={138.23 - (138.23 * progressPercent / 100)}
-                        transform="rotate(-90 28 28)"
-                        style={{ transition: 'stroke-dashoffset 0.4s ease' }}
-                      />
+                      <circle cx="28" cy="28" r="22" fill="none" stroke="#2563EB" strokeWidth="5" strokeLinecap="round" strokeDasharray="138.23" strokeDashoffset={138.23 - (138.23 * progressPercent / 100)} transform="rotate(-90 28 28)" style={{ transition: 'stroke-dashoffset 0.4s ease' }}/>
                     </svg>
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB' }}>{progressPercent}%</span>
                     </div>
                   </div>
                   <div>
-                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>
-                      {progressPercent >= 100 ? 'Finished!' : 'Keep reading'}
-                    </p>
-                    <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94A3B8', fontWeight: 500 }}>
-                      {progressPercent >= 100 ? 'Great job!' : progressPercent > 0 ? `${progressPercent}% done` : 'Not started'}
-                    </p>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>{progressPercent >= 100 ? 'Finished!' : 'Keep reading'}</p>
+                    <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94A3B8', fontWeight: 500 }}>{progressPercent >= 100 ? 'Great job!' : progressPercent > 0 ? `${progressPercent}% done` : 'Not started'}</p>
                   </div>
                 </div>
                 <div style={{ height: '6px', borderRadius: '999px', background: '#EEF0F4', overflow: 'hidden' }}>
@@ -832,7 +793,7 @@ export default function LectureHub({
           </div>
         )}
 
-        {/* ── FLASHCARD STATS CARD ── */}
+        {/* Flashcard Stats */}
         {activeTab === 'flashcards' && (
           <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {sidebarCollapsed ? (
@@ -840,12 +801,7 @@ export default function LectureHub({
                 <div style={{ position: 'relative', width: '44px', height: '44px' }}>
                   <svg width="44" height="44" viewBox="0 0 56 56">
                     <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
-                    <circle cx="28" cy="28" r="22" fill="none" stroke="#2563EB" strokeWidth="5" strokeLinecap="round"
-                      strokeDasharray="138.23"
-                      strokeDashoffset={flashcardStats.total > 0 ? 138.23 - (138.23 * (flashcardStats.current - 1) / flashcardStats.total) : 138.23}
-                      transform="rotate(-90 28 28)"
-                      style={{ transition: 'stroke-dashoffset 0.4s ease' }}
-                    />
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#2563EB" strokeWidth="5" strokeLinecap="round" strokeDasharray="138.23" strokeDashoffset={flashcardStats.total > 0 ? 138.23 - (138.23 * (flashcardStats.current - 1) / flashcardStats.total) : 138.23} transform="rotate(-90 28 28)" style={{ transition: 'stroke-dashoffset 0.4s ease' }}/>
                   </svg>
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: '10px', fontWeight: 800, color: '#2563EB' }}>{flashcardStats.current}/{flashcardStats.total}</span>
@@ -865,7 +821,7 @@ export default function LectureHub({
           </div>
         )}
 
-        {/* ── QUIZ STATS CARD ── */}
+        {/* Quiz Stats */}
         {activeTab === 'quiz' && (
           <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {sidebarCollapsed ? (
@@ -873,12 +829,7 @@ export default function LectureHub({
                 <div style={{ position: 'relative', width: '44px', height: '44px' }}>
                   <svg width="44" height="44" viewBox="0 0 56 56">
                     <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
-                    <circle cx="28" cy="28" r="22" fill="none" stroke="#16A34A" strokeWidth="5" strokeLinecap="round"
-                      strokeDasharray="138.23"
-                      strokeDashoffset={quizStats.total > 0 ? 138.23 - (138.23 * quizStats.correct / quizStats.total) : 138.23}
-                      transform="rotate(-90 28 28)"
-                      style={{ transition: 'stroke-dashoffset 0.4s ease' }}
-                    />
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#16A34A" strokeWidth="5" strokeLinecap="round" strokeDasharray="138.23" strokeDashoffset={quizStats.total > 0 ? 138.23 - (138.23 * quizStats.correct / quizStats.total) : 138.23} transform="rotate(-90 28 28)" style={{ transition: 'stroke-dashoffset 0.4s ease' }}/>
                   </svg>
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A' }}>{quizStats.answered > 0 ? Math.round(quizStats.correct / quizStats.answered * 100) : 0}%</span>
@@ -899,6 +850,8 @@ export default function LectureHub({
             )}
           </div>
         )}
+
+        {/* PYQ Stats */}
         {activeTab === 'previous_years' && (
           <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {sidebarCollapsed ? (
@@ -906,12 +859,7 @@ export default function LectureHub({
                 <div style={{ position: 'relative', width: '44px', height: '44px' }}>
                   <svg width="44" height="44" viewBox="0 0 56 56">
                     <circle cx="28" cy="28" r="22" fill="none" stroke="#EEF0F4" strokeWidth="5"/>
-                    <circle cx="28" cy="28" r="22" fill="none" stroke="#D97706" strokeWidth="5" strokeLinecap="round"
-                      strokeDasharray="138.23"
-                      strokeDashoffset={pyqStats.total > 0 ? 138.23 - (138.23 * pyqStats.answered / pyqStats.total) : 138.23}
-                      transform="rotate(-90 28 28)"
-                      style={{ transition: 'stroke-dashoffset 0.4s ease' }}
-                    />
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#D97706" strokeWidth="5" strokeLinecap="round" strokeDasharray="138.23" strokeDashoffset={pyqStats.total > 0 ? 138.23 - (138.23 * pyqStats.answered / pyqStats.total) : 138.23} transform="rotate(-90 28 28)" style={{ transition: 'stroke-dashoffset 0.4s ease' }}/>
                   </svg>
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: '10px', fontWeight: 800, color: '#D97706' }}>{pyqStats.answered}/{pyqStats.total}</span>
@@ -932,7 +880,7 @@ export default function LectureHub({
           </div>
         )}
 
-        {/* ── LECTURE CONTENT SEARCH ── */}
+        {/* Content Search */}
         {!sidebarCollapsed && (activeTab === 'sheet' || activeTab === 'summary') && (
           <LectureContentSearch
             sheetContent={sheet?.content ?? ''}
@@ -941,7 +889,7 @@ export default function LectureHub({
           />
         )}
 
-        {/* ── TABLE OF CONTENTS CARD ── */}
+        {/* Table of Contents */}
         {tocSections.length > 0 && (
           <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '10px 6px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             {sidebarCollapsed ? (
@@ -988,12 +936,12 @@ export default function LectureHub({
           </div>
         )}
 
-        {/* ── NOTES CARD ── */}
+        {/* Notes */}
         {!sidebarCollapsed && <NotesPanel lectureId={lecture.id} />}
 
-        {/* ── ACTIONS CARD ── */}
+        {/* Actions */}
         {!sidebarCollapsed && !!user && (
-          <div style={{ background: '#fff', borderRadius: '16px', border: `1px solid ${'#EAEDF2'}`, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Actions</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button onClick={handleToggleBookmark}

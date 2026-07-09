@@ -11,6 +11,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
+  // Step 1 — Delete all existing questions for this lecture
+  const { error: deleteError } = await supabase
+    .from('previous_year_questions')
+    .delete()
+    .eq('lecture_id', lecture_id)
+
+  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 })
+
+  // Step 2 — Insert the new questions
   const rows = questions.map((q: {
     question: string
     options: string[]
@@ -18,6 +27,7 @@ export async function POST(req: Request) {
     explanation: string
     exam_year: number | ''
     exam_type: string
+    batch_name: string
   }) => ({
     lecture_id,
     question: q.question,
@@ -26,6 +36,7 @@ export async function POST(req: Request) {
     explanation: q.explanation || null,
     exam_year: q.exam_year || null,
     exam_type: q.exam_type,
+    batch_name: q.batch_name || null,
   }))
 
   const { error } = await supabase.from('previous_year_questions').insert(rows)

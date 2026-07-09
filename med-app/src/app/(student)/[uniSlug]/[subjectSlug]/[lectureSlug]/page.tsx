@@ -16,11 +16,9 @@ export default async function LecturePage({ params }: PageProps) {
 
   const supabase = await createServerClient()
 
-  // ── STEP 1 ───────────────────────────────────────────────────────────────
+  // ── STEP 1 ──────────────────────────────────────────────────────────────
   // Resolve slugs + auth in ONE parallel round trip.
-  // We only fetch lightweight data here — no content yet.
-  // Content (sheet, flashcards, quiz, pyq) is fetched client-side on demand.
-  // ─────────────────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────────
   const [
     { data: uniRow },
     { data: lecture },
@@ -43,50 +41,49 @@ export default async function LecturePage({ params }: PageProps) {
   if (!lecture)                    redirect(`/${uniSlug}/${subjectSlug}`)
   if (!subject)                    redirect(`/${uniSlug}`)
 
-  // ── STEP 2 ───────────────────────────────────────────────────────────────
-  // Fetch user profile + access check in parallel.
-  // ─────────────────────────────────────────────────────────────────────────
-  let userId:   string | null = null
-  let userName: string | null = null
-
-  if (user) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('id, full_name')
-      .eq('auth_user_id', user.id)
-      .single()
-    userId   = profile?.id        ?? null
-    userName = profile?.full_name ?? null
-  }
-
-  const accessAllowed = (await checkUserAccess(subjectId, userId)).allowed
-
-  // ── STEP 3 ───────────────────────────────────────────────────────────────
-  // Fetch only lightweight metadata — no content bodies.
-  // We check which tabs exist (sheet/summary/flashcards/quiz/pyq)
-  // without fetching their actual content.
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── STEP 2 ──────────────────────────────────────────────────────────────
+  // FIX 4: profile fetch + access check + tab metadata all in ONE parallel
+  // round trip. Previously: profile fetch → then access check (2 sequential
+  // trips). Now: all run at the same time.
+  // ────────────────────────────────────────────────────────────────────────
   const [
-    { data: sheetMeta },
-    { data: summaryMeta },
-    { count: flashcardsCount },
-    { count: quizCount },
-    { count: pyqCount },
-    { data: videos },
+    profileResult,
+    sheetMetaResult,
+    summaryMetaResult,
+    flashcardsCountResult,
+    quizCountResult,
+    pyqCountResult,
+    videosResult,
   ] = await Promise.all([
-    supabase.from('sheets').select('id').eq('lecture_id', resolvedLectureId)
-      .maybeSingle(),
-    supabase.from('summaries').select('id').eq('lecture_id', resolvedLectureId)
-      .maybeSingle(),
-    supabase.from('flashcards').select('id', { count: 'exact', head: true })
-      .eq('lecture_id', resolvedLectureId),
-    supabase.from('quiz_questions').select('id', { count: 'exact', head: true })
-      .eq('lecture_id', resolvedLectureId),
-    supabase.from('previous_year_questions').select('id', { count: 'exact', head: true })
-      .eq('lecture_id', resolvedLectureId),
+    user
+      ? supabase.from('users').select('id, full_name').eq('auth_user_id', user.id).single()
+      : Promise.resolve({ data: null }),
+    supabase.from('sheets').select('id').eq('lecture_id', resolvedLectureId).maybeSingle(),
+    supabase.from('summaries').select('id').eq('lecture_id', resolvedLectureId).maybeSingle(),
+    supabase.from('flashcards').select('id', { count: 'exact', head: true }).eq('lecture_id', resolvedLectureId),
+    supabase.from('quiz_questions').select('id', { count: 'exact', head: true }).eq('lecture_id', resolvedLectureId),
+    supabase.from('previous_year_questions').select('id', { count: 'exact', head: true }).eq('lecture_id', resolvedLectureId),
     supabase.from('videos').select('id, title, description, video_url, is_preview, display_order')
       .eq('lecture_id', resolvedLectureId).order('display_order'),
   ])
+
+  const profile  = (profileResult as any).data
+  const userId   = profile?.id        ?? null
+  const userName = profile?.full_name ?? null
+
+  const sheetMeta       = sheetMetaResult.data
+  const summaryMeta     = summaryMetaResult.data
+  const flashcardsCount = (flashcardsCountResult as any).count ?? 0
+  const quizCount       = (quizCountResult as any).count       ?? 0
+  const pyqCount        = (pyqCountResult as any).count        ?? 0
+  const videos          = videosResult.data ?? []
+
+  // ── STEP 3 ──────────────────────────────────────────────────────────────
+  // Access check runs after profile is resolved (needs userId).
+  // This is a single fast query — cannot be parallelized with profile
+  // because it depends on userId.
+  // ────────────────────────────────────────────────────────────────────────
+  const accessAllowed = (await checkUserAccess(subjectId, userId)).allowed
 
   return (
     <LectureHub
@@ -99,10 +96,10 @@ export default async function LecturePage({ params }: PageProps) {
       accessAllowed={accessAllowed}
       hasSheet={!!sheetMeta}
       hasSummary={!!summaryMeta}
-      flashcardsCount={flashcardsCount ?? 0}
-      quizCount={quizCount ?? 0}
-      pyqCount={pyqCount ?? 0}
-      videos={(videos ?? []).map(v => ({
+      flashcardsCount={flashcardsCount}
+      quizCount={quizCount}
+      pyqCount={pyqCount}
+      videos={videos.map((v: any) => ({
         ...v,
         is_preview:    v.is_preview    ?? false,
         display_order: v.display_order ?? 0,

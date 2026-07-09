@@ -202,6 +202,7 @@ export default async function StudentDashboard() {
     bookmarkResult,
     notifResult,
     activeSubsResult,
+    notifReadsResult,
   ] = await Promise.all([
     profile.default_university_id
       ? supabase.from('universities').select('id, name, logo_url, slug').eq('id', profile.default_university_id).single()
@@ -236,12 +237,10 @@ export default async function StudentDashboard() {
 
     supabase.from('subject_subscriptions').select('id', { count: 'exact', head: true })
       .eq('user_id', profile.id).eq('status', 'active'),
+    // FIX: notification_reads moved into Promise.all — was a separate sequential query
+    supabase.from('notification_reads').select('notification_id').eq('user_id', profile.id),
   ])
-
-  const { data: readIds } = await supabase
-    .from('notification_reads').select('notification_id').eq('user_id', profile.id)
-
-  const readSet        = new Set((readIds ?? []).map((r: { notification_id: string }) => r.notification_id))
+  const readSet = new Set(((notifReadsResult as any).data ?? []).map((r: { notification_id: string }) => r.notification_id))
   const notifications  = (notifResult.data ?? []) as Notification[]
   const unreadCount    = notifications.filter(n => !readSet.has(n.id)).length
   const university     = uniResult.data as University | null

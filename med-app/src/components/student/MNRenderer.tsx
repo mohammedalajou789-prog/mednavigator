@@ -252,11 +252,11 @@ function parseContent(raw: string): Block[] {
     if (sourceMatch) {
       const sourceName = sourceMatch[1]
       const closeTag = `[/*${sourceName}*]`
-      // skip to close tag
+      // collect content between tags
+      const sourceLines: string[] = []
       let j = i + 1
-      while (j < lines.length && lines[j].trim() !== closeTag) { j++ }
-      blocks.push({ type: 'source', content: '', sourceName })
-      i = j + 1; continue
+      while (j < lines.length && lines[j].trim() !== closeTag) { sourceLines.push(lines[j]); j++ }
+      blocks.push({ type: 'source', content: sourceLines.join('\n').replace(/^\n+|\n+$/g, ''), sourceName })
     }
 
     if (line === '[TABLE]') {
@@ -541,9 +541,12 @@ function renderBlock(
     case 'source': {
       const id = nextOccurrenceId?.('source')
       return (
-        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '999px', background: '#F1F5F9', border: '1px solid #CBD5E1', marginBottom: '10px' }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', letterSpacing: '0.02em' }}>{block.sourceName}</span>
+        <div key={key} id={id} data-sync-type="box" style={{ scrollMarginTop: '96px', borderRadius: '14px', background: 'linear-gradient(180deg,#F8FAFF,#F1F5FF)', border: '1px solid #DBEAFE', marginBottom: '16px', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', background: '#EFF6FF', borderBottom: '1px solid #DBEAFE' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#2563EB', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{block.sourceName}</span>
+          </div>
+          <div style={{ padding: '14px 16px', fontSize: '15px', lineHeight: 1.7, color: '#1E3A6E' }}>{renderMultiLine(block.content)}</div>
         </div>
       )
     }

@@ -16,7 +16,7 @@ export async function getPreviousYearQuestionsByLectureId(
   const { data, error } = await supabase
     .from('previous_year_questions')
     .select(
-      'id, question, options, correct_answer, explanation, exam_year, exam_type'
+      'id, question, options, correct_answer, explanation, exam_year, exam_type, batch_name'
     )
     .eq('lecture_id', lectureId)
     .is('archived_at', null)

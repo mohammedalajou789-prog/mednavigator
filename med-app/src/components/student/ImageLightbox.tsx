@@ -1,5 +1,4 @@
 'use client'
-
 import { useState } from 'react'
 
 interface ImageLightboxProps {
@@ -20,13 +19,12 @@ export default function ImageLightbox({ src, alt, className }: ImageLightboxProp
         style={{ cursor: 'zoom-in' }}
         onClick={() => setOpen(true)}
       />
-
       {open && (
         <div
           onClick={() => setOpen(false)}
           style={{
             position: 'fixed', inset: 0, zIndex: 9999,
-            background: 'rgba(0,0,0,0.8)',
+            background: 'rgba(0,0,0,0.85)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '24px', cursor: 'zoom-out',
             backdropFilter: 'blur(6px)',
@@ -36,11 +34,14 @@ export default function ImageLightbox({ src, alt, className }: ImageLightboxProp
             onClick={e => e.stopPropagation()}
             style={{
               position: 'relative',
-              maxWidth: '90vw', maxHeight: '88vh',
-              background: '#fff', borderRadius: '16px',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              background: '#fff',
+              borderRadius: '16px',
               boxShadow: '0 30px 80px rgba(0,0,0,0.5)',
+              display: 'flex',
+              flexDirection: 'column',
               overflow: 'hidden',
-              display: 'flex', flexDirection: 'column',
             }}
           >
             {/* Close button */}
@@ -56,28 +57,42 @@ export default function ImageLightbox({ src, alt, className }: ImageLightboxProp
               }}
             >×</button>
 
-            {/* Image */}
-            <img
-              src={src}
-              alt={alt}
-              style={{
-                maxWidth: '88vw',
-                maxHeight: alt ? 'calc(85vh - 44px)' : '85vh',
-                objectFit: 'contain',
-                display: 'block',
-              }}
-            />
+            {/* Image — takes up 70% of available height */}
+            <div style={{
+              flex: '0 0 auto',
+              maxHeight: alt ? '68vh' : '85vh',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#fff',
+            }}>
+              <img
+                src={src}
+                alt={alt}
+                style={{
+                  maxWidth: '88vw',
+                  maxHeight: alt ? '68vh' : '85vh',
+                  objectFit: 'contain',
+                  display: 'block',
+                }}
+              />
+            </div>
 
-            {/* Caption */}
+            {/* Caption — separate scrollable area below image */}
             {alt && (
               <div style={{
-                padding: '10px 20px',
-                fontSize: '13px', color: '#475569',
+                flex: '0 1 auto',
+                overflowY: 'auto',
+                maxHeight: '20vh',
+                padding: '12px 24px 16px',
+                fontSize: '13.5px',
+                lineHeight: 1.65,
+                color: '#475569',
                 textAlign: 'center',
                 borderTop: '1px solid #E2E8F0',
                 background: '#F8FAFC',
                 fontStyle: 'italic',
-                flexShrink: 0,
               }}>
                 {alt}
               </div>

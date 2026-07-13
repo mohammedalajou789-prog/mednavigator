@@ -333,17 +333,16 @@ function renderMultiLine(content: string): React.ReactNode {
   while (i < lines.length) {
     const line = lines[i].trim()
 
-    if (line === '[TABLE]') {
+    if (line.startsWith('|')) {
       const tableRows: string[][] = []
-      i++
-      while (i < lines.length && lines[i].trim() !== '[/TABLE]') {
+      while (i < lines.length) {
         const tLine = lines[i].trim()
-        if (tLine.startsWith('|') && !tLine.match(/^\|[-| ]+\|$/)) {
+        if (!tLine.startsWith('|')) break
+        if (!tLine.match(/^\|[-| ]+\|$/)) {
           tableRows.push(tLine.split('|').slice(1, -1).map(c => c.trim()))
         }
         i++
       }
-      i++ // skip [/TABLE]
       if (tableRows.length > 0) {
         segments.push(
           <div key={segKey++} className="my-3 overflow-x-auto rounded-xl shadow-sm">

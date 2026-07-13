@@ -638,7 +638,7 @@ export default function LectureHub({
         </div>
 
         {/* Content area */}
-        <div style={{ padding: '0 clamp(12px, 3vw, 26px) 120px' }}>
+        <div style={{ padding: '0 clamp(12px, 3vw, 26px) 24px' }}>
           {isCurrentTabLocked ? (
             <LockedContentCard subjectName={subject.name} />
           ) : isCurrentTabLoading ? (

@@ -82,7 +82,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
                   marginBottom: '14px',
                 }}
               >
-                <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB', letterSpacing: '0.04em', flexShrink: 0, minWidth: '24px' }}>
+                <span style={{ fontSize: '16px', fontWeight: 800, color: '#2563EB', letterSpacing: '0.04em', flexShrink: 0, minWidth: '28px' }}>
                   {String(h1Counter).padStart(2, '0')}
                 </span>
                 <div style={{ width: '1px', height: '20px', background: '#DBEAFE', flexShrink: 0 }} />

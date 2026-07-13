@@ -325,17 +325,69 @@ function renderInline(text: string): React.ReactNode {
 // FIX 4: render multi-line content — split by \n and render each line
 // Empty lines become a small spacer, non-empty lines render inline
 function renderMultiLine(content: string): React.ReactNode {
+  const segments: React.ReactNode[] = []
   const lines = content.split('\n')
-  return lines.map((line, i) => {
-    if (!line.trim()) {
-      return <br key={i} />
+  let i = 0
+  let segKey = 0
+
+  while (i < lines.length) {
+    const line = lines[i].trim()
+
+    if (line === '[TABLE]') {
+      const tableRows: string[][] = []
+      i++
+      while (i < lines.length && lines[i].trim() !== '[/TABLE]') {
+        const tLine = lines[i].trim()
+        if (tLine.startsWith('|') && !tLine.match(/^\|[-| ]+\|$/)) {
+          tableRows.push(tLine.split('|').slice(1, -1).map(c => c.trim()))
+        }
+        i++
+      }
+      i++ // skip [/TABLE]
+      if (tableRows.length > 0) {
+        segments.push(
+          <div key={segKey++} className="my-3 overflow-x-auto rounded-xl shadow-sm">
+            <table className="w-full text-[0.85rem]">
+              <thead>
+                <tr className="bg-blue-50">
+                  {tableRows[0].map((cell, ci) => (
+                    <th key={ci} className="px-4 py-2 text-left text-[0.72rem] font-extrabold text-blue-600 uppercase tracking-wider border-b border-blue-100">
+                      {cell}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tableRows.slice(1).map((row, ri) => (
+                  <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    {row.map((cell, ci) => (
+                      <td key={ci} className={`px-4 py-2 text-[0.85rem] text-gray-700 leading-relaxed border-t border-gray-100 ${ci === 0 ? 'font-semibold text-gray-900' : ''}`}>
+                        {renderInline(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
+      continue
     }
-    return (
-      <span key={i} style={{ display: 'block' }}>
-        {renderInline(line)}
-      </span>
-    )
-  })
+
+    if (!line) {
+      segments.push(<br key={segKey++} />)
+    } else {
+      segments.push(
+        <span key={segKey++} style={{ display: 'block' }}>
+          {renderInline(lines[i])}
+        </span>
+      )
+    }
+    i++
+  }
+
+  return <>{segments}</>
 }
 
 function renderBlock(

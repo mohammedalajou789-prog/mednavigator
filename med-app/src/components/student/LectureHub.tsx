@@ -455,13 +455,7 @@ export default function LectureHub({
 
   function handleTocClick(id: string) {
     const el = document.getElementById(id)
-    const scrollContainer = document.getElementById('lecture-content-scroll')
-    if (el && scrollContainer) {
-      const elTop        = el.getBoundingClientRect().top
-      const containerTop = scrollContainer.getBoundingClientRect().top
-      const offset       = elTop - containerTop + scrollContainer.scrollTop - 120
-      scrollContainer.scrollTo({ top: offset, behavior: 'smooth' })
-    } else if (el) {
+    if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }

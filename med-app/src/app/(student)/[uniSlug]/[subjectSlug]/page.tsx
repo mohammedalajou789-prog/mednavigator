@@ -268,7 +268,7 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
               <Link
                 className="continue-resume"
-                href={`/${uniSlug}/${subjectSlug}/lecture/${(lastAccessedLecture as any).slug ?? lastAccessedLecture.id}`}
+                href={`/${uniSlug}/${subjectSlug}/${(lastAccessedLecture as any).slug ?? lastAccessedLecture.id}`}
                 style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 8, height: 42, padding: '0 18px', border: 'none', borderRadius: 11, background: 'rgb(37, 99, 235)', color: 'rgb(255, 255, 255)', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }}>
                 Resume →
               </Link>

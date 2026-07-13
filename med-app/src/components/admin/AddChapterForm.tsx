@@ -10,10 +10,21 @@ interface Props {
   subjectId: string
 }
 
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
 export default function AddChapterForm({ subjectId }: Props) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [slug, setSlug] = useState('')
 
   const {
     register,
@@ -27,6 +38,10 @@ export default function AddChapterForm({ subjectId }: Props) {
     },
   })
 
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSlug(generateSlug(e.target.value))
+  }
+
   const onSubmit = async (values: CreateChapterFormValues) => {
     setIsSubmitting(true)
     setServerError(null)
@@ -39,6 +54,7 @@ export default function AddChapterForm({ subjectId }: Props) {
           subject_id: subjectId,
           title: values.title,
           description: values.description || null,
+          slug: generateSlug(values.title),
         }),
       })
 
@@ -73,10 +89,17 @@ export default function AddChapterForm({ subjectId }: Props) {
             className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400
               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors
               ${errors.title ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'}`}
-            {...register('title')}
+            {...register('title', {
+              onChange: handleTitleChange,
+            })}
           />
           {errors.title && (
             <p className="mt-1.5 text-xs text-red-600">{errors.title.message}</p>
+          )}
+          {slug && (
+            <p className="mt-1.5 text-xs text-gray-400">
+              Slug: <span className="font-mono text-gray-600">{slug}</span>
+            </p>
           )}
         </div>
 

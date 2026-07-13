@@ -6,12 +6,14 @@ export interface CreateChapterInput {
   title: string
   description?: string
   display_order?: number
+  slug?: string
 }
 
 export interface UpdateChapterInput {
   title?: string
   description?: string
   display_order?: number
+  slug?: string
 }
 
 export async function getChaptersBySubject(subjectId: string): Promise<{ data: Chapter[] | null; error: unknown }> {
@@ -58,7 +60,8 @@ export async function createChapter(input: CreateChapterInput): Promise<{ data: 
       title: input.title.trim(),
       description: input.description?.trim() ?? null,
       display_order: order,
-    })
+      ...(input.slug && { slug: input.slug }),
+    } as any)
     .select()
     .single()
   return { data, error }
@@ -75,8 +78,9 @@ export async function updateChapter(
       ...(input.title !== undefined && { title: input.title.trim() }),
       ...(input.description !== undefined && { description: input.description.trim() }),
       ...(input.display_order !== undefined && { display_order: input.display_order }),
+      ...(input.slug !== undefined && { slug: input.slug }),
       updated_at: new Date().toISOString(),
-    })
+    } as any)
     .eq('id', chapterId)
     .select()
     .single()

@@ -5,7 +5,6 @@ import { createChapterSchema } from '@/lib/validations/content'
 
 export async function POST(request: NextRequest) {
   const supabase = await createServerClient()
-
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -28,10 +27,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { subject_id, title, description } = body as {
+  const { subject_id, title, description, slug } = body as {
     subject_id?: string
     title?: string
     description?: string
+    slug?: string
   }
 
   if (!subject_id) {
@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
     subject_id,
     title: parsed.data.title,
     description: parsed.data.description || undefined,
+    slug: slug || undefined,
   })
 
   if (error) {

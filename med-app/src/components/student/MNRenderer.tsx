@@ -403,7 +403,7 @@ function renderBlock(
 
     case 'h3':
       return (
-        <h3 key={key} data-sync-type="heading" className="text-[1.05rem] font-bold text-slate-800 dark:text-slate-200 mt-8 mb-3 flex items-center gap-2">
+        <h3 key={key} id={`section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`} data-sync-type="heading" style={{ scrollMarginTop: '96px' }} className="text-[1.05rem] font-bold text-slate-800 dark:text-slate-200 mt-8 mb-3 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
           {block.content}
         </h3>

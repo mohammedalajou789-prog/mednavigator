@@ -253,7 +253,7 @@ export default function LoginPage() {
                 Your sheets, flashcards, quizzes and reading progress — synced and ready the moment you sign in.
               </p>
             </div>
-            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 12, marginTop: 32 }}>
               <div className="mn-feat mn-feat-1">
                 <div className="mn-feat-icon" style={{ background: 'rgba(96,165,250,.2)' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

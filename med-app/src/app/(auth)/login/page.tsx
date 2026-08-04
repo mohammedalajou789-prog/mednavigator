@@ -36,7 +36,7 @@ const STYLES = `
   .mn-brand {
     position: relative; overflow: hidden;
     background: linear-gradient(150deg, #0D1B2A 0%, #15294A 55%, #3B2A6B 100%);
-    padding: 48px 44px; display: flex; flex-direction: column; justify-content: space-between;
+    padding: 48px 44px; display: flex; flex-direction: column; justify-content: flex-start; gap: 40px;
   }
   .mn-blob1 {
     position: absolute; width: 280px; height: 280px; top: -60px; right: -60px;

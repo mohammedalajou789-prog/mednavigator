@@ -408,7 +408,7 @@ function renderBlock(
   <ImageLightbox
     src={imageUrl}
     alt={block.slotDescription ?? `Image ${slotNum}`}
-    className="w-full rounded-xl border border-slate-200 object-contain bg-slate-50"
+    className="w-full rounded-xl border border-slate-200 object-contain bg-slate-50 max-h-[500px]"
   />
           {block.slotDescription && (
             <figcaption className="text-center text-xs text-slate-500 dark:text-slate-400 italic">

@@ -402,13 +402,13 @@ function renderBlock(
   const slotNum = block.slotNumber ?? 0
   const imageUrl = imageSlots[slotNum]
   return (
-    <div key={key} className="my-6 w-full">
+    <div key={key} className="my-6 flex justify-center">
       {imageUrl ? (
-        <figure className="space-y-2 w-full">
+        <figure className="space-y-2 w-full max-w-[320px] sm:max-w-md md:max-w-lg">
   <ImageLightbox
     src={imageUrl}
     alt={block.slotDescription ?? `Image ${slotNum}`}
-    className="w-full rounded-xl border border-slate-200 object-contain bg-slate-50 max-h-[500px]"
+    className="w-full rounded-xl border border-slate-200 object-contain max-h-[260px] sm:max-h-[300px] md:max-h-[340px] bg-slate-50"
   />
           {block.slotDescription && (
             <figcaption className="text-center text-xs text-slate-500 dark:text-slate-400 italic">

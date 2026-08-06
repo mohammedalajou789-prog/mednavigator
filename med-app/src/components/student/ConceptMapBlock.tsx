@@ -159,6 +159,23 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
 
           if (svgEl) {
             applyColors(svgEl, colorMap, dark)
+            // Compute natural width from viewBox, cap at container width
+            const vb = svgEl.getAttribute('viewBox')?.split(' ').map(Number)
+            const naturalW = vb ? vb[2] : 800
+            const naturalH = vb ? vb[3] : 600
+            const maxW = Math.min(naturalW, 760)
+            const scaledH = Math.round((naturalH / naturalW) * maxW)
+            svgEl.removeAttribute('width')
+            svgEl.removeAttribute('height')
+            svgEl.setAttribute('width',  String(maxW))
+            svgEl.setAttribute('height', String(scaledH))
+            const s = svgEl.getAttribute('style') ?? ''
+            svgEl.setAttribute('style', s.replace(/max-width:[^;]+;?/g, '').trim())
+            svgEl.style.width    = '100%'
+            svgEl.style.maxWidth = maxW + 'px'
+            svgEl.style.height   = 'auto'
+            svgEl.style.display  = 'block'
+            svgEl.style.margin   = '0 auto'
             // Strip Mermaid's max-width inline style — it overrides our layout
             const existingStyle = svgEl.getAttribute('style') ?? ''
             svgEl.setAttribute('style', existingStyle.replace(/max-width:[^;]+;?/g, '').trim())

@@ -149,6 +149,7 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
 
         try {
           const { svg } = await mermaid.render(uniqueId, mermaidSrc, host)
+          console.log('MERMAID_SVG_RAW:', svg.slice(0, 500))
 
           if (cancelled) return
 

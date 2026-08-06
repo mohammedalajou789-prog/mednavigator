@@ -120,19 +120,25 @@ function parseMNConceptMap(raw: string): MapData {
     }
   }
 
-  // Treatment and inhibitor nodes with no parent should sit beside their target
+  // Treatment/inhibitor nodes are excluded from topological sort.
+  // They are placed at the same row as their target after all regular rows are set.
   const treatmentCats = new Set(['treatment', 'inhibitor'])
-  for (const n of nodes) {
-    if (!treatmentCats.has(n.cat)) continue
-    if ((inDegree[n.id] ?? 0) !== 0) continue
-    // Find the target node this treatment points to
-    const targetEdge = edges.find(e => e.from === n.id)
-    if (!targetEdge) continue
-    const targetRow = rowMap[targetEdge.to]
-    if (targetRow !== undefined) rowMap[n.id] = targetRow
-  }
+  const treatmentNodes = nodes.filter(n => treatmentCats.has(n.cat))
+  const regularNodes   = nodes.filter(n => !treatmentCats.has(n.cat))
 
-  for (const n of nodes) n.row = rowMap[n.id] ?? 0
+  // Assign rows to regular nodes from topological sort
+  for (const n of regularNodes) n.row = rowMap[n.id] ?? 0
+
+  // Place each treatment/inhibitor node beside its target
+  for (const n of treatmentNodes) {
+    const targetEdge = edges.find(e => e.from === n.id)
+    if (targetEdge) {
+      const targetNode = regularNodes.find(r => r.id === targetEdge.to)
+      n.row = targetNode !== undefined ? targetNode.row : 0
+    } else {
+      n.row = 0
+    }
+  }
 
   return { title, nodes, edges }
 }

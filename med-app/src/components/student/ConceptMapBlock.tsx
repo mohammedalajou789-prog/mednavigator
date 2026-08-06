@@ -108,7 +108,6 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
             nodeSpacing: 30,
             padding: 12,
             useMaxWidth: false,
-            wrapping: false,
           },
         })
 

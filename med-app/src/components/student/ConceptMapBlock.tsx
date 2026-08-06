@@ -1,9 +1,23 @@
 'use client'
 import { useEffect, useRef, useState, useCallback } from 'react'
 
-interface ConceptMapBlockProps {
-  content: string
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ConceptMapBlockProps { content: string }
+
+interface MNNode { id: string; label: string; cat: string; row: number }
+interface MNEdge { from: string; to: string; label?: string }
+interface MapData { title: string; nodes: MNNode[]; edges: MNEdge[] }
+
+interface RenderedEdge {
+  d: string          // SVG path
+  labelX: number
+  labelY: number
+  label?: string
+  labelColor?: string
 }
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const CAT_STYLES: Record<string, { bg: string; border: string; accent: string; text: string }> = {
   trigger:   { bg: '#fef2f2', border: '#fca5a5', accent: '#ef4444', text: '#b91c1c' },
@@ -25,24 +39,9 @@ const VERB_COLORS: Record<string, string> = {
   controls: '#1d4ed8',
 }
 
-interface MNNode {
-  id: string
-  label: string
-  cat: string
-  row: number
-}
+const TREATMENT_CATS = new Set(['treatment', 'inhibitor'])
 
-interface MNEdge {
-  from: string
-  to: string
-  label?: string
-}
-
-interface MapData {
-  title: string
-  nodes: MNNode[]
-  edges: MNEdge[]
-}
+// ─── Parser ───────────────────────────────────────────────────────────────────
 
 function parseMNConceptMap(raw: string): MapData {
   const lines = raw.split('\n').map(l => l.trim()).filter(Boolean)
@@ -55,73 +54,70 @@ function parseMNConceptMap(raw: string): MapData {
   for (const line of lines) {
     if (line.startsWith('TITLE:')) { title = line.slice(6).trim(); continue }
     if (line.startsWith('LAYOUT:') || line.startsWith('GROUP:') || line === 'END_GROUP') continue
+    if (!line.includes('-->')) continue
+    edgeLines.push(line)
 
-    if (line.includes('-->')) {
-      edgeLines.push(line)
-      const nodeMatches = [...line.matchAll(/([\w-]+)\["?([^"\]]+)"?\]\(([\w-]+)\)/g)]
-      for (const m of nodeMatches) {
-        if (!nodeIds.has(m[1])) {
-          nodeIds.add(m[1])
-          nodes.push({ id: m[1], label: m[2], cat: m[3], row: -1 })
-        }
+    // Extract inline node definitions: ID["Label"](cat) or ID[Label](cat)
+    const nodeMatches = [...line.matchAll(/([\w-]+)\["?([^"\]]+)"?\]\(([\w-]+)\)/g)]
+    for (const m of nodeMatches) {
+      if (!nodeIds.has(m[1])) {
+        nodeIds.add(m[1])
+        nodes.push({ id: m[1], label: m[2], cat: m[3], row: -1 })
       }
-      const bareIds = line.replace(/([\w-]+)\["?([^"\]]+)"?\]\(([\w-]+)\)/g, '$1')
-        .replace(/--[^-]*-->/g, '-->')
-        .split('-->').map(s => s.trim())
-      for (const id of bareIds) {
-        const clean = id.replace(/\(.*\)/, '').trim()
-        if (clean && /^[\w-]+$/.test(clean) && !nodeIds.has(clean)) {
-          nodeIds.add(clean)
-          nodes.push({ id: clean, label: clean, cat: 'neutral', row: -1 })
-        }
+    }
+
+    // Collect bare IDs that appear without inline definitions
+    const stripped = line.replace(/([\w-]+)\["?([^"\]]+)"?\]\(([\w-]+)\)/g, '$1')
+    const parts = stripped.replace(/--[^>]*-->/g, '-->').split('-->').map(s => s.trim())
+    for (const part of parts) {
+      const id = part.replace(/\(.*\)/, '').trim()
+      if (id && /^[\w-]+$/.test(id) && !nodeIds.has(id)) {
+        nodeIds.add(id)
+        nodes.push({ id, label: id, cat: 'neutral', row: -1 })
       }
     }
   }
 
+  // Build edges
   for (const line of edgeLines) {
-    const normalized = line.replace(/([\w-]+)\["?([^"\]]+)"?\]\(([\w-]+)\)/g, '$1')
-    const arrowMatch = normalized.match(/^([\w-]+)\s*--([^-]*)?-->\s*([\w-]+)$/)
-    const simpleMatch = normalized.match(/^([\w-]+)\s*-->\s*([\w-]+)$/)
-
-    if (arrowMatch) {
-      edges.push({ from: arrowMatch[1], to: arrowMatch[3], label: arrowMatch[2].trim() || undefined })
-    } else if (simpleMatch) {
-      edges.push({ from: simpleMatch[1], to: simpleMatch[2] })
-    }
+    const norm = line.replace(/([\w-]+)\["?([^"\]]+)"?\]\(([\w-]+)\)/g, '$1')
+    const m1 = norm.match(/^([\w-]+)\s*--([^>-]*?)-->\s*([\w-]+)$/)
+    const m2 = norm.match(/^([\w-]+)\s*-->\s*([\w-]+)$/)
+    if (m1) edges.push({ from: m1[1], to: m1[3], label: m1[2].trim() || undefined })
+    else if (m2) edges.push({ from: m2[1], to: m2[2] })
   }
 
-  const inDegree: Record<string, number> = {}
-  const adjList: Record<string, string[]> = {}
-  for (const n of nodes) { inDegree[n.id] = 0; adjList[n.id] = [] }
+  // Topological row assignment for non-treatment nodes
+  const inDeg: Record<string, number> = {}
+  const adj:   Record<string, string[]> = {}
+  for (const n of nodes) { inDeg[n.id] = 0; adj[n.id] = [] }
   for (const e of edges) {
-    inDegree[e.to] = (inDegree[e.to] ?? 0) + 1
-    if (adjList[e.from]) adjList[e.from].push(e.to)
+    inDeg[e.to] = (inDeg[e.to] ?? 0) + 1
+    adj[e.from]?.push(e.to)
   }
 
-  const queue = nodes.filter(n => (inDegree[n.id] ?? 0) === 0).map(n => n.id)
-  const rowMap: Record<string, number> = {}
-  for (const id of queue) rowMap[id] = 0
-
-  while (queue.length > 0) {
-    const curr = queue.shift()!
-    for (const next of (adjList[curr] ?? [])) {
-      rowMap[next] = Math.max(rowMap[next] ?? 0, (rowMap[curr] ?? 0) + 1)
-      inDegree[next]--
-      if (inDegree[next] === 0) queue.push(next)
+  const queue = nodes.filter(n => !inDeg[n.id]).map(n => n.id)
+  const rowOf: Record<string, number> = {}
+  for (const id of queue) rowOf[id] = 0
+  while (queue.length) {
+    const cur = queue.shift()!
+    for (const nxt of adj[cur] ?? []) {
+      rowOf[nxt] = Math.max(rowOf[nxt] ?? 0, (rowOf[cur] ?? 0) + 1)
+      if (--inDeg[nxt] === 0) queue.push(nxt)
     }
   }
 
-  const treatmentCats = new Set(['treatment', 'inhibitor'])
-  const treatmentNodes = nodes.filter(n => treatmentCats.has(n.cat))
-  const regularNodes   = nodes.filter(n => !treatmentCats.has(n.cat))
+  const regularNodes  = nodes.filter(n => !TREATMENT_CATS.has(n.cat))
+  const treatmentNodes = nodes.filter(n => TREATMENT_CATS.has(n.cat))
 
-  for (const n of regularNodes) n.row = rowMap[n.id] ?? 0
+  for (const n of regularNodes) n.row = rowOf[n.id] ?? 0
 
+  // Treatment nodes sit on same row as their target
   for (const n of treatmentNodes) {
     const targetEdge = edges.find(e => e.from === n.id)
     if (targetEdge) {
-      const targetNode = regularNodes.find(r => r.id === targetEdge.to)
-      n.row = targetNode !== undefined ? targetNode.row : 0
+      const target = regularNodes.find(r => r.id === targetEdge.to)
+      n.row = target?.row ?? 0
     } else {
       n.row = 0
     }
@@ -130,243 +126,237 @@ function parseMNConceptMap(raw: string): MapData {
   return { title, nodes, edges }
 }
 
-interface EdgePath {
-  d: string
-  label?: string
-  labelColor?: string
-  labelX: number
-  labelY: number
-  isHorizontal: boolean
+// ─── Geometry helpers ─────────────────────────────────────────────────────────
+
+/** Bounding rect of an element relative to a reference element */
+function relRect(el: HTMLElement, ref: HTMLElement) {
+  const er = el.getBoundingClientRect()
+  const rr = ref.getBoundingClientRect()
+  return {
+    left:   er.left   - rr.left,
+    right:  er.right  - rr.left,
+    top:    er.top    - rr.top,
+    bottom: er.bottom - rr.top,
+    cx:     er.left   - rr.left + er.width  / 2,
+    cy:     er.top    - rr.top  + er.height / 2,
+    w:      er.width,
+    h:      er.height,
+  }
 }
+
+/** Cubic bezier point at t */
+function bezier(t: number, p0: number, p1: number, p2: number, p3: number) {
+  const u = 1 - t
+  return u*u*u*p0 + 3*u*u*t*p1 + 3*u*t*t*p2 + t*t*t*p3
+}
+
+/**
+ * Build an SVG cubic-bezier path between two rects.
+ *
+ * Strategy:
+ *  - VERTICAL (source above/below target, or dy large): exit bottom/top, enter top/bottom.
+ *  - HORIZONTAL-RIGHT (source left of target): exit right, enter left.
+ *  - HORIZONTAL-LEFT (treatment on right, target on left):
+ *      Draw a smooth arc that exits the TOP of source, curves above both nodes,
+ *      and enters the TOP of target. The label floats at the apex of the arc.
+ *
+ * This avoids the arrow-reversal problem completely because we never try to
+ * enter the target from its right side.
+ */
+function buildEdge(
+  from: ReturnType<typeof relRect>,
+  to:   ReturnType<typeof relRect>,
+  label?: string,
+  labelColor?: string,
+): RenderedEdge {
+  const dx = to.cx - from.cx
+  const dy = to.cy - from.cy
+
+  // Treat as vertical when target is clearly above or below
+  const isVertical = Math.abs(dy) > 50 || Math.abs(dy) > Math.abs(dx) * 0.7
+
+  let x1: number, y1: number, x2: number, y2: number
+  let cx1: number, cy1: number, cx2: number, cy2: number
+
+  if (isVertical) {
+    if (dy >= 0) {
+      // ↓ target is below
+      x1 = from.cx; y1 = from.bottom
+      x2 = to.cx;   y2 = to.top
+      const c = Math.max(30, Math.abs(dy) * 0.4)
+      cx1 = x1; cy1 = y1 + c
+      cx2 = x2; cy2 = y2 - c
+    } else {
+      // ↑ target is above
+      x1 = from.cx; y1 = from.top
+      x2 = to.cx;   y2 = to.bottom
+      const c = Math.max(30, Math.abs(dy) * 0.4)
+      cx1 = x1; cy1 = y1 - c
+      cx2 = x2; cy2 = y2 + c
+    }
+  } else if (dx >= 0) {
+    // → target is to the right
+    x1 = from.right; y1 = from.cy
+    x2 = to.left;    y2 = to.cy
+    const c = Math.max(20, Math.abs(dx) * 0.4)
+    cx1 = x1 + c; cy1 = y1
+    cx2 = x2 - c; cy2 = y2
+  } else {
+    // ← treatment on right, target on left
+    // Arc over the top: exit from.top, curve upward, enter to.top
+    x1 = from.cx; y1 = from.top
+    x2 = to.cx;   y2 = to.top
+
+    const hDist = Math.abs(dx)  // horizontal distance between centres
+    // The apex Y is above whichever node is higher, plus extra clearance
+    const topEdge = Math.min(from.top, to.top)
+    const apex    = Math.max(4, topEdge - Math.max(28, hDist * 0.4))
+
+    // Control points go outward horizontally from each node's centre
+    // then up to the apex, creating a smooth arch
+    cx1 = from.cx + hDist * 0.3;  cy1 = apex
+    cx2 = to.cx   - hDist * 0.3;  cy2 = apex
+  }
+
+  const d = `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`
+
+  // Label position: true midpoint of the bezier (t = 0.5)
+  const lx = bezier(0.5, x1, cx1, cx2, x2)
+  const ly = bezier(0.5, y1, cy1, cy2, y2)
+
+  // For right-to-left arcs the midpoint IS the apex → no extra shift needed.
+  // For right arrows the midpoint is on the flat segment → lift slightly.
+  const labelX = lx
+  const labelY = (isVertical || dx < 0) ? ly : ly - 13
+
+  return { d, labelX, labelY, label, labelColor }
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
   const { title, nodes, edges } = parseMNConceptMap(content)
 
-  // wrapperRef: the outer relative div that SVG and nodes both live inside
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  const [paths, setPaths] = useState<EdgePath[]>([])
-  const [svgSize, setSvgSize] = useState({ w: 0, h: 0 })
+  const nodeRefs   = useRef<Record<string, HTMLDivElement | null>>({})
+  const [renderedEdges, setRenderedEdges] = useState<RenderedEdge[]>([])
+  const [svgH, setSvgH] = useState(0)
 
+  // Group nodes into display rows
   const rowsMap: Record<number, MNNode[]> = {}
-  for (const n of nodes) {
-    ;(rowsMap[n.row] = rowsMap[n.row] || []).push(n)
-  }
+  for (const n of nodes) (rowsMap[n.row] ??= []).push(n)
   const rows = Object.keys(rowsMap)
-    .sort((a, b) => Number(a) - Number(b))
-    .map(k => rowsMap[Number(k)])
+    .sort((a, b) => +a - +b)
+    .map(k => rowsMap[+k])
 
-  const computePaths = useCallback(() => {
+  const compute = useCallback(() => {
     const wrapper = wrapperRef.current
     if (!wrapper) return
+    setSvgH(wrapper.getBoundingClientRect().height)
 
-    const wRect = wrapper.getBoundingClientRect()
-    setSvgSize({ w: wRect.width, h: wRect.height })
-
-    const computed = edges.map(e => {
+    const built = edges.map(e => {
       const fromEl = nodeRefs.current[e.from]
       const toEl   = nodeRefs.current[e.to]
       if (!fromEl || !toEl) return null
+      const f = relRect(fromEl, wrapper)
+      const t = relRect(toEl,   wrapper)
+      const color = e.label ? (VERB_COLORS[e.label] ?? '#475569') : undefined
+      return buildEdge(f, t, e.label, color)
+    }).filter(Boolean) as RenderedEdge[]
 
-      const fr = fromEl.getBoundingClientRect()
-      const tr = toEl.getBoundingClientRect()
-
-      // All coordinates relative to wrapper
-      const fLeft   = fr.left   - wRect.left
-      const fRight  = fr.right  - wRect.left
-      const fTop    = fr.top    - wRect.top
-      const fBottom = fr.bottom - wRect.top
-      const fCx     = fLeft + fr.width / 2
-      const fCy     = fTop  + fr.height / 2
-
-      const tLeft   = tr.left   - wRect.left
-      const tRight  = tr.right  - wRect.left
-      const tTop    = tr.top    - wRect.top
-      const tBottom = tr.bottom - wRect.top
-      const tCx     = tLeft + tr.width / 2
-      const tCy     = tTop  + tr.height / 2
-
-      const dx = tCx - fCx
-      const dy = tCy - fCy
-
-      let x1: number, y1: number, x2: number, y2: number
-      let cx1: number, cy1: number, cx2: number, cy2: number
-
-      // Determine if connection is primarily vertical or horizontal
-      const isVertical = Math.abs(dy) > Math.abs(dx) * 0.6 || Math.abs(dy) >= 30
-
-      if (isVertical) {
-        if (dy >= 0) {
-          // Target is below source → exit bottom, enter top
-          x1 = fCx;  y1 = fBottom
-          x2 = tCx;  y2 = tTop
-          const ctrl = Math.max(30, Math.abs(y2 - y1) * 0.45)
-          cx1 = x1;  cy1 = y1 + ctrl
-          cx2 = x2;  cy2 = y2 - ctrl
-        } else {
-          // Target is above source → exit top, enter bottom
-          x1 = fCx;  y1 = fTop
-          x2 = tCx;  y2 = tBottom
-          const ctrl = Math.max(30, Math.abs(y2 - y1) * 0.45)
-          cx1 = x1;  cy1 = y1 - ctrl
-          cx2 = x2;  cy2 = y2 + ctrl
-        }
-      } else {
-        if (dx > 0) {
-          // Target is to the right → exit right side, enter left side
-          x1 = fRight; y1 = fCy
-          x2 = tLeft;  y2 = tCy
-          const ctrl = Math.max(20, Math.abs(x2 - x1) * 0.4)
-          cx1 = x1 + ctrl; cy1 = y1
-          cx2 = x2 - ctrl; cy2 = y2
-        } else {
-          // Target is to the left (treatment on right → target on left)
-          // Arc over the top: exit bottom of source, curve up and enter top of target
-          x1 = fCx;  y1 = fBottom
-          x2 = tCx;  y2 = tTop
-          const distX = Math.abs(fCx - tCx)
-          // Apex sits above both nodes; clamp so it never goes above 8px from wrapper top
-          const apex  = Math.max(8, Math.min(y1, y2) - Math.max(28, distX * 0.45))
-          cx1 = fCx + distX * 0.35;  cy1 = apex
-          cx2 = tCx - distX * 0.35;  cy2 = apex
-        }
-      }
-
-      const d = `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`
-
-      // True midpoint at t=0.5 on cubic bezier (apex of the arc)
-      const midX = 0.125 * x1 + 0.375 * cx1 + 0.375 * cx2 + 0.125 * x2
-      const midY = 0.125 * y1 + 0.375 * cy1 + 0.375 * cy2 + 0.125 * y2
-
-      // For right-to-left arcs the midpoint IS the apex (highest point) — label sits there.
-      // For left-to-right horizontal arrows lift label above the straight path.
-      // For vertical arrows label sits at midpoint.
-      const labelX = midX
-      const labelY = (!isVertical && dx > 0) ? midY - 14 : midY
-
-      return {
-        d,
-        label: e.label,
-        labelColor: e.label ? (VERB_COLORS[e.label] ?? '#475569') : undefined,
-        labelX,
-        labelY,
-        isHorizontal: !isVertical,
-      }
-    }).filter(Boolean) as EdgePath[]
-
-    setPaths(computed)
+    setRenderedEdges(built)
   }, [edges])
 
   useEffect(() => {
-    // Run immediately, then once more after layout settles
-    computePaths()
-    const t1 = setTimeout(computePaths, 100)
-    const t2 = setTimeout(computePaths, 400)
-
-    const ro = new ResizeObserver(computePaths)
+    compute()
+    const t1 = setTimeout(compute, 80)
+    const t2 = setTimeout(compute, 350)
+    const ro = new ResizeObserver(compute)
     if (wrapperRef.current) ro.observe(wrapperRef.current)
-    window.addEventListener('resize', computePaths)
-
-    return () => {
-      clearTimeout(t1)
-      clearTimeout(t2)
-      ro.disconnect()
-      window.removeEventListener('resize', computePaths)
-    }
-  }, [computePaths, content])
+    window.addEventListener('resize', compute)
+    return () => { clearTimeout(t1); clearTimeout(t2); ro.disconnect(); window.removeEventListener('resize', compute) }
+  }, [compute, content])
 
   return (
-    <div style={{ marginBottom: '20px' }}>
-      {/* Header */}
+    <div style={{ marginBottom: 20 }}>
+
+      {/* ── Header ── */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: '8px',
+        display: 'flex', alignItems: 'center', gap: 8,
         padding: '7px 12px',
-        background: '#EFF6FF', border: '0.5px solid #BFDBFE', borderRadius: '8px',
-        marginBottom: '10px',
+        background: '#EFF6FF', border: '0.5px solid #BFDBFE', borderRadius: 8,
+        marginBottom: 10,
       }}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-          stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          aria-hidden="true">
+          stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="3"/>
           <path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.3-6.7-2.1 2.1M7.4 16.6l-2.1 2.1m0-12.8 2.1 2.1m9.2 9.2 2.1 2.1"/>
         </svg>
-        <span style={{ fontSize: '11px', fontWeight: 600, color: '#2563EB', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: '#2563EB', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           Concept map
         </span>
-        {title && (
-          <>
-            <span style={{ color: '#BFDBFE' }}>·</span>
-            <span style={{ fontSize: '12px', color: '#1E40AF' }}>{title}</span>
-          </>
-        )}
+        {title && <>
+          <span style={{ color: '#BFDBFE' }}>·</span>
+          <span style={{ fontSize: 12, color: '#1E40AF' }}>{title}</span>
+        </>}
       </div>
 
-      {/* Diagram: single relative wrapper for both SVG and nodes */}
+      {/* ── Diagram wrapper (SVG + nodes share the same coordinate space) ── */}
       <div
         ref={wrapperRef}
         style={{
           position: 'relative',
           background: '#FAFCFF',
           border: '1px dashed #D7E6FB',
-          borderRadius: '12px',
-          padding: '44px 20px 20px',
+          borderRadius: 12,
+          // Extra top padding gives room for arcs that arc above the first row
+          padding: '52px 24px 24px',
         }}
       >
-        {/* SVG arrows — positioned to fill the wrapper exactly */}
+        {/* SVG layer — sits behind nodes (zIndex 0) */}
         <svg
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: svgSize.w || '100%',
-            height: svgSize.h || '100%',
-            pointerEvents: 'none',
-            overflow: 'visible',
+            position: 'absolute', top: 0, left: 0,
+            width: '100%', height: svgH || '100%',
+            overflow: 'visible', pointerEvents: 'none',
+            zIndex: 0,
           }}
         >
           <defs>
-            <marker id="mn-arrow" markerWidth="8" markerHeight="8"
-              refX="6" refY="3.5" orient="auto" markerUnits="strokeWidth">
-              <path d="M0,0 L7,3.5 L0,7 Z" fill="#94a3b8"/>
+            <marker id="mn-arr" markerWidth="7" markerHeight="7"
+              refX="5.5" refY="3.5" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0.5 L6,3.5 L0,6.5 Z" fill="#94a3b8"/>
             </marker>
-            <filter id="pill-shadow" x="-20%" y="-40%" width="140%" height="180%">
-              <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#0f172a" floodOpacity="0.06"/>
+            <filter id="lbl-shadow" x="-25%" y="-50%" width="150%" height="200%">
+              <feDropShadow dx="0" dy="1" stdDeviation="1"
+                floodColor="#0f172a" floodOpacity="0.07"/>
             </filter>
           </defs>
-          {paths.map((p, i) => {
-            // Estimate label pill dimensions based on character count
-            const charCount  = p.label ? p.label.length : 0
-            const pillW      = Math.max(44, charCount * 7 + 16)
-            const pillH      = 20
-            const pillX      = p.labelX - pillW / 2
-            const pillY      = p.labelY - pillH / 2
 
+          {renderedEdges.map((e, i) => {
+            const chars  = e.label?.length ?? 0
+            const pillW  = Math.max(46, chars * 6.8 + 18)
+            const pillH  = 19
             return (
               <g key={i}>
-                <path d={p.d} stroke="#94a3b8" strokeWidth="1.5" fill="none" markerEnd="url(#mn-arrow)"/>
-                {p.label && (
+                <path d={e.d} fill="none" stroke="#94a3b8"
+                  strokeWidth="1.5" markerEnd="url(#mn-arr)"/>
+                {e.label && (
                   <g>
-                    {/* White background pill */}
                     <rect
-                      x={pillX} y={pillY}
-                      width={pillW} height={pillH}
-                      rx={7} ry={7}
-                      fill="#ffffff"
-                      stroke="#e2e8f0"
-                      strokeWidth={1}
-                      filter="url(#pill-shadow)"
+                      x={e.labelX - pillW / 2} y={e.labelY - pillH / 2}
+                      width={pillW} height={pillH} rx={6} ry={6}
+                      fill="#fff" stroke="#e2e8f0" strokeWidth={1}
+                      filter="url(#lbl-shadow)"
                     />
-                    {/* Label text — centred inside pill */}
                     <text
-                      x={p.labelX}
-                      y={p.labelY + 5}
+                      x={e.labelX} y={e.labelY + 4.5}
                       textAnchor="middle"
-                      fontSize="10.5"
-                      fontWeight="700"
-                      fontFamily="inherit"
-                      fill={p.labelColor ?? '#475569'}
+                      fontSize="10" fontWeight="700"
+                      fontFamily="system-ui, sans-serif"
+                      fill={e.labelColor ?? '#475569'}
                     >
-                      {p.label}
+                      {e.label}
                     </text>
                   </g>
                 )}
@@ -375,13 +365,10 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
           })}
         </svg>
 
-        {/* Nodes — stacked rows, z-index above SVG */}
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '40px' }}>
+        {/* Nodes layer — sits above SVG (zIndex 1) */}
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 40 }}>
           {rows.map((row, ri) => (
-            <div
-              key={ri}
-              style={{ display: 'flex', justifyContent: 'center', gap: '24px', flexWrap: 'wrap' }}
-            >
+            <div key={ri} style={{ display: 'flex', justifyContent: 'center', gap: 20, flexWrap: 'wrap' }}>
               {row.map(node => {
                 const s = CAT_STYLES[node.cat] ?? CAT_STYLES.neutral
                 return (
@@ -389,17 +376,16 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
                     key={node.id}
                     ref={el => { nodeRefs.current[node.id] = el }}
                     style={{
-                      minWidth: '140px',
-                      maxWidth: '220px',
+                      minWidth: 130, maxWidth: 210,
                       background: s.bg,
                       border: `1.5px solid ${s.border}`,
                       borderLeft: `4px solid ${s.accent}`,
-                      borderRadius: '9px',
-                      padding: '10px 14px',
-                      boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
+                      borderRadius: 9,
+                      padding: '9px 13px',
+                      boxShadow: '0 1px 3px rgba(15,23,42,0.05)',
                     }}
                   >
-                    <div style={{ fontSize: '13.5px', fontWeight: 700, color: s.text, lineHeight: 1.3 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: s.text, lineHeight: 1.3 }}>
                       {node.label}
                     </div>
                   </div>

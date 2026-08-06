@@ -50,7 +50,6 @@ function parseMNConceptMap(raw: string): MapData {
   const nodes: MNNode[] = []
   const edges: MNEdge[] = []
   const nodeIds = new Set<string>()
-
   const edgeLines: string[] = []
 
   for (const line of lines) {
@@ -141,20 +140,27 @@ interface EdgePath {
 
 export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
   const { title, nodes, edges } = parseMNConceptMap(content)
-  const containerRef = useRef<HTMLDivElement>(null)
+
+  // wrapperRef: the outer relative div that SVG and nodes both live inside
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const [paths, setPaths] = useState<EdgePath[]>([])
+  const [svgSize, setSvgSize] = useState({ w: 0, h: 0 })
 
   const rowsMap: Record<number, MNNode[]> = {}
   for (const n of nodes) {
     ;(rowsMap[n.row] = rowsMap[n.row] || []).push(n)
   }
-  const rows = Object.keys(rowsMap).sort((a, b) => Number(a) - Number(b)).map(k => rowsMap[Number(k)])
+  const rows = Object.keys(rowsMap)
+    .sort((a, b) => Number(a) - Number(b))
+    .map(k => rowsMap[Number(k)])
 
   const computePaths = useCallback(() => {
-    const container = containerRef.current
-    if (!container) return
-    const cRect = container.getBoundingClientRect()
+    const wrapper = wrapperRef.current
+    if (!wrapper) return
+
+    const wRect = wrapper.getBoundingClientRect()
+    setSvgSize({ w: wRect.width, h: wRect.height })
 
     const computed = edges.map(e => {
       const fromEl = nodeRefs.current[e.from]
@@ -164,11 +170,20 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
       const fr = fromEl.getBoundingClientRect()
       const tr = toEl.getBoundingClientRect()
 
-      // مراكز العناصر بالنسبة للحاوية
-      const fCx = fr.left + fr.width / 2 - cRect.left
-      const fCy = fr.top + fr.height / 2 - cRect.top
-      const tCx = tr.left + tr.width / 2 - cRect.left
-      const tCy = tr.top + tr.height / 2 - cRect.top
+      // All coordinates relative to wrapper
+      const fLeft   = fr.left   - wRect.left
+      const fRight  = fr.right  - wRect.left
+      const fTop    = fr.top    - wRect.top
+      const fBottom = fr.bottom - wRect.top
+      const fCx     = fLeft + fr.width / 2
+      const fCy     = fTop  + fr.height / 2
+
+      const tLeft   = tr.left   - wRect.left
+      const tRight  = tr.right  - wRect.left
+      const tTop    = tr.top    - wRect.top
+      const tBottom = tr.bottom - wRect.top
+      const tCx     = tLeft + tr.width / 2
+      const tCy     = tTop  + tr.height / 2
 
       const dx = tCx - fCx
       const dy = tCy - fCy
@@ -176,74 +191,53 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
       let x1: number, y1: number, x2: number, y2: number
       let cx1: number, cy1: number, cx2: number, cy2: number
 
-      // فحص إذا كان الربط رأسي أم أفقي
-      const isVertical = Math.abs(dy) >= 35 || Math.abs(dy) > Math.abs(dx) * 0.7
+      // Determine if connection is primarily vertical or horizontal
+      const isVertical = Math.abs(dy) > Math.abs(dx) * 0.6 || Math.abs(dy) >= 30
 
       if (isVertical) {
         if (dy >= 0) {
-          // الهدف أسفل المصدر
-          x1 = fCx
-          y1 = fr.bottom - cRect.top
-          x2 = tCx
-          y2 = tr.top - cRect.top
-
-          const distY = Math.max(25, Math.abs(y2 - y1) * 0.45)
-          cx1 = x1
-          cy1 = y1 + distY
-          cx2 = x2
-          cy2 = y2 - distY
+          // Target is below source → exit bottom, enter top
+          x1 = fCx;  y1 = fBottom
+          x2 = tCx;  y2 = tTop
+          const ctrl = Math.max(30, Math.abs(y2 - y1) * 0.45)
+          cx1 = x1;  cy1 = y1 + ctrl
+          cx2 = x2;  cy2 = y2 - ctrl
         } else {
-          // الهدف أعلى المصدر
-          x1 = fCx
-          y1 = fr.top - cRect.top
-          x2 = tCx
-          y2 = tr.bottom - cRect.top
-
-          const distY = Math.max(25, Math.abs(y2 - y1) * 0.45)
-          cx1 = x1
-          cy1 = y1 - distY
-          cx2 = x2
-          cy2 = y2 + distY
+          // Target is above source → exit top, enter bottom
+          x1 = fCx;  y1 = fTop
+          x2 = tCx;  y2 = tBottom
+          const ctrl = Math.max(30, Math.abs(y2 - y1) * 0.45)
+          cx1 = x1;  cy1 = y1 - ctrl
+          cx2 = x2;  cy2 = y2 + ctrl
         }
       } else {
-        // الربط أفقي (نفس الصف أو متجاورين)
         if (dx > 0) {
-          // الهدف على يمين المصدر
-          x1 = fr.right - cRect.left
-          y1 = fCy
-          x2 = tr.left - cRect.left
-          y2 = tCy
-
-          const distX = Math.max(20, Math.abs(x2 - x1) * 0.4)
-          cx1 = x1 + distX
-          cy1 = y1
-          cx2 = x2 - distX
-          cy2 = y2
+          // Target is to the right → exit right, enter left
+          x1 = fRight; y1 = fCy
+          x2 = tLeft;  y2 = tCy
+          const ctrl = Math.max(20, Math.abs(x2 - x1) * 0.4)
+          cx1 = x1 + ctrl; cy1 = y1
+          cx2 = x2 - ctrl; cy2 = y2
         } else {
-          // الهدف على يسار المصدر (مثل Steroids -> Podocyte injury)
-          x1 = fr.left - cRect.left
-          y1 = fCy
-          x2 = tr.right - cRect.left
-          y2 = tCy
-
-          const distX = Math.max(20, Math.abs(x1 - x2) * 0.4)
-          cx1 = x1 - distX
-          cy1 = y1
-          cx2 = x2 + distX
-          cy2 = y2
+          // Target is to the left → exit left, enter right
+          x1 = fLeft;  y1 = fCy
+          x2 = tRight; y2 = tCy
+          const ctrl = Math.max(20, Math.abs(x1 - x2) * 0.4)
+          cx1 = x1 - ctrl; cy1 = y1
+          cx2 = x2 + ctrl; cy2 = y2
         }
       }
 
       const d = `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`
 
-      // حساب منتصف المنحنى بدقة عند t = 0.5
+      // Label at curve midpoint (t=0.5 on cubic bezier)
       const labelX = 0.125 * x1 + 0.375 * cx1 + 0.375 * cx2 + 0.125 * x2
       const labelY = 0.125 * y1 + 0.375 * cy1 + 0.375 * cy2 + 0.125 * y2
 
       return {
         d,
         label: e.label,
-        labelColor: e.label ? (VERB_COLORS[e.label] || '#475569') : undefined,
+        labelColor: e.label ? (VERB_COLORS[e.label] ?? '#475569') : undefined,
         labelX,
         labelY,
       }
@@ -253,16 +247,19 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
   }, [edges])
 
   useEffect(() => {
+    // Run immediately, then once more after layout settles
     computePaths()
-    const timer = setTimeout(() => computePaths(), 200)
+    const t1 = setTimeout(computePaths, 100)
+    const t2 = setTimeout(computePaths, 400)
 
-    const observer = new ResizeObserver(() => computePaths())
-    if (containerRef.current) observer.observe(containerRef.current)
-
+    const ro = new ResizeObserver(computePaths)
+    if (wrapperRef.current) ro.observe(wrapperRef.current)
     window.addEventListener('resize', computePaths)
+
     return () => {
-      clearTimeout(timer)
-      observer.disconnect()
+      clearTimeout(t1)
+      clearTimeout(t2)
+      ro.disconnect()
       window.removeEventListener('resize', computePaths)
     }
   }, [computePaths, content])
@@ -270,20 +267,55 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
   return (
     <div style={{ marginBottom: '20px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 12px', background: '#EFF6FF', border: '0.5px solid #BFDBFE', borderRadius: '8px', marginBottom: '10px' }}>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.3-6.7-2.1 2.1M7.4 16.6l-2.1 2.1m0-12.8 2.1 2.1m9.2 9.2 2.1 2.1"/>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '8px',
+        padding: '7px 12px',
+        background: '#EFF6FF', border: '0.5px solid #BFDBFE', borderRadius: '8px',
+        marginBottom: '10px',
+      }}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+          stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.3-6.7-2.1 2.1M7.4 16.6l-2.1 2.1m0-12.8 2.1 2.1m9.2 9.2 2.1 2.1"/>
         </svg>
-        <span style={{ fontSize: '11px', fontWeight: 600, color: '#2563EB', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Concept map</span>
-        {title && <><span style={{ color: '#BFDBFE' }}>·</span><span style={{ fontSize: '12px', color: '#1E40AF' }}>{title}</span></>}
+        <span style={{ fontSize: '11px', fontWeight: 600, color: '#2563EB', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          Concept map
+        </span>
+        {title && (
+          <>
+            <span style={{ color: '#BFDBFE' }}>·</span>
+            <span style={{ fontSize: '12px', color: '#1E40AF' }}>{title}</span>
+          </>
+        )}
       </div>
 
-      {/* Diagram */}
-      <div style={{ background: '#FAFCFF', border: '1px dashed #D7E6FB', borderRadius: '12px', padding: '28px 20px 20px', position: 'relative' }}>
-        {/* SVG arrows layer */}
-        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
+      {/* Diagram: single relative wrapper for both SVG and nodes */}
+      <div
+        ref={wrapperRef}
+        style={{
+          position: 'relative',
+          background: '#FAFCFF',
+          border: '1px dashed #D7E6FB',
+          borderRadius: '12px',
+          padding: '28px 20px 20px',
+        }}
+      >
+        {/* SVG arrows — positioned to fill the wrapper exactly */}
+        <svg
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: svgSize.w || '100%',
+            height: svgSize.h || '100%',
+            pointerEvents: 'none',
+            overflow: 'visible',
+          }}
+        >
           <defs>
-            <marker id="mn-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <marker id="mn-arrow" markerWidth="8" markerHeight="8"
+              refX="6" refY="3.5" orient="auto" markerUnits="strokeWidth">
               <path d="M0,0 L7,3.5 L0,7 Z" fill="#94a3b8"/>
             </marker>
           </defs>
@@ -291,9 +323,25 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
             <g key={i}>
               <path d={p.d} stroke="#94a3b8" strokeWidth="1.5" fill="none" markerEnd="url(#mn-arrow)"/>
               {p.label && (
-                <foreignObject x={p.labelX - 45} y={p.labelY - 11} width="90" height="22" style={{ overflow: 'visible' }}>
+                <foreignObject
+                  x={p.labelX - 46}
+                  y={p.labelY - 12}
+                  width="92"
+                  height="24"
+                  style={{ overflow: 'visible' }}
+                >
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <span style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '2px 8px', fontSize: '10.5px', fontWeight: 700, whiteSpace: 'nowrap', color: p.labelColor ?? '#475569', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                    <span style={{
+                      background: '#fff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      padding: '2px 8px',
+                      fontSize: '10.5px',
+                      fontWeight: 700,
+                      whiteSpace: 'nowrap',
+                      color: p.labelColor ?? '#475569',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                    }}>
                       {p.label}
                     </span>
                   </div>
@@ -303,10 +351,13 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
           ))}
         </svg>
 
-        {/* Nodes layer */}
-        <div ref={containerRef} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '40px' }}>
+        {/* Nodes — stacked rows, z-index above SVG */}
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '40px' }}>
           {rows.map((row, ri) => (
-            <div key={ri} style={{ display: 'flex', justifyContent: 'center', gap: '24px', flexWrap: 'wrap' }}>
+            <div
+              key={ri}
+              style={{ display: 'flex', justifyContent: 'center', gap: '24px', flexWrap: 'wrap' }}
+            >
               {row.map(node => {
                 const s = CAT_STYLES[node.cat] ?? CAT_STYLES.neutral
                 return (

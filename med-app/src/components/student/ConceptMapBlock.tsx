@@ -41,7 +41,38 @@ const VERB_CLR: Record<string, string> = {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   PARSER  (same logic as original; isTreat flag added)
+   PARSER
+   ─────────────────────────────────────────────────────────────
+   FIX (Change 1 of 2): DFS-based back-edge detection for cycle
+   breaking.
+
+   ROOT CAUSE OF THE BUG:
+   When a pathway has a feedback edge from a regular (non-treatment)
+   node back to the entry node (e.g. Estradiol → GnRH in the HPG
+   axis), it creates a complete cycle in the main-node graph.
+   Every node in the cycle gets in-degree ≥ 1 → Kahn's BFS queue
+   starts EMPTY → rowOf[n] = undefined for all → every node lands
+   in row 0 → the entire map collapses into a single flat row.
+
+   THE FIX:
+   Run an iterative DFS before Kahn's BFS.  Any edge that points
+   back to a node still on the DFS stack is a "back edge" — the
+   precise edge that creates the cycle.  Excluding that edge from
+   the in-degree count converts the cyclic graph into a DAG, so
+   Kahn's BFS assigns correct multi-row positions.
+
+   The back edge is still rendered in the SVG (with special
+   left-margin routing — see buildEdge Change 2); it just does
+   not influence the layout grid.
+
+   ZERO RISK to other map types:
+   • Maps with no cycles: DFS finds no back edges → identical
+     behaviour as before.
+   • Maps with treatment/inhibitor feedback (e.g. Hypothyroidism):
+     those edges are already excluded from main-to-main processing
+     → no change.
+   • Only maps whose feedback uses a regular node category are
+     affected — and only to correct their previously broken layout.
 ══════════════════════════════════════════════════════════════ */
 function parseMap(raw: string): MapData {
   const lines  = raw.split('\n').map(s => s.trim()).filter(Boolean)
@@ -83,22 +114,66 @@ function parseMap(raw: string): MapData {
     else if (m2) edges.push({ from: m2[1], to: m2[2] })
   }
 
-  /* ── Topological row assignment (main nodes only) ─────────────── */
-  const main  = nodes.filter(n => !n.isTreat)
+  /* ── Topological row assignment ──────────────────────────────── */
+  const main    = nodes.filter(n => !n.isTreat)
+  const mainSet = new Set(main.map(n => n.id))
+
+  // Only edges between two main (non-treatment) nodes
+  const mainEdges = edges.filter(e => mainSet.has(e.from) && mainSet.has(e.to))
+
+  /* ── Step 1: iterative DFS to identify back edges ────────────── */
+  const backEdgeKeys = new Set<string>()
+  {
+    const vis = new Set<string>()
+
+    const dfsFrom = (start: string) => {
+      type F = { id: string; idx: number }
+      const inStk = new Set<string>()
+      const stk: F[] = []
+
+      const push = (id: string) => {
+        vis.add(id); inStk.add(id); stk.push({ id, idx: 0 })
+      }
+
+      push(start)
+
+      while (stk.length) {
+        const f  = stk[stk.length - 1]
+        const ch = mainEdges.filter(e => e.from === f.id)
+
+        if (f.idx >= ch.length) {
+          // All children explored — pop this node off the DFS stack
+          inStk.delete(f.id); stk.pop()
+        } else {
+          const cid = ch[f.idx++].to
+          if (inStk.has(cid)) {
+            // cid is an ancestor on the current path → BACK EDGE
+            backEdgeKeys.add(`${f.id}||${cid}`)
+          } else if (!vis.has(cid)) {
+            push(cid)
+          }
+        }
+      }
+    }
+
+    for (const n of main) if (!vis.has(n.id)) dfsFrom(n.id)
+  }
+
+  /* ── Step 2: Kahn's BFS with back edges excluded ─────────────── */
   const inDeg: Record<string, number>   = {}
   const adj:   Record<string, string[]> = {}
   for (const n of main) { inDeg[n.id] = 0; adj[n.id] = [] }
-  for (const e of edges) {
-    const sn = nodes.find(n => n.id === e.from)
-    const dn = nodes.find(n => n.id === e.to)
-    if (!sn?.isTreat && !dn?.isTreat) {
-      inDeg[e.to] = (inDeg[e.to] ?? 0) + 1
-      adj[e.from]?.push(e.to)
-    }
+
+  for (const e of mainEdges) {
+    if (backEdgeKeys.has(`${e.from}||${e.to}`)) continue  // skip back-edges
+    inDeg[e.to] = (inDeg[e.to] ?? 0) + 1
+    adj[e.from].push(e.to)
   }
+
   const q = main.filter(n => !inDeg[n.id]).map(n => n.id)
   const rowOf: Record<string, number> = {}
   for (const id of q) rowOf[id] = 0
+
   while (q.length) {
     const cur = q.shift()!
     for (const nxt of adj[cur] ?? []) {
@@ -106,6 +181,7 @@ function parseMap(raw: string): MapData {
       if (--inDeg[nxt] === 0) q.push(nxt)
     }
   }
+
   for (const n of main) n.row = rowOf[n.id] ?? 0
 
   /* Treatment nodes: same row as their primary target */
@@ -143,22 +219,27 @@ function arcLen(x1: number, y1: number, cx1: number, cy1: number, cx2: number, c
 }
 
 /* ══════════════════════════════════════════════════════════════
-   EDGE ROUTING  — three clean cases, no upward arches
+   EDGE ROUTING
    ─────────────────────────────────────────────────────────────
-   A  TREAT → MAIN
-      Treatment nodes are always in the RIGHT column.
-      Exit treatment.LEFT  →  enter target.RIGHT.
-      Same row: horizontal S-curve.
-      Different row: diagonal bezier (exit horizontal, arrive at target height).
-      Label: 24 px above bezier midpoint — always in the clear gap.
+   FIX (Change 2 of 2): upward vertical edges (feedback arcs)
+   are routed as a C-curve sweeping left of the node column.
 
-   B  VERTICAL  (|dy| > 35 or slope > 0.65)
-      Exit source bottom/top  →  enter dest top/bottom.
-      Label: at bezier midpoint (open space between rows).
+   After Change 1 fixes the row layout, feedback back-edges
+   become upward vertical edges (source is lower on screen,
+   destination is higher).  The old code drew these as a nearly
+   straight vertical line passing through all intermediate nodes,
+   causing labels to overlap.
 
-   C  HORIZONTAL  (same-row main → main)
-      Exit source right/left  →  enter dest left/right.
-      Label: 14 px above midpoint.
+   New routing for dy < 0 (upward):
+   • Exits the LEFT wall of the source node horizontally.
+   • Curves left to a "sideX" position outside the node column.
+   • Travels vertically up alongside the column.
+   • Enters the LEFT wall of the destination horizontally.
+   The label sits at the arc's leftmost inflection point — in the
+   open left-margin — completely clear of all nodes.
+
+   This is the standard visual convention for negative-feedback
+   arcs in biological pathway diagrams.
 ══════════════════════════════════════════════════════════════ */
 function buildEdge(
   src: Rect, dst: Rect,
@@ -175,17 +256,15 @@ function buildEdge(
 
   /* ── A: Treatment → main ──────────────────────────────────────── */
   if (isTreat) {
-    x1 = src.l;  y1 = src.cy        // exit LEFT of treatment node
-    x2 = dst.r;  y2 = dst.cy        // enter RIGHT of target node
-    const hs = Math.abs(x1 - x2)    // x1 > x2 (treatment is on the right)
+    x1 = src.l;  y1 = src.cy
+    x2 = dst.r;  y2 = dst.cy
+    const hs = Math.abs(x1 - x2)
 
     if (Math.abs(dy) < 22) {
-      // Same row: smooth S-curve stays horizontal
       const c = Math.max(24, hs * 0.38)
       cx1 = x1 - c; cy1 = y1
       cx2 = x2 + c; cy2 = y2
     } else {
-      // Different row: exit horizontally, then curve to target's height
       cx1 = x1 - hs * 0.44; cy1 = y1
       cx2 = x2 + hs * 0.20; cy2 = y2
     }
@@ -198,29 +277,37 @@ function buildEdge(
     const isV = Math.abs(dy) > 35 || (Math.abs(dx) > 1 && Math.abs(dy) / Math.abs(dx) > 0.65)
 
     if (isV) {
-      // Vertical
       if (dy >= 0) {
+        /* ── Downward (forward edge) ────────────────────────────── */
         x1 = src.cx; y1 = src.b; x2 = dst.cx; y2 = dst.t
         const c = Math.max(30, Math.abs(dy) * 0.4)
         cx1 = x1; cy1 = y1 + c; cx2 = x2; cy2 = y2 - c
+        lx = bz(0.5, x1, cx1, cx2, x2)
+        ly = bz(0.5, y1, cy1, cy2, y2)
       } else {
-        x1 = src.cx; y1 = src.t; x2 = dst.cx; y2 = dst.b
-        const c = Math.max(30, Math.abs(dy) * 0.4)
-        cx1 = x1; cy1 = y1 - c; cx2 = x2; cy2 = y2 + c
+        /* ── Upward (feedback back-edge) — C-arc in left margin ── */
+        // Exit the LEFT wall of the source, sweep left to sideX,
+        // travel up, then enter the LEFT wall of the destination.
+        // The arrowhead (at dst.l, dst.cy) points rightward into
+        // the node — correct for an arc arriving from the left.
+        x1 = src.l; y1 = src.cy          // exit: left wall of source
+        x2 = dst.l; y2 = dst.cy          // enter: left wall of dest
+        const spread = Math.max(60, Math.abs(dy) * 0.28)
+        const sideX  = Math.min(src.l, dst.l) - spread
+        cx1 = sideX; cy1 = y1            // pull hard left at source height
+        cx2 = sideX; cy2 = y2            // pull hard left at dest height
+        lx  = sideX                      // label at arc's leftmost point
+        ly  = (y1 + y2) / 2             // vertically centred on the arc
       }
-      lx = bz(0.5, x1, cx1, cx2, x2)
-      ly = bz(0.5, y1, cy1, cy2, y2)
-
     } else if (dx >= 0) {
-      // Horizontal right
+      /* ── Horizontal right ─────────────────────────────────────── */
       x1 = src.r; y1 = src.cy; x2 = dst.l; y2 = dst.cy
       const c = Math.max(20, dx * 0.35)
       cx1 = x1 + c; cy1 = y1; cx2 = x2 - c; cy2 = y2
       lx = bz(0.5, x1, cx1, cx2, x2)
       ly = bz(0.5, y1, cy1, cy2, y2) - 14
-
     } else {
-      // Horizontal left
+      /* ── Horizontal left ──────────────────────────────────────── */
       x1 = src.l; y1 = src.cy; x2 = dst.r; y2 = dst.cy
       const c = Math.max(20, -dx * 0.35)
       cx1 = x1 - c; cy1 = y1; cx2 = x2 + c; cy2 = y2
@@ -279,7 +366,6 @@ export default function ConceptMapBlock({ content }: Props) {
       res.push(buildEdge(getRect(fe, w), getRect(te, w), nMap[e.from]?.isTreat ?? false, e.from, e.to, e.label))
     }
     setRe(res)
-    /* Trigger draw animation exactly once after first measurement */
     if (!initDone.current) {
       initDone.current = true
       setTimeout(() => setDrawn(true), 60)
@@ -335,7 +421,7 @@ export default function ConceptMapBlock({ content }: Props) {
           background: '#FAFCFF',
           border: '1px solid #E8F0FE',
           borderRadius: 14,
-          padding: '28px 20px',
+          padding: '28px 20px 28px 80px',   // extra left padding for feedback arcs
           boxShadow: 'inset 0 1px 3px rgba(59,130,246,0.04)',
         }}
       >
@@ -481,7 +567,6 @@ function NodeCard({ node, dim, highlight, setRef, onEnter, onLeave }: NCProps) {
         background: s.bg,
         border:     `1.5px solid ${highlight ? s.accent : s.border}`,
         borderLeft: `4px solid ${s.accent}`,
-        // Pill shape for treatment nodes; card shape for pathway nodes
         borderRadius: node.isTreat ? 24 : 10,
         padding:    node.isTreat ? '8px 14px' : '9px 13px',
         boxShadow:  highlight

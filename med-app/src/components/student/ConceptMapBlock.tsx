@@ -100,19 +100,19 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
             clusterBorder:       dark ? '#888780' : '#888780',
             edgeLabelBackground: dark ? '#1a1a18' : '#ffffff',
             fontSize:            '14px',
-            fontFamily:          'inherit',
+            fontFamily:          'trebuchet ms, verdana, arial, sans-serif',
           },
           flowchart: {
             curve: 'monotoneX',
             rankSpacing: 50,
             nodeSpacing: 30,
-            padding: 12,
+            padding: 20,
             useMaxWidth: false,
           },
         })
 
         const host = document.createElement('div')
-        host.style.cssText = 'position:absolute;top:-9999px;left:-9999px;visibility:hidden;width:1200px'
+        host.style.cssText = 'position:absolute;top:-9999px;left:-9999px;visibility:hidden;width:1200px;font-family:trebuchet ms,verdana,arial,sans-serif;font-size:14px'
         document.body.appendChild(host)
 
         const uid = `mn-cm-${Date.now()}-${Math.random().toString(36).slice(2)}`

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 interface Props    { content: string }
 interface MNNode  { id: string; label: string; cat: string; row: number; isTreat: boolean }
 interface MNEdge  { from: string; to: string; label?: string }
-interface MapData { title: string; nodes: MNNode[]; edges: MNEdge[] }
+interface MapData { title: string; nodes: MNNode[]; edges: MNEdge[]; topology: string; hasFeedback: boolean }
 interface REdge   { d: string; len: number; lx: number; ly: number; label?: string; color: string; fromId: string; toId: string }
 type Rect = { l: number; r: number; t: number; b: number; cx: number; cy: number }
 
@@ -190,7 +190,26 @@ function parseMap(raw: string): MapData {
     n.row = (te ? main.find(m => m.id === te.to) : undefined)?.row ?? 0
   }
 
-  return { title, nodes, edges }
+  /* ── Topology detection (for caption) ────────────────────────── */
+  const hasFeedback = backEdgeKeys.size > 0
+  const fwdEdges = mainEdges.filter(e => !backEdgeKeys.has(`${e.from}||${e.to}`))
+  const outDegTopo: Record<string, number> = {}
+  const inDegTopo:  Record<string, number> = {}
+  for (const e of fwdEdges) {
+    outDegTopo[e.from] = (outDegTopo[e.from] ?? 0) + 1
+    inDegTopo[e.to]    = (inDegTopo[e.to]    ?? 0) + 1
+  }
+  const hasBranching  = Object.values(outDegTopo).some(d => d > 1)
+  const hasConvergence = Object.values(inDegTopo).some(d => d > 1)
+
+  let topology: string
+  if (hasBranching && hasConvergence) topology = 'mixed: branching and convergence combined in one pathway'
+  else if (hasBranching)              topology = 'branching: one mechanism leads to multiple outcomes'
+  else if (hasConvergence)            topology = 'convergence: multiple factors lead to a shared outcome'
+  else                                topology = 'linear: sequential cascade through the pathway'
+  if (hasFeedback) topology += ' with feedback'
+
+  return { title, nodes, edges, topology, hasFeedback }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -327,7 +346,7 @@ function buildEdge(
    MAIN COMPONENT
 ══════════════════════════════════════════════════════════════ */
 export default function ConceptMapBlock({ content }: Props) {
-  const { title, nodes, edges } = parseMap(content)
+  const { title, nodes, edges, topology } = parseMap(content)
 
   const wrapRef  = useRef<HTMLDivElement>(null)
   const nRefs    = useRef<Record<string, HTMLDivElement | null>>({})
@@ -346,7 +365,6 @@ export default function ConceptMapBlock({ content }: Props) {
     n.isTreat ? rowMap[n.row].treat.push(n) : rowMap[n.row].main.push(n)
   }
   const rows = Object.keys(rowMap).sort((a, b) => +a - +b).map(k => rowMap[+k])
-  const hasAnyTreat = rows.some(r => r.treat.length > 0)
 
   /* Hover: connected node IDs */
   const connSet = hov
@@ -382,36 +400,12 @@ export default function ConceptMapBlock({ content }: Props) {
     return () => { clearTimeout(t1); clearTimeout(t2); ro.disconnect(); window.removeEventListener('resize', compute) }
   }, [compute, content])
 
+  const caption = title
+    ? `Concept map · ${title} — ${topology}.`
+    : `Concept map — ${topology}.`
+
   return (
     <div style={{ marginBottom: 20, fontFamily: 'system-ui,-apple-system,sans-serif' }}>
-
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '7px 14px',
-        background: 'linear-gradient(135deg,#EFF6FF,#F0F9FF)',
-        border: '0.5px solid #BFDBFE', borderRadius: 8, marginBottom: 10,
-      }}>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-          stroke="#2563EB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.3-6.7-2.1 2.1M7.4 16.6l-2.1 2.1m0-12.8 2.1 2.1m9.2 9.2 2.1 2.1"/>
-        </svg>
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#2563EB', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-          Concept Map
-        </span>
-        {title && (
-          <>
-            <span style={{ color: '#BFDBFE', fontSize: 14 }}>·</span>
-            <span style={{ fontSize: 12, fontWeight: 500, color: '#1E40AF' }}>{title}</span>
-          </>
-        )}
-        {hasAnyTreat && (
-          <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, color: '#10b981', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.8 }}>
-            ⚕ Treatments
-          </span>
-        )}
-      </div>
 
       {/* ── Canvas ──────────────────────────────────────────────── */}
       <div
@@ -536,6 +530,19 @@ export default function ConceptMapBlock({ content }: Props) {
           ))}
         </div>
       </div>
+
+      {/* ── Caption ─────────────────────────────────────────────── */}
+      <p style={{
+        margin: '7px 0 0 0',
+        fontSize: 12,
+        fontStyle: 'italic',
+        color: '#94a3b8',
+        textAlign: 'center',
+        lineHeight: 1.5,
+        letterSpacing: '0.01em',
+      }}>
+        {caption}
+      </p>
     </div>
   )
 }

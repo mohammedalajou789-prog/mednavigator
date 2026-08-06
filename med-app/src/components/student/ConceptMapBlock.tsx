@@ -59,19 +59,19 @@ function parseMNConceptMap(raw: string): MapData {
 
     if (line.includes('-->')) {
       edgeLines.push(line)
-      const nodeMatches = [...line.matchAll(/(\w+)\["?([^"\]]+)"?\]\((\w+)\)/g)]
+      const nodeMatches = [...line.matchAll(/([\w-]+)\["?([^"\]]+)"?\]\(([\w-]+)\)/g)]
       for (const m of nodeMatches) {
         if (!nodeIds.has(m[1])) {
           nodeIds.add(m[1])
           nodes.push({ id: m[1], label: m[2], cat: m[3], row: -1 })
         }
       }
-      const bareIds = line.replace(/(\w+)\["?([^"\]]+)"?\]\((\w+)\)/g, '$1')
+      const bareIds = line.replace(/([\w-]+)\["?([^"\]]+)"?\]\(([\w-]+)\)/g, '$1')
         .replace(/--[^-]*-->/g, '-->')
         .split('-->').map(s => s.trim())
       for (const id of bareIds) {
         const clean = id.replace(/\(.*\)/, '').trim()
-        if (clean && /^\w+$/.test(clean) && !nodeIds.has(clean)) {
+        if (clean && /^[\w-]+$/.test(clean) && !nodeIds.has(clean)) {
           nodeIds.add(clean)
           nodes.push({ id: clean, label: clean, cat: 'neutral', row: -1 })
         }
@@ -80,9 +80,9 @@ function parseMNConceptMap(raw: string): MapData {
   }
 
   for (const line of edgeLines) {
-    const normalized = line.replace(/(\w+)\["?([^"\]]+)"?\]\((\w+)\)/g, '$1')
-    const arrowMatch = normalized.match(/^(\w+)\s*--([^-]*)?-->\s*(\w+)$/)
-    const simpleMatch = normalized.match(/^(\w+)\s*-->\s*(\w+)$/)
+    const normalized = line.replace(/([\w-]+)\["?([^"\]]+)"?\]\(([\w-]+)\)/g, '$1')
+    const arrowMatch = normalized.match(/^([\w-]+)\s*--([^-]*)?-->\s*([\w-]+)$/)
+    const simpleMatch = normalized.match(/^([\w-]+)\s*-->\s*([\w-]+)$/)
 
     if (arrowMatch) {
       edges.push({ from: arrowMatch[1], to: arrowMatch[3], label: arrowMatch[2].trim() || undefined })
@@ -164,63 +164,79 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
       const fr = fromEl.getBoundingClientRect()
       const tr = toEl.getBoundingClientRect()
 
-      // المراكز النسبية داخل الحاوية
+      // مراكز العناصر بالنسبة للحاوية
       const fCx = fr.left + fr.width / 2 - cRect.left
       const fCy = fr.top + fr.height / 2 - cRect.top
       const tCx = tr.left + tr.width / 2 - cRect.left
       const tCy = tr.top + tr.height / 2 - cRect.top
 
-      const deltaX = tCx - fCx
-      const deltaY = tCy - fCy
+      const dx = tCx - fCx
+      const dy = tCy - fCy
 
       let x1: number, y1: number, x2: number, y2: number
       let cx1: number, cy1: number, cx2: number, cy2: number
 
-      // التمييز بين الاتصال الأفقي (العناصر الجانبية) والاتصال الرأسي
-      const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY) * 1.2 || Math.abs(deltaY) < 35
+      // فحص إذا كان الربط رأسي أم أفقي
+      const isVertical = Math.abs(dy) >= 35 || Math.abs(dy) > Math.abs(dx) * 0.7
 
-      if (isHorizontal) {
-        // اتصال أفقي (مثل الأدوية والعلاجات الجانبية)
-        if (deltaX > 0) {
-          x1 = fr.right - cRect.left
-          y1 = fCy
-          x2 = tr.left - cRect.left
-          y2 = tCy
-        } else {
-          x1 = fr.left - cRect.left
-          y1 = fCy
-          x2 = tr.right - cRect.left
-          y2 = tCy
-        }
-        const dx = Math.max(25, Math.abs(x2 - x1) / 2)
-        cx1 = deltaX > 0 ? x1 + dx : x1 - dx
-        cy1 = y1
-        cx2 = deltaX > 0 ? x2 - dx : x2 + dx
-        cy2 = y2
-      } else {
-        // اتصال رأسي (من أعلى لأسفل أو العكس)
-        if (deltaY >= 0) {
+      if (isVertical) {
+        if (dy >= 0) {
+          // الهدف أسفل المصدر
           x1 = fCx
           y1 = fr.bottom - cRect.top
           x2 = tCx
           y2 = tr.top - cRect.top
+
+          const distY = Math.max(25, Math.abs(y2 - y1) * 0.45)
+          cx1 = x1
+          cy1 = y1 + distY
+          cx2 = x2
+          cy2 = y2 - distY
         } else {
+          // الهدف أعلى المصدر
           x1 = fCx
           y1 = fr.top - cRect.top
           x2 = tCx
           y2 = tr.bottom - cRect.top
+
+          const distY = Math.max(25, Math.abs(y2 - y1) * 0.45)
+          cx1 = x1
+          cy1 = y1 - distY
+          cx2 = x2
+          cy2 = y2 + distY
         }
-        const dy = Math.max(25, Math.abs(y2 - y1) / 2)
-        cx1 = x1
-        cy1 = deltaY >= 0 ? y1 + dy : y1 - dy
-        cx2 = x2
-        cy2 = deltaY >= 0 ? y2 - dy : y2 + dy
+      } else {
+        // الربط أفقي (نفس الصف أو متجاورين)
+        if (dx > 0) {
+          // الهدف على يمين المصدر
+          x1 = fr.right - cRect.left
+          y1 = fCy
+          x2 = tr.left - cRect.left
+          y2 = tCy
+
+          const distX = Math.max(20, Math.abs(x2 - x1) * 0.4)
+          cx1 = x1 + distX
+          cy1 = y1
+          cx2 = x2 - distX
+          cy2 = y2
+        } else {
+          // الهدف على يسار المصدر (مثل Steroids -> Podocyte injury)
+          x1 = fr.left - cRect.left
+          y1 = fCy
+          x2 = tr.right - cRect.left
+          y2 = tCy
+
+          const distX = Math.max(20, Math.abs(x1 - x2) * 0.4)
+          cx1 = x1 - distX
+          cy1 = y1
+          cx2 = x2 + distX
+          cy2 = y2
+        }
       }
 
-      // رسم المسار دائمًا من المصدر (x1,y1) إلى الهدف (x2,y2)
       const d = `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`
 
-      // حساب منتصف المنحنى بدقة عالية عند (t = 0.5) لوضع الشارة فيه
+      // حساب منتصف المنحنى بدقة عند t = 0.5
       const labelX = 0.125 * x1 + 0.375 * cx1 + 0.375 * cx2 + 0.125 * x2
       const labelY = 0.125 * y1 + 0.375 * cy1 + 0.375 * cy2 + 0.125 * y2
 
@@ -240,7 +256,6 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
     computePaths()
     const timer = setTimeout(() => computePaths(), 200)
 
-    // متابعة تغير أحجام العناصر ديناميكياً
     const observer = new ResizeObserver(() => computePaths())
     if (containerRef.current) observer.observe(containerRef.current)
 

@@ -176,17 +176,21 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
       const fr = fromEl.getBoundingClientRect()
       const tr = toEl.getBoundingClientRect()
       const x1 = fr.left + fr.width / 2 - cRect.left
-      const y1 = fr.bottom - cRect.top
       const x2 = tr.left + tr.width / 2 - cRect.left
-      const y2 = tr.top - cRect.top
-      const dy = Math.max(20, (y2 - y1) / 2)
-      const d = `M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`
+      // If target is above or same level as source, draw from top of source to bottom of target
+      const goingDown = tr.top >= fr.bottom - 10
+      const sy1 = goingDown ? fr.bottom - cRect.top : fr.top - cRect.top
+      const sy2 = goingDown ? tr.top - cRect.top  : tr.bottom - cRect.top
+      const dy = Math.max(20, Math.abs(sy2 - sy1) / 2)
+      const d = goingDown
+        ? `M ${x1} ${sy1} C ${x1} ${sy1 + dy}, ${x2} ${sy2 - dy}, ${x2} ${sy2}`
+        : `M ${x2} ${sy2} C ${x2} ${sy2 + dy}, ${x1} ${sy1 - dy}, ${x1} ${sy1}`
       return {
         d,
         label: e.label,
         labelColor: e.label ? (VERB_COLORS[e.label] || '#475569') : undefined,
         labelX: (x1 + x2) / 2,
-        labelY: (y1 + y2) / 2,
+        labelY: (sy1 + sy2) / 2,
       }
     }).filter(Boolean) as EdgePath[]
 

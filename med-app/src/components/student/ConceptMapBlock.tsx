@@ -19,7 +19,11 @@ const COLOR_MAP: Record<string, { fill: string; stroke: string; text: string; da
   neutral:   { fill: '#F1EFE8', stroke: '#888780', text: '#444441', darkFill: '#2C2C2A', darkStroke: '#888780', darkText: '#D3D1C7' },
 }
 
-function parseMNConceptMap(raw: string): { mermaidSrc: string; title: string; layout: string; colorMap: Record<string, string> } {
+function parseMNConceptMap(raw: string): {
+  mermaidSrc: string
+  title: string
+  colorMap: Record<string, string>
+} {
   const lines = raw.split('\n').map(l => l.trim()).filter(Boolean)
   let title = ''
   let layout = 'top-down'
@@ -32,17 +36,19 @@ function parseMNConceptMap(raw: string): { mermaidSrc: string; title: string; la
     if (line === 'END_GROUP') { diagramLines.push('end'); continue }
 
     const groupMatch = line.match(/^GROUP:\s*(.+)$/)
-    if (groupMatch) { diagramLines.push(`subgraph "${groupMatch[1]}"`); continue }
+    if (groupMatch) {
+      diagramLines.push(`subgraph SG${diagramLines.length}["${groupMatch[1]}"]`)
+      continue
+    }
 
-    // Parse node color annotations: NODE_ID[Label](colortype)
-    // and strip the (colortype) from the Mermaid source
-    const processed = line.replace(/(\w+)\[([^\]]+)\]\((\w+)\)/g, (_, id, label, colorType) => {
+    // Extract color annotations: ID[Label](colortype) → strip (colortype), record mapping
+    const processed = line.replace(/(\w+)\[([^\]]+)\]\((\w+)\)/g, (_full, id, label, colorType) => {
       colorMap[id] = colorType
       return `${id}["${label}"]`
     })
 
-    // Convert inhibition arrow --inhibits--> to labeled arrow
-    const mermaidLine = processed.replace(/--(\w[\w\s]*?)-->/g, '-->|"$1"|')
+    // Convert --label--> to Mermaid labeled arrow -->|"label"|
+    const mermaidLine = processed.replace(/--([^-]+)-->/g, '-->|"$1"|')
 
     diagramLines.push(mermaidLine)
   }
@@ -50,13 +56,47 @@ function parseMNConceptMap(raw: string): { mermaidSrc: string; title: string; la
   const direction = layout === 'left-right' ? 'LR' : 'TD'
   const mermaidSrc = `flowchart ${direction}\n${diagramLines.join('\n')}`
 
-  return { mermaidSrc, title, layout, colorMap }
+  return { mermaidSrc, title, colorMap }
+}
+
+function applyColors(svgEl: SVGSVGElement, colorMap: Record<string, string>, dark: boolean) {
+  svgEl.style.maxWidth = '100%'
+  svgEl.style.height = 'auto'
+
+  svgEl.querySelectorAll('.node').forEach(node => {
+    const rawId = (node as Element).id ?? ''
+    const nodeId = rawId.replace(/^flowchart-/, '').replace(/-\d+$/, '')
+    const colorType = colorMap[nodeId]
+    if (!colorType) return
+    const palette = COLOR_MAP[colorType]
+    if (!palette) return
+
+    const shape = node.querySelector('rect, polygon, circle, ellipse')
+    if (shape) {
+      shape.setAttribute('fill',         dark ? palette.darkFill   : palette.fill)
+      shape.setAttribute('stroke',       dark ? palette.darkStroke : palette.stroke)
+      shape.setAttribute('stroke-width', '1')
+      if (shape.tagName === 'rect') shape.setAttribute('rx', '8')
+    }
+    node.querySelectorAll('text, tspan').forEach(t => {
+      t.setAttribute('fill', dark ? palette.darkText : palette.text)
+    })
+  })
+
+  svgEl.querySelectorAll('.cluster rect').forEach(r => {
+    r.setAttribute('fill',         dark ? '#2a2a28' : '#fafaf8')
+    r.setAttribute('stroke',       dark ? '#444441' : '#d3d1c7')
+    r.setAttribute('stroke-width', '1')
+    r.setAttribute('rx',           '12')
+  })
 }
 
 export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [rendered, setRendered] = useState(false)
+  const mountRef = useRef<HTMLDivElement>(null)
+  const [svgHtml, setSvgHtml] = useState<string | null>(null)
+  const [error, setError]     = useState<string | null>(null)
+
+  const { title } = parseMNConceptMap(content)
 
   useEffect(() => {
     let cancelled = false
@@ -64,6 +104,7 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
     async function render() {
       try {
         const { default: mermaid } = await import('mermaid')
+
         const dark = document.documentElement.classList.contains('dark') ||
           window.matchMedia('(prefers-color-scheme: dark)').matches
 
@@ -71,83 +112,67 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
 
         mermaid.initialize({
           startOnLoad: false,
+          securityLevel: 'loose',
           theme: 'base',
           themeVariables: {
-            primaryColor:      dark ? '#26215C' : '#EEEDFE',
-            primaryTextColor:  dark ? '#CECBF6' : '#3C3489',
-            primaryBorderColor:dark ? '#7F77DD' : '#7F77DD',
-            lineColor:         dark ? '#9c9a92' : '#73726c',
-            textColor:         dark ? '#c2c0b6' : '#3d3d3a',
-            background:        dark ? '#1a1a18' : '#ffffff',
-            nodeBorder:        dark ? '#7F77DD' : '#7F77DD',
-            clusterBkg:        dark ? '#2C2C2A' : '#F1EFE8',
-            clusterBorder:     dark ? '#888780' : '#888780',
+            primaryColor:        dark ? '#26215C' : '#EEEDFE',
+            primaryTextColor:    dark ? '#CECBF6' : '#3C3489',
+            primaryBorderColor:  dark ? '#7F77DD' : '#7F77DD',
+            lineColor:           dark ? '#9c9a92' : '#73726c',
+            textColor:           dark ? '#c2c0b6' : '#3d3d3a',
+            background:          dark ? '#1a1a18' : '#ffffff',
+            nodeBorder:          dark ? '#7F77DD' : '#7F77DD',
+            clusterBkg:          dark ? '#2C2C2A' : '#F1EFE8',
+            clusterBorder:       dark ? '#888780' : '#888780',
             edgeLabelBackground: dark ? '#1a1a18' : '#ffffff',
-            fontSize: '13px',
+            fontSize:   '13px',
             fontFamily: 'inherit',
           },
-          flowchart: {
-            curve: 'monotoneX',
-            rankSpacing: 60,
-            nodeSpacing: 40,
-            padding: 16,
-          },
+          flowchart: { curve: 'monotoneX', rankSpacing: 60, nodeSpacing: 40, padding: 16 },
         })
 
-        const uniqueId = `cm-${Math.random().toString(36).slice(2)}`
-        const { svg } = await mermaid.render(uniqueId, mermaidSrc)
+        // ── KEY FIX: render into an isolated off-screen div, never touch React's DOM ──
+        const host = document.createElement('div')
+        host.style.position = 'absolute'
+        host.style.top      = '-9999px'
+        host.style.left     = '-9999px'
+        host.style.visibility = 'hidden'
+        document.body.appendChild(host)
 
-        if (cancelled) return
-        if (!containerRef.current) return
+        const uniqueId = `mn-cm-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-        containerRef.current.innerHTML = svg
+        try {
+          const { svg } = await mermaid.render(uniqueId, mermaidSrc, host)
 
-        // Apply MedNavigator color palette to nodes
-        const svgEl = containerRef.current.querySelector('svg')
-        if (svgEl) {
-          svgEl.style.maxWidth = '100%'
-          svgEl.style.height = 'auto'
+          if (cancelled) return
 
-          containerRef.current.querySelectorAll('.node').forEach(node => {
-            const rawId = node.id ?? ''
-            const nodeId = rawId.replace(/^flowchart-/, '').replace(/-\d+$/, '')
-            const colorType = colorMap[nodeId]
-            if (!colorType) return
-            const palette = COLOR_MAP[colorType]
-            if (!palette) return
+          // Parse the SVG string into a real element to apply colors
+          const parser = new DOMParser()
+          const doc    = parser.parseFromString(svg, 'image/svg+xml')
+          const svgEl  = doc.querySelector('svg') as SVGSVGElement | null
 
-            const shape = node.querySelector('rect, polygon, circle, ellipse')
-            if (shape) {
-              shape.setAttribute('fill',   dark ? palette.darkFill   : palette.fill)
-              shape.setAttribute('stroke', dark ? palette.darkStroke : palette.stroke)
-              shape.setAttribute('stroke-width', '1')
-              if (shape.tagName === 'rect') shape.setAttribute('rx', '8')
-            }
-            node.querySelectorAll('text, tspan').forEach(t => {
-              t.setAttribute('fill', dark ? palette.darkText : palette.text)
-            })
-          })
-
-          // Style subgraph containers
-          containerRef.current.querySelectorAll('.cluster rect').forEach(r => {
-            r.setAttribute('fill',         dark ? '#2a2a28' : '#fafaf8')
-            r.setAttribute('stroke',       dark ? '#444441' : '#d3d1c7')
-            r.setAttribute('stroke-width', '1')
-            r.setAttribute('rx',           '12')
-          })
+          if (svgEl) {
+            applyColors(svgEl, colorMap, dark)
+            setSvgHtml(svgEl.outerHTML)
+          } else {
+            setSvgHtml(svg)
+          }
+        } finally {
+          // Always clean up the host element
+          if (document.body.contains(host)) {
+            document.body.removeChild(host)
+          }
         }
-
-        setRendered(true)
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to render concept map')
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to render concept map')
+        }
       }
     }
 
     render()
     return () => { cancelled = true }
   }, [content])
-
-  const { title } = parseMNConceptMap(content)
 
   if (error) {
     return (
@@ -161,6 +186,7 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
 
   return (
     <div style={{ marginBottom: '20px' }}>
+      {/* Header bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 12px', background: '#EFF6FF', border: '0.5px solid #BFDBFE', borderRadius: '8px', marginBottom: '10px' }}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.3-6.7-2.1 2.1M7.4 16.6l-2.1 2.1m0-12.8 2.1 2.1m9.2 9.2 2.1 2.1"/>
@@ -174,8 +200,8 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
         )}
       </div>
 
+      {/* Diagram container — React never sets innerHTML here, only dangerouslySetInnerHTML on a stable div */}
       <div
-        ref={containerRef}
         style={{
           width: '100%',
           overflowX: 'auto',
@@ -183,19 +209,28 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
           border: '0.5px solid #ECEEF3',
           background: '#FAFAFA',
           padding: '16px',
-          minHeight: rendered ? undefined : '120px',
+          minHeight: svgHtml ? undefined : '120px',
           display: 'flex',
-          alignItems: rendered ? undefined : 'center',
-          justifyContent: rendered ? undefined : 'center',
+          alignItems: svgHtml ? undefined : 'center',
+          justifyContent: svgHtml ? undefined : 'center',
         }}
       >
-        {!rendered && !error && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
-              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-            </svg>
-            <span style={{ fontSize: '13px', color: '#9CA3AF' }}>Rendering concept map…</span>
-          </div>
+        {svgHtml ? (
+          <div
+            ref={mountRef}
+            style={{ width: '100%' }}
+            dangerouslySetInnerHTML={{ __html: svgHtml }}
+          />
+        ) : (
+          !error && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                style={{ animation: 'spin 1s linear infinite' }}>
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+              </svg>
+              <span style={{ fontSize: '13px', color: '#9CA3AF' }}>Rendering concept map…</span>
+            </div>
+          )
         )}
       </div>
     </div>

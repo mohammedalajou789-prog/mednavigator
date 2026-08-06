@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface ConceptMapBlockProps {
   content: string
@@ -41,34 +41,21 @@ function parseMNConceptMap(raw: string): {
       continue
     }
 
-    // Extract color annotations: ID[Label](colortype) → strip (colortype), record mapping
     const processed = line.replace(/(\w+)\[([^\]]+)\]\((\w+)\)/g, (_full, id, label, colorType) => {
       colorMap[id] = colorType
       return `${id}["${label}"]`
     })
 
-    // Convert --label--> to Mermaid labeled arrow -->|"label"|
     const mermaidLine = processed.replace(/--([^-]+)-->/g, '-->|"$1"|')
-
     diagramLines.push(mermaidLine)
   }
 
   const direction = layout === 'left-right' ? 'LR' : 'TD'
   const mermaidSrc = `flowchart ${direction}\n${diagramLines.join('\n')}`
-
   return { mermaidSrc, title, colorMap }
 }
 
 function applyColors(svgEl: SVGSVGElement, colorMap: Record<string, string>, dark: boolean) {
-  svgEl.removeAttribute('width')
-  svgEl.removeAttribute('height')
-  svgEl.setAttribute('width', '100%')
-  svgEl.style.width    = '100%'
-  svgEl.style.height   = 'auto'
-  svgEl.style.maxWidth = '100%'
-  svgEl.style.display  = 'block'
-  svgEl.style.height = 'auto'
-
   svgEl.querySelectorAll('.node').forEach(node => {
     const rawId = (node as Element).id ?? ''
     const nodeId = rawId.replace(/^flowchart-/, '').replace(/-\d+$/, '')
@@ -76,7 +63,6 @@ function applyColors(svgEl: SVGSVGElement, colorMap: Record<string, string>, dar
     if (!colorType) return
     const palette = COLOR_MAP[colorType]
     if (!palette) return
-
     const shape = node.querySelector('rect, polygon, circle, ellipse')
     if (shape) {
       shape.setAttribute('fill',         dark ? palette.darkFill   : palette.fill)
@@ -88,7 +74,6 @@ function applyColors(svgEl: SVGSVGElement, colorMap: Record<string, string>, dar
       t.setAttribute('fill', dark ? palette.darkText : palette.text)
     })
   })
-
   svgEl.querySelectorAll('.cluster rect').forEach(r => {
     r.setAttribute('fill',         dark ? '#2a2a28' : '#fafaf8')
     r.setAttribute('stroke',       dark ? '#444441' : '#d3d1c7')
@@ -97,11 +82,15 @@ function applyColors(svgEl: SVGSVGElement, colorMap: Record<string, string>, dar
   })
 }
 
-export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
-  const mountRef = useRef<HTMLDivElement>(null)
-  const [svgHtml, setSvgHtml] = useState<string | null>(null)
-  const [error, setError]     = useState<string | null>(null)
+interface SvgResult {
+  html: string
+  viewW: number
+  viewH: number
+}
 
+export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
+  const [result, setResult] = useState<SvgResult | null>(null)
+  const [error, setError]   = useState<string | null>(null)
   const { title } = parseMNConceptMap(content)
 
   useEffect(() => {
@@ -110,10 +99,8 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
     async function render() {
       try {
         const { default: mermaid } = await import('mermaid')
-
         const dark = document.documentElement.classList.contains('dark') ||
           window.matchMedia('(prefers-color-scheme: dark)').matches
-
         const { mermaidSrc, colorMap } = parseMNConceptMap(content)
 
         mermaid.initialize({
@@ -123,86 +110,56 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
           themeVariables: {
             primaryColor:        dark ? '#26215C' : '#EEEDFE',
             primaryTextColor:    dark ? '#CECBF6' : '#3C3489',
-            primaryBorderColor:  dark ? '#7F77DD' : '#7F77DD',
+            primaryBorderColor:  '#7F77DD',
             lineColor:           dark ? '#9c9a92' : '#73726c',
             textColor:           dark ? '#c2c0b6' : '#3d3d3a',
             background:          dark ? '#1a1a18' : '#ffffff',
-            nodeBorder:          dark ? '#7F77DD' : '#7F77DD',
+            nodeBorder:          '#7F77DD',
             clusterBkg:          dark ? '#2C2C2A' : '#F1EFE8',
             clusterBorder:       dark ? '#888780' : '#888780',
             edgeLabelBackground: dark ? '#1a1a18' : '#ffffff',
-            fontSize:   '13px',
-            fontFamily: 'inherit',
+            fontSize:            '13px',
+            fontFamily:          'inherit',
           },
-          flowchart: { curve: 'monotoneX', rankSpacing: 60, nodeSpacing: 40, padding: 16 },
+          flowchart: { curve: 'monotoneX', rankSpacing: 55, nodeSpacing: 35, padding: 14 },
         })
 
-        // ── KEY FIX: render into an isolated off-screen div, never touch React's DOM ──
         const host = document.createElement('div')
-        host.style.position = 'absolute'
-        host.style.top      = '-9999px'
-        host.style.left     = '-9999px'
-        host.style.visibility = 'hidden'
+        host.style.cssText = 'position:absolute;top:-9999px;left:-9999px;visibility:hidden'
         document.body.appendChild(host)
 
-        const uniqueId = `mn-cm-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        const uid = `mn-cm-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
         try {
-          const { svg } = await mermaid.render(uniqueId, mermaidSrc, host)
-
+          const { svg } = await mermaid.render(uid, mermaidSrc, host)
           if (cancelled) return
 
-          // Parse the SVG string into a real element to apply colors
           const parser = new DOMParser()
           const doc    = parser.parseFromString(svg, 'image/svg+xml')
           const svgEl  = doc.querySelector('svg') as SVGSVGElement | null
+          if (!svgEl) { setResult({ html: svg, viewW: 800, viewH: 600 }); return }
 
-          if (svgEl) {
-            applyColors(svgEl, colorMap, dark)
-            // Compute natural width from viewBox, cap at container width
-            const vb = svgEl.getAttribute('viewBox')?.split(' ').map(Number)
-            const naturalW = vb ? vb[2] : 800
-            const naturalH = vb ? vb[3] : 600
-            const maxW = Math.min(naturalW, 760)
-            const scaledH = Math.round((naturalH / naturalW) * maxW)
-            svgEl.removeAttribute('width')
-            svgEl.removeAttribute('height')
-            svgEl.setAttribute('width',  String(maxW))
-            svgEl.setAttribute('height', String(scaledH))
-            const s = svgEl.getAttribute('style') ?? ''
-            svgEl.setAttribute('style', s.replace(/max-width:[^;]+;?/g, '').trim())
-            svgEl.style.width    = '100%'
-            svgEl.style.maxWidth = maxW + 'px'
-            svgEl.style.height   = 'auto'
-            svgEl.style.display  = 'block'
-            svgEl.style.margin   = '0 auto'
-            // Strip Mermaid's max-width inline style — it overrides our layout
-            const existingStyle = svgEl.getAttribute('style') ?? ''
-            svgEl.setAttribute('style', existingStyle.replace(/max-width:[^;]+;?/g, '').trim())
-            svgEl.style.width    = '100%'
-            svgEl.style.maxWidth = '100%'
-            svgEl.style.height   = 'auto'
-            svgEl.style.display  = 'block'
-            // Force fixed width — grow vertically only
-            svgEl.setAttribute('width', '100%')
-            svgEl.removeAttribute('height')
-            svgEl.style.width  = '100%'
-            svgEl.style.height = 'auto'
-            svgEl.style.display = 'block'
-            setSvgHtml(svgEl.outerHTML)
-          } else {
-            setSvgHtml(svg)
-          }
+          // Read viewBox BEFORE touching anything
+          const vbParts = (svgEl.getAttribute('viewBox') ?? '0 0 800 600')
+            .split(/[\s,]+/).map(Number)
+          const viewW = vbParts[2] || 800
+          const viewH = vbParts[3] || 600
+
+          // Apply MedNavigator colors
+          applyColors(svgEl, colorMap, dark)
+
+          // Strip ALL size attributes — let the CSS container control size
+          svgEl.removeAttribute('width')
+          svgEl.removeAttribute('height')
+          svgEl.removeAttribute('style')
+          svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+
+          if (!cancelled) setResult({ html: svgEl.outerHTML, viewW, viewH })
         } finally {
-          // Always clean up the host element
-          if (document.body.contains(host)) {
-            document.body.removeChild(host)
-          }
+          if (document.body.contains(host)) document.body.removeChild(host)
         }
       } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to render concept map')
-        }
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Render failed')
       }
     }
 
@@ -213,61 +170,48 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
   if (error) {
     return (
       <div style={{ padding: '16px 20px', borderRadius: '12px', background: '#FCEBEB', border: '1px solid #E24B4A', marginBottom: '16px' }}>
-        <p style={{ margin: 0, fontSize: '13px', color: '#791F1F', fontFamily: 'monospace' }}>
-          Concept map error: {error}
-        </p>
+        <p style={{ margin: 0, fontSize: '13px', color: '#791F1F', fontFamily: 'monospace' }}>Concept map error: {error}</p>
       </div>
     )
   }
 
   return (
     <div style={{ marginBottom: '20px' }}>
-      {/* Header bar */}
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 12px', background: '#EFF6FF', border: '0.5px solid #BFDBFE', borderRadius: '8px', marginBottom: '10px' }}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.3-6.7-2.1 2.1M7.4 16.6l-2.1 2.1m0-12.8 2.1 2.1m9.2 9.2 2.1 2.1"/>
         </svg>
         <span style={{ fontSize: '11px', fontWeight: 600, color: '#2563EB', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Concept map</span>
-        {title && (
-          <>
-            <span style={{ color: '#BFDBFE', fontSize: '11px' }}>·</span>
-            <span style={{ fontSize: '12px', color: '#1E40AF' }}>{title}</span>
-          </>
-        )}
+        {title && <><span style={{ color: '#BFDBFE' }}>·</span><span style={{ fontSize: '12px', color: '#1E40AF' }}>{title}</span></>}
       </div>
 
-      {/* Diagram container — React never sets innerHTML here, only dangerouslySetInnerHTML on a stable div */}
-      <div
-        style={{
-          width: '100%',
-          overflowX: 'auto',
-          borderRadius: '12px',
-          border: '0.5px solid #ECEEF3',
-          background: '#FAFAFA',
-          padding: '16px',
-          minHeight: svgHtml ? undefined : '120px',
-          display: 'flex',
-          alignItems: svgHtml ? undefined : 'center',
-          justifyContent: svgHtml ? undefined : 'center',
-        }}
-      >
-        {svgHtml ? (
+      {/* Container — aspect-ratio drives the height, SVG fills it */}
+      <div style={{
+        width: '100%',
+        borderRadius: '12px',
+        border: '0.5px solid #ECEEF3',
+        background: '#FAFAFA',
+        padding: '16px',
+        boxSizing: 'border-box',
+        minHeight: result ? undefined : '100px',
+        display: result ? undefined : 'flex',
+        alignItems: result ? undefined : 'center',
+        justifyContent: result ? undefined : 'center',
+      }}>
+        {result ? (
           <div
-            ref={mountRef}
-            style={{ width: '100%' }}
-            dangerouslySetInnerHTML={{ __html: svgHtml }}
+            style={{
+              width: '100%',
+              aspectRatio: `${result.viewW} / ${result.viewH}`,
+              maxHeight: '80vh',
+              overflow: 'hidden',
+            }}
+            dangerouslySetInnerHTML={{ __html: result.html }}
           />
-        ) : (
-          !error && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                style={{ animation: 'spin 1s linear infinite' }}>
-                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-              </svg>
-              <span style={{ fontSize: '13px', color: '#9CA3AF' }}>Rendering concept map…</span>
-            </div>
-          )
-        )}
+        ) : !error ? (
+          <span style={{ fontSize: '13px', color: '#9CA3AF' }}>Rendering…</span>
+        ) : null}
       </div>
     </div>
   )

@@ -60,7 +60,13 @@ function parseMNConceptMap(raw: string): {
 }
 
 function applyColors(svgEl: SVGSVGElement, colorMap: Record<string, string>, dark: boolean) {
+  svgEl.removeAttribute('width')
+  svgEl.removeAttribute('height')
+  svgEl.setAttribute('width', '100%')
+  svgEl.style.width    = '100%'
+  svgEl.style.height   = 'auto'
   svgEl.style.maxWidth = '100%'
+  svgEl.style.display  = 'block'
   svgEl.style.height = 'auto'
 
   svgEl.querySelectorAll('.node').forEach(node => {

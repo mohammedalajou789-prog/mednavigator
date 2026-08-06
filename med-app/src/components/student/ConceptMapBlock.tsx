@@ -26,20 +26,14 @@ function parseMNConceptMap(raw: string): {
 } {
   const lines = raw.split('\n').map(l => l.trim()).filter(Boolean)
   let title = ''
-  let layout = 'top-down'
   const colorMap: Record<string, string> = {}
   const diagramLines: string[] = []
 
   for (const line of lines) {
     if (line.startsWith('TITLE:')) { title = line.slice(6).trim(); continue }
-    if (line.startsWith('LAYOUT:')) { layout = line.slice(7).trim(); continue }
-    if (line === 'END_GROUP') { diagramLines.push('end'); continue }
-
-    const groupMatch = line.match(/^GROUP:\s*(.+)$/)
-    if (groupMatch) {
-      diagramLines.push(`subgraph SG${diagramLines.length}["${groupMatch[1]}"]`)
-      continue
-    }
+    if (line.startsWith('LAYOUT:')) { continue }
+    if (line.startsWith('GROUP:')) { continue }
+    if (line === 'END_GROUP') { continue }
 
     const processed = line.replace(/(\w+)\[([^\]]+)\]\((\w+)\)/g, (_full, id, label, colorType) => {
       colorMap[id] = colorType
@@ -50,8 +44,7 @@ function parseMNConceptMap(raw: string): {
     diagramLines.push(mermaidLine)
   }
 
-  const direction = layout === 'left-right' ? 'LR' : 'TD'
-  const mermaidSrc = `flowchart ${direction}\n${diagramLines.join('\n')}`
+  const mermaidSrc = `flowchart TD\n${diagramLines.join('\n')}`
   return { mermaidSrc, title, colorMap }
 }
 
@@ -74,23 +67,11 @@ function applyColors(svgEl: SVGSVGElement, colorMap: Record<string, string>, dar
       t.setAttribute('fill', dark ? palette.darkText : palette.text)
     })
   })
-  svgEl.querySelectorAll('.cluster rect').forEach(r => {
-    r.setAttribute('fill',         dark ? '#2a2a28' : '#fafaf8')
-    r.setAttribute('stroke',       dark ? '#444441' : '#d3d1c7')
-    r.setAttribute('stroke-width', '1')
-    r.setAttribute('rx',           '12')
-  })
-}
-
-interface SvgResult {
-  html: string
-  viewW: number
-  viewH: number
 }
 
 export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
-  const [result, setResult] = useState<SvgResult | null>(null)
-  const [error, setError]   = useState<string | null>(null)
+  const [svgHtml, setSvgHtml] = useState<string | null>(null)
+  const [error, setError]     = useState<string | null>(null)
   const { title } = parseMNConceptMap(content)
 
   useEffect(() => {
@@ -118,14 +99,20 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
             clusterBkg:          dark ? '#2C2C2A' : '#F1EFE8',
             clusterBorder:       dark ? '#888780' : '#888780',
             edgeLabelBackground: dark ? '#1a1a18' : '#ffffff',
-            fontSize:            '13px',
+            fontSize:            '14px',
             fontFamily:          'inherit',
           },
-          flowchart: { curve: 'monotoneX', rankSpacing: 55, nodeSpacing: 35, padding: 14 },
+          flowchart: {
+            curve: 'monotoneX',
+            rankSpacing: 50,
+            nodeSpacing: 30,
+            padding: 12,
+            useMaxWidth: false,
+          },
         })
 
         const host = document.createElement('div')
-        host.style.cssText = 'position:absolute;top:-9999px;left:-9999px;visibility:hidden'
+        host.style.cssText = 'position:absolute;top:-9999px;left:-9999px;visibility:hidden;width:600px'
         document.body.appendChild(host)
 
         const uid = `mn-cm-${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -137,24 +124,19 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
           const parser = new DOMParser()
           const doc    = parser.parseFromString(svg, 'image/svg+xml')
           const svgEl  = doc.querySelector('svg') as SVGSVGElement | null
-          if (!svgEl) { setResult({ html: svg, viewW: 800, viewH: 600 }); return }
+          if (!svgEl) { setSvgHtml(svg); return }
 
-          // Read viewBox BEFORE touching anything
-          const vbParts = (svgEl.getAttribute('viewBox') ?? '0 0 800 600')
-            .split(/[\s,]+/).map(Number)
-          const viewW = vbParts[2] || 800
-          const viewH = vbParts[3] || 600
-
-          // Apply MedNavigator colors
           applyColors(svgEl, colorMap, dark)
 
-          // Strip ALL size attributes — let the CSS container control size
+          // Fix sizing — remove width/height attrs, keep viewBox, remove max-width from style
           svgEl.removeAttribute('width')
           svgEl.removeAttribute('height')
-          svgEl.removeAttribute('style')
-          svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+          const currentStyle = svgEl.getAttribute('style') ?? ''
+          svgEl.setAttribute('style',
+            currentStyle.replace(/max-width\s*:\s*[^;]+;?/g, '').trim()
+          )
 
-          if (!cancelled) setResult({ html: svgEl.outerHTML, viewW, viewH })
+          if (!cancelled) setSvgHtml(svgEl.outerHTML)
         } finally {
           if (document.body.contains(host)) document.body.removeChild(host)
         }
@@ -170,7 +152,9 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
   if (error) {
     return (
       <div style={{ padding: '16px 20px', borderRadius: '12px', background: '#FCEBEB', border: '1px solid #E24B4A', marginBottom: '16px' }}>
-        <p style={{ margin: 0, fontSize: '13px', color: '#791F1F', fontFamily: 'monospace' }}>Concept map error: {error}</p>
+        <p style={{ margin: 0, fontSize: '13px', color: '#791F1F', fontFamily: 'monospace' }}>
+          Concept map error: {error}
+        </p>
       </div>
     )
   }
@@ -182,32 +166,35 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.3-6.7-2.1 2.1M7.4 16.6l-2.1 2.1m0-12.8 2.1 2.1m9.2 9.2 2.1 2.1"/>
         </svg>
-        <span style={{ fontSize: '11px', fontWeight: 600, color: '#2563EB', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Concept map</span>
-        {title && <><span style={{ color: '#BFDBFE' }}>·</span><span style={{ fontSize: '12px', color: '#1E40AF' }}>{title}</span></>}
+        <span style={{ fontSize: '11px', fontWeight: 600, color: '#2563EB', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          Concept map
+        </span>
+        {title && (
+          <>
+            <span style={{ color: '#BFDBFE' }}>·</span>
+            <span style={{ fontSize: '12px', color: '#1E40AF' }}>{title}</span>
+          </>
+        )}
       </div>
 
-      {/* Container — aspect-ratio drives the height, SVG fills it */}
+      {/* Diagram */}
       <div style={{
         width: '100%',
+        overflowX: 'auto',
         borderRadius: '12px',
         border: '0.5px solid #ECEEF3',
         background: '#FAFAFA',
         padding: '16px',
         boxSizing: 'border-box',
-        minHeight: result ? undefined : '100px',
-        display: result ? undefined : 'flex',
-        alignItems: result ? undefined : 'center',
-        justifyContent: result ? undefined : 'center',
+        minHeight: svgHtml ? undefined : '80px',
+        display: svgHtml ? 'block' : 'flex',
+        alignItems: svgHtml ? undefined : 'center',
+        justifyContent: svgHtml ? undefined : 'center',
       }}>
-        {result ? (
+        {svgHtml ? (
           <div
-            style={{
-              width: '100%',
-              aspectRatio: `${result.viewW} / ${result.viewH}`,
-              maxHeight: '80vh',
-              overflow: 'hidden',
-            }}
-            dangerouslySetInnerHTML={{ __html: result.html }}
+            style={{ width: '100%', maxWidth: '600px', margin: '0 auto' }}
+            dangerouslySetInnerHTML={{ __html: svgHtml }}
           />
         ) : !error ? (
           <span style={{ fontSize: '13px', color: '#9CA3AF' }}>Rendering…</span>

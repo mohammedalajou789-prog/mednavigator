@@ -149,7 +149,6 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
 
         try {
           const { svg } = await mermaid.render(uniqueId, mermaidSrc, host)
-          console.log('MERMAID_SVG_RAW:', svg.slice(0, 500))
 
           if (cancelled) return
 
@@ -160,6 +159,13 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
 
           if (svgEl) {
             applyColors(svgEl, colorMap, dark)
+            // Strip Mermaid's max-width inline style — it overrides our layout
+            const existingStyle = svgEl.getAttribute('style') ?? ''
+            svgEl.setAttribute('style', existingStyle.replace(/max-width:[^;]+;?/g, '').trim())
+            svgEl.style.width    = '100%'
+            svgEl.style.maxWidth = '100%'
+            svgEl.style.height   = 'auto'
+            svgEl.style.display  = 'block'
             // Force fixed width — grow vertically only
             svgEl.setAttribute('width', '100%')
             svgEl.removeAttribute('height')

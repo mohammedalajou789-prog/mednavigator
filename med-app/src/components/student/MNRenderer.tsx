@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils/cn'
 import ImageLightbox from '@/components/student/ImageLightbox'
+import ConceptMapBlock from '@/components/student/ConceptMapBlock'
 
 interface MNRendererProps {
   content: string
@@ -141,6 +142,7 @@ type BlockType =
   | 'table' | 'text' | 'empty' | 'image_slot'
   | 'card_group_start' | 'card_group_end'
   | 'doctor_notes' | 'source'
+  | 'concept_map'
 
 interface Block {
   type: BlockType
@@ -240,6 +242,11 @@ function parseContent(raw: string): Block[] {
     if (line === '[PREVIOUS_YEAR]') {
       const { content, end } = extractBlock(lines, i + 1, '[/PREVIOUS_YEAR]')
       blocks.push({ type: 'previous_year', content })
+      i = end + 1; continue
+    }
+    if (line === '[CONCEPT_MAP]') {
+      const { content, end } = extractBlock(lines, i + 1, '[/CONCEPT_MAP]')
+      blocks.push({ type: 'concept_map', content })
       i = end + 1; continue
     }
     if (line === '[doctor notes]') {
@@ -602,6 +609,13 @@ function renderBlock(
         </div>
       )
     }
+
+    case 'concept_map':
+      return (
+        <div key={key} style={{ scrollMarginTop: '96px', marginBottom: '16px' }} data-sync-type="box">
+          <ConceptMapBlock content={block.content} />
+        </div>
+      )
 
     case 'empty':
       return <div key={key} className="h-1" />

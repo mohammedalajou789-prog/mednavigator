@@ -7,12 +7,17 @@ interface ConceptMapBlockProps { content: string }
 interface MNNode { id: string; label: string; cat: string; row: number }
 interface MNEdge { from: string; to: string; label?: string }
 interface MapData { title: string; nodes: MNNode[]; edges: MNEdge[] }
+
 interface RenderedEdge {
-  d: string
-  labelX: number
-  labelY: number
+  id: string          // unique id for SVG path reference
+  d: string           // SVG path data
   label?: string
   labelColor?: string
+  // For belly-down arcs we use textPath (label follows the curve).
+  // For others we use a fixed pill at (labelX, labelY).
+  useTextPath: boolean
+  labelX: number
+  labelY: number
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -82,7 +87,6 @@ function parseMNConceptMap(raw: string): MapData {
     else if (m2) edges.push({ from: m2[1], to: m2[2] })
   }
 
-  // Topological sort for row assignment
   const inDeg: Record<string, number> = {}
   const adj:   Record<string, string[]> = {}
   for (const n of nodes) { inDeg[n.id] = 0; adj[n.id] = [] }
@@ -104,12 +108,11 @@ function parseMNConceptMap(raw: string): MapData {
 
   const regularNodes   = nodes.filter(n => !TREATMENT_CATS.has(n.cat))
   const treatmentNodes = nodes.filter(n =>  TREATMENT_CATS.has(n.cat))
-
   for (const n of regularNodes) n.row = rowOf[n.id] ?? 0
   for (const n of treatmentNodes) {
-    const targetEdge = edges.find(e => e.from === n.id)
-    const target     = targetEdge ? regularNodes.find(r => r.id === targetEdge.to) : undefined
-    n.row = target?.row ?? 0
+    const te = edges.find(e => e.from === n.id)
+    const tg = te ? regularNodes.find(r => r.id === te.to) : undefined
+    n.row = tg?.row ?? 0
   }
 
   return { title, nodes, edges }
@@ -125,16 +128,15 @@ type Rect = {
 function relRect(el: HTMLElement, ref: HTMLElement): Rect {
   const er = el.getBoundingClientRect()
   const rr = ref.getBoundingClientRect()
-  const left   = er.left   - rr.left
-  const top    = er.top    - rr.top
+  const left = er.left - rr.left
+  const top  = er.top  - rr.top
   return {
     left, top,
     right:  er.right  - rr.left,
     bottom: er.bottom - rr.top,
     cx: left + er.width  / 2,
     cy: top  + er.height / 2,
-    w:  er.width,
-    h:  er.height,
+    w: er.width, h: er.height,
   }
 }
 
@@ -144,34 +146,38 @@ function bez(t: number, p0: number, p1: number, p2: number, p3: number) {
 }
 
 /**
- * THREE routing strategies — chosen by geometry:
+ * THREE routing strategies:
  *
- * A) VERTICAL  (|dy| > 50 OR |dy|/|dx| > 0.7)
- *    Source above target → exit bottom, enter top (and vice-versa).
- *    Classic straight-ish spline.
+ * A) VERTICAL  — source clearly above/below target
+ *    exit bottom → enter top (or vice versa). Straight spline.
+ *    Label: fixed pill at bezier midpoint.
  *
- * B) HORIZONTAL-RIGHT  (dx > 0, same-ish row)
- *    Exit right side of source, enter left side of target.
- *    Label lifted 13 px above the midpoint.
+ * B) HORIZONTAL-RIGHT  (dx > 0, same row)
+ *    exit right → enter left. Straight horizontal spline.
+ *    Label: fixed pill, lifted 13 px above midpoint.
  *
- * C) HORIZONTAL-LEFT  (dx < 0, same-ish row) — THE TRICKY ONE
- *    Treatment node is to the RIGHT of its target.
- *    Route: exit BOTTOM of source → arc DOWN below both nodes → enter BOTTOM of target.
- *    The belly of the arc sits BELOW the row, so:
- *      • The arrowhead enters the target from below → clearly visible, correct direction.
- *      • The label floats at the lowest point of the arc (inside the diagram).
- *      • The arc NEVER goes above the nodes, so it never leaves the wrapper.
+ * C) HORIZONTAL-LEFT  (dx < 0, same row) — treatment right of target
+ *    exit bottom of source → belly DOWN below both nodes → enter bottom of target.
+ *    The belly never goes upward so it never escapes the wrapper.
+ *    Label: rendered via SVG <textPath> so it ALWAYS follows the curve
+ *    regardless of where other nodes are — no overlap possible.
  */
-function buildEdge(from: Rect, to: Rect, label?: string, labelColor?: string): RenderedEdge {
+function buildEdge(
+  from: Rect, to: Rect,
+  edgeId: string,
+  label?: string,
+  labelColor?: string,
+): RenderedEdge {
   const dx = to.cx - from.cx
   const dy = to.cy - from.cy
   const isVertical = Math.abs(dy) > 50 || (Math.abs(dx) > 0 && Math.abs(dy) / Math.abs(dx) > 0.7)
 
   let x1: number, y1: number, x2: number, y2: number
   let cx1: number, cy1: number, cx2: number, cy2: number
+  let useTextPath = false
 
   if (isVertical) {
-    // ── A: vertical ──────────────────────────────────────────────────────────
+    // A — vertical
     if (dy >= 0) {
       x1 = from.cx; y1 = from.bottom
       x2 = to.cx;   y2 = to.top
@@ -186,49 +192,32 @@ function buildEdge(from: Rect, to: Rect, label?: string, labelColor?: string): R
       cx2 = x2; cy2 = y2 + c
     }
   } else if (dx >= 0) {
-    // ── B: horizontal right ──────────────────────────────────────────────────
+    // B — horizontal right
     x1 = from.right; y1 = from.cy
     x2 = to.left;    y2 = to.cy
     const c = Math.max(20, Math.abs(dx) * 0.35)
     cx1 = x1 + c; cy1 = y1
     cx2 = x2 - c; cy2 = y2
   } else {
-    // ── C: horizontal left (treatment right → target left) ───────────────────
-    // Exit BOTTOM of source, dip DOWN, enter BOTTOM of target.
+    // C — horizontal left (treatment on right → target on left)
+    // Arc downward: exit bottom of source, belly below both, enter bottom of target.
+    useTextPath = true  // label follows the curve
     x1 = from.cx; y1 = from.bottom
     x2 = to.cx;   y2 = to.bottom
-
     const hDist = Math.abs(dx)
-    // How far below the nodes the arc dips — enough for the label to fit
-    const belly = Math.max(from.bottom, to.bottom) + Math.max(24, hDist * 0.25)
-
-    // S-shaped control points: go outward then down to the belly
-    cx1 = from.cx + hDist * 0.25;  cy1 = belly
-    cx2 = to.cx   - hDist * 0.25;  cy2 = belly
+    const belly = Math.max(from.bottom, to.bottom) + Math.max(26, hDist * 0.28)
+    cx1 = from.cx + hDist * 0.3;  cy1 = belly
+    cx2 = to.cx   - hDist * 0.3;  cy2 = belly
   }
 
   const d = `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`
-
-  // Midpoint of bezier at t = 0.5
   const mx = bez(0.5, x1, cx1, cx2, x2)
   const my = bez(0.5, y1, cy1, cy2, y2)
 
-  // Label placement:
-  //   Vertical        → at midpoint
-  //   Horizontal-right → 13 px above midpoint (midpoint is on node edge)
-  //   Horizontal-left  → at belly midpoint (already inside diagram), shift up slightly
-  let labelX = mx
-  let labelY: number
-  if (!isVertical && dx < 0) {
-    // belly arc — label sits at the very bottom of the arc, lift a touch for readability
-    labelY = my - 2
-  } else if (!isVertical && dx >= 0) {
-    labelY = my - 13
-  } else {
-    labelY = my
-  }
+  const labelX = mx
+  const labelY = isVertical ? my : (dx >= 0 ? my - 13 : my)
 
-  return { d, labelX, labelY, label, labelColor }
+  return { id: edgeId, d, label, labelColor, useTextPath, labelX, labelY }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -250,13 +239,14 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
     if (!wrapper) return
     setSvgH(wrapper.getBoundingClientRect().height)
 
-    const built = edges.map(e => {
+    const built = edges.map((e, i) => {
       const fromEl = nodeRefs.current[e.from]
       const toEl   = nodeRefs.current[e.to]
       if (!fromEl || !toEl) return null
       const f = relRect(fromEl, wrapper)
       const t = relRect(toEl,   wrapper)
-      return buildEdge(f, t, e.label, e.label ? (VERB_COLORS[e.label] ?? '#475569') : undefined)
+      const color = e.label ? (VERB_COLORS[e.label] ?? '#475569') : undefined
+      return buildEdge(f, t, `edge-${i}`, e.label, color)
     }).filter(Boolean) as RenderedEdge[]
 
     setRenderedEdges(built)
@@ -269,7 +259,11 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
     const ro = new ResizeObserver(compute)
     if (wrapperRef.current) ro.observe(wrapperRef.current)
     window.addEventListener('resize', compute)
-    return () => { clearTimeout(t1); clearTimeout(t2); ro.disconnect(); window.removeEventListener('resize', compute) }
+    return () => {
+      clearTimeout(t1); clearTimeout(t2)
+      ro.disconnect()
+      window.removeEventListener('resize', compute)
+    }
   }, [compute, content])
 
   return (
@@ -304,11 +298,9 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
           background: '#FAFCFF',
           border: '1px dashed #D7E6FB',
           borderRadius: 12,
-          // Bottom padding absorbs the belly of right-to-left arcs
-          padding: '28px 24px 52px',
+          padding: '28px 24px 56px',
         }}
       >
-        {/* SVG layer — behind nodes */}
         <svg
           style={{
             position: 'absolute', top: 0, left: 0,
@@ -318,24 +310,65 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
           }}
         >
           <defs>
+            {/* Arrow marker */}
             <marker id="mn-arr" markerWidth="7" markerHeight="7"
               refX="5.5" refY="3.5" orient="auto" markerUnits="strokeWidth">
               <path d="M0,0.5 L6,3.5 L0,6.5 Z" fill="#94a3b8"/>
             </marker>
-            <filter id="lbl-sh" x="-25%" y="-60%" width="150%" height="220%">
-              <feDropShadow dx="0" dy="1" stdDeviation="1"
-                floodColor="#0f172a" floodOpacity="0.07"/>
+
+            {/* Drop shadow for pill labels */}
+            <filter id="lbl-sh" x="-30%" y="-80%" width="160%" height="260%">
+              <feDropShadow dx="0" dy="1" stdDeviation="1.2"
+                floodColor="#0f172a" floodOpacity="0.08"/>
             </filter>
+
+            {/* Invisible paths for textPath labels (belly-down arcs) */}
+            {renderedEdges.filter(e => e.useTextPath && e.label).map(e => (
+              <path key={`tp-${e.id}`} id={`tp-${e.id}`} d={e.d} fill="none"/>
+            ))}
           </defs>
 
-          {renderedEdges.map((e, i) => {
+          {renderedEdges.map((e) => {
             const chars = e.label?.length ?? 0
             const pw = Math.max(46, chars * 6.8 + 18)
             const ph = 19
+
             return (
-              <g key={i}>
+              <g key={e.id}>
+                {/* The actual visible arrow path */}
                 <path d={e.d} fill="none" stroke="#94a3b8" strokeWidth="1.5" markerEnd="url(#mn-arr)"/>
-                {e.label && (
+
+                {e.label && e.useTextPath ? (
+                  // ── C: textPath label — follows the curve, always readable ──
+                  // White background trick: render text twice (white thick, then colored)
+                  <g>
+                    <text fontSize="10" fontWeight="700" fontFamily="system-ui, sans-serif">
+                      <textPath href={`#tp-${e.id}`} startOffset="50%" textAnchor="middle"
+                        stroke="white" strokeWidth="5" paintOrder="stroke"
+                        fill={e.labelColor ?? '#475569'}
+                      >
+                        {e.label}
+                      </textPath>
+                    </text>
+                    {/* Pill background drawn at midpoint for textPath */}
+                    <rect
+                      x={e.labelX - pw / 2} y={e.labelY - ph / 2}
+                      width={pw} height={ph} rx={6} ry={6}
+                      fill="#fff" stroke="#e2e8f0" strokeWidth={1}
+                      filter="url(#lbl-sh)"
+                    />
+                    <text
+                      x={e.labelX} y={e.labelY + 4.5}
+                      textAnchor="middle"
+                      fontSize="10" fontWeight="700"
+                      fontFamily="system-ui, sans-serif"
+                      fill={e.labelColor ?? '#475569'}
+                    >
+                      {e.label}
+                    </text>
+                  </g>
+                ) : e.label ? (
+                  // ── A/B: fixed pill label ──────────────────────────────────
                   <g>
                     <rect
                       x={e.labelX - pw / 2} y={e.labelY - ph / 2}
@@ -353,13 +386,13 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
                       {e.label}
                     </text>
                   </g>
-                )}
+                ) : null}
               </g>
             )
           })}
         </svg>
 
-        {/* Nodes layer — above SVG */}
+        {/* Nodes layer */}
         <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 40 }}>
           {rows.map((row, ri) => (
             <div key={ri} style={{ display: 'flex', justifyContent: 'center', gap: 20, flexWrap: 'wrap' }}>

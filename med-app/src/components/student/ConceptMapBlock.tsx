@@ -108,11 +108,12 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
             nodeSpacing: 30,
             padding: 12,
             useMaxWidth: false,
+            wrapping: false,
           },
         })
 
         const host = document.createElement('div')
-        host.style.cssText = 'position:absolute;top:-9999px;left:-9999px;visibility:hidden;width:600px'
+        host.style.cssText = 'position:absolute;top:-9999px;left:-9999px;visibility:hidden;width:1200px'
         document.body.appendChild(host)
 
         const uid = `mn-cm-${Date.now()}-${Math.random().toString(36).slice(2)}`

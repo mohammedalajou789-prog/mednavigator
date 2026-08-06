@@ -120,6 +120,18 @@ function parseMNConceptMap(raw: string): MapData {
     }
   }
 
+  // Treatment and inhibitor nodes with no parent should sit beside their target
+  const treatmentCats = new Set(['treatment', 'inhibitor'])
+  for (const n of nodes) {
+    if (!treatmentCats.has(n.cat)) continue
+    if ((inDegree[n.id] ?? 0) !== 0) continue
+    // Find the target node this treatment points to
+    const targetEdge = edges.find(e => e.from === n.id)
+    if (!targetEdge) continue
+    const targetRow = rowMap[targetEdge.to]
+    if (targetRow !== undefined) rowMap[n.id] = targetRow - 1
+  }
+
   for (const n of nodes) n.row = rowMap[n.id] ?? 0
 
   return { title, nodes, edges }

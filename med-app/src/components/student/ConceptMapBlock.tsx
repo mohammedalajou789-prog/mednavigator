@@ -136,6 +136,7 @@ interface EdgePath {
   labelColor?: string
   labelX: number
   labelY: number
+  isHorizontal: boolean
 }
 
 export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
@@ -230,9 +231,14 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
 
       const d = `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`
 
-      // Label at curve midpoint (t=0.5 on cubic bezier)
-      const labelX = 0.125 * x1 + 0.375 * cx1 + 0.375 * cx2 + 0.125 * x2
-      const labelY = 0.125 * y1 + 0.375 * cy1 + 0.375 * cy2 + 0.125 * y2
+      // True midpoint at t=0.5 on cubic bezier
+      const midX = 0.125 * x1 + 0.375 * cx1 + 0.375 * cx2 + 0.125 * x2
+      const midY = 0.125 * y1 + 0.375 * cy1 + 0.375 * cy2 + 0.125 * y2
+
+      // For horizontal arrows the midpoint sits right on the node edge.
+      // Lift the label above the path so it's clearly readable.
+      const labelX = midX
+      const labelY = isVertical ? midY : midY - 16
 
       return {
         d,
@@ -240,6 +246,7 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
         labelColor: e.label ? (VERB_COLORS[e.label] ?? '#475569') : undefined,
         labelX,
         labelY,
+        isHorizontal: !isVertical,
       }
     }).filter(Boolean) as EdgePath[]
 
@@ -318,37 +325,50 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
               refX="6" refY="3.5" orient="auto" markerUnits="strokeWidth">
               <path d="M0,0 L7,3.5 L0,7 Z" fill="#94a3b8"/>
             </marker>
+            <filter id="pill-shadow" x="-20%" y="-40%" width="140%" height="180%">
+              <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#0f172a" floodOpacity="0.06"/>
+            </filter>
           </defs>
-          {paths.map((p, i) => (
-            <g key={i}>
-              <path d={p.d} stroke="#94a3b8" strokeWidth="1.5" fill="none" markerEnd="url(#mn-arrow)"/>
-              {p.label && (
-                <foreignObject
-                  x={p.labelX - 46}
-                  y={p.labelY - 12}
-                  width="92"
-                  height="24"
-                  style={{ overflow: 'visible' }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <span style={{
-                      background: '#fff',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      padding: '2px 8px',
-                      fontSize: '10.5px',
-                      fontWeight: 700,
-                      whiteSpace: 'nowrap',
-                      color: p.labelColor ?? '#475569',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-                    }}>
+          {paths.map((p, i) => {
+            // Estimate label pill dimensions based on character count
+            const charCount  = p.label ? p.label.length : 0
+            const pillW      = Math.max(44, charCount * 7 + 16)
+            const pillH      = 20
+            const pillX      = p.labelX - pillW / 2
+            const pillY      = p.labelY - pillH / 2
+
+            return (
+              <g key={i}>
+                <path d={p.d} stroke="#94a3b8" strokeWidth="1.5" fill="none" markerEnd="url(#mn-arrow)"/>
+                {p.label && (
+                  <g>
+                    {/* White background pill */}
+                    <rect
+                      x={pillX} y={pillY}
+                      width={pillW} height={pillH}
+                      rx={7} ry={7}
+                      fill="#ffffff"
+                      stroke="#e2e8f0"
+                      strokeWidth={1}
+                      filter="url(#pill-shadow)"
+                    />
+                    {/* Label text — centred inside pill */}
+                    <text
+                      x={p.labelX}
+                      y={p.labelY + 5}
+                      textAnchor="middle"
+                      fontSize="10.5"
+                      fontWeight="700"
+                      fontFamily="inherit"
+                      fill={p.labelColor ?? '#475569'}
+                    >
                       {p.label}
-                    </span>
-                  </div>
-                </foreignObject>
-              )}
-            </g>
-          ))}
+                    </text>
+                  </g>
+                )}
+              </g>
+            )
+          })}
         </svg>
 
         {/* Nodes — stacked rows, z-index above SVG */}

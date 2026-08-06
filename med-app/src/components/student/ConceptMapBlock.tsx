@@ -129,7 +129,7 @@ function parseMNConceptMap(raw: string): MapData {
     const targetEdge = edges.find(e => e.from === n.id)
     if (!targetEdge) continue
     const targetRow = rowMap[targetEdge.to]
-    if (targetRow !== undefined) rowMap[n.id] = targetRow - 1
+    if (targetRow !== undefined) rowMap[n.id] = targetRow
   }
 
   for (const n of nodes) n.row = rowMap[n.id] ?? 0

@@ -153,6 +153,12 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
 
           if (svgEl) {
             applyColors(svgEl, colorMap, dark)
+            // Force fixed width — grow vertically only
+            svgEl.setAttribute('width', '100%')
+            svgEl.removeAttribute('height')
+            svgEl.style.width  = '100%'
+            svgEl.style.height = 'auto'
+            svgEl.style.display = 'block'
             setSvgHtml(svgEl.outerHTML)
           } else {
             setSvgHtml(svg)

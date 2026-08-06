@@ -213,32 +213,36 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
         }
       } else {
         if (dx > 0) {
-          // Target is to the right → exit right, enter left
+          // Target is to the right → exit right side, enter left side
           x1 = fRight; y1 = fCy
           x2 = tLeft;  y2 = tCy
           const ctrl = Math.max(20, Math.abs(x2 - x1) * 0.4)
           cx1 = x1 + ctrl; cy1 = y1
           cx2 = x2 - ctrl; cy2 = y2
         } else {
-          // Target is to the left → exit left, enter right
-          x1 = fLeft;  y1 = fCy
-          x2 = tRight; y2 = tCy
-          const ctrl = Math.max(20, Math.abs(x1 - x2) * 0.4)
-          cx1 = x1 - ctrl; cy1 = y1
-          cx2 = x2 + ctrl; cy2 = y2
+          // Target is to the left (treatment on right → target on left)
+          // Arc over the top: exit bottom of source, curve up and enter top of target
+          x1 = fCx;  y1 = fBottom
+          x2 = tCx;  y2 = tTop
+          const distX = Math.abs(fCx - tCx)
+          // Apex sits above both nodes; clamp so it never goes above 8px from wrapper top
+          const apex  = Math.max(8, Math.min(y1, y2) - Math.max(28, distX * 0.45))
+          cx1 = fCx + distX * 0.35;  cy1 = apex
+          cx2 = tCx - distX * 0.35;  cy2 = apex
         }
       }
 
       const d = `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`
 
-      // True midpoint at t=0.5 on cubic bezier
+      // True midpoint at t=0.5 on cubic bezier (apex of the arc)
       const midX = 0.125 * x1 + 0.375 * cx1 + 0.375 * cx2 + 0.125 * x2
       const midY = 0.125 * y1 + 0.375 * cy1 + 0.375 * cy2 + 0.125 * y2
 
-      // For horizontal arrows the midpoint sits right on the node edge.
-      // Lift the label above the path so it's clearly readable.
+      // For right-to-left arcs the midpoint IS the apex (highest point) — label sits there.
+      // For left-to-right horizontal arrows lift label above the straight path.
+      // For vertical arrows label sits at midpoint.
       const labelX = midX
-      const labelY = isVertical ? midY : midY - 16
+      const labelY = (!isVertical && dx > 0) ? midY - 14 : midY
 
       return {
         d,
@@ -305,7 +309,7 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
           background: '#FAFCFF',
           border: '1px dashed #D7E6FB',
           borderRadius: '12px',
-          padding: '28px 20px 20px',
+          padding: '44px 20px 20px',
         }}
       >
         {/* SVG arrows — positioned to fill the wrapper exactly */}

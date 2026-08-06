@@ -51,17 +51,14 @@ function parseMNConceptMap(raw: string): MapData {
   const edges: MNEdge[] = []
   const nodeIds = new Set<string>()
 
-  // First pass — collect all node definitions and edges
   const edgeLines: string[] = []
 
   for (const line of lines) {
     if (line.startsWith('TITLE:')) { title = line.slice(6).trim(); continue }
     if (line.startsWith('LAYOUT:') || line.startsWith('GROUP:') || line === 'END_GROUP') continue
 
-    // Detect edges: lines containing -->
     if (line.includes('-->')) {
       edgeLines.push(line)
-      // Extract node definitions from edge lines
       const nodeMatches = [...line.matchAll(/(\w+)\["?([^"\]]+)"?\]\((\w+)\)/g)]
       for (const m of nodeMatches) {
         if (!nodeIds.has(m[1])) {
@@ -69,7 +66,6 @@ function parseMNConceptMap(raw: string): MapData {
           nodes.push({ id: m[1], label: m[2], cat: m[3], row: -1 })
         }
       }
-      // Also extract bare node IDs (no definition)
       const bareIds = line.replace(/(\w+)\["?([^"\]]+)"?\]\((\w+)\)/g, '$1')
         .replace(/--[^-]*-->/g, '-->')
         .split('-->').map(s => s.trim())
@@ -83,11 +79,8 @@ function parseMNConceptMap(raw: string): MapData {
     }
   }
 
-  // Parse edges
   for (const line of edgeLines) {
-    // Normalize: replace node definitions with just IDs
     const normalized = line.replace(/(\w+)\["?([^"\]]+)"?\]\((\w+)\)/g, '$1')
-    // Split on arrows
     const arrowMatch = normalized.match(/^(\w+)\s*--([^-]*)?-->\s*(\w+)$/)
     const simpleMatch = normalized.match(/^(\w+)\s*-->\s*(\w+)$/)
 
@@ -98,7 +91,6 @@ function parseMNConceptMap(raw: string): MapData {
     }
   }
 
-  // Assign rows using topological sort (BFS from roots)
   const inDegree: Record<string, number> = {}
   const adjList: Record<string, string[]> = {}
   for (const n of nodes) { inDegree[n.id] = 0; adjList[n.id] = [] }
@@ -120,16 +112,12 @@ function parseMNConceptMap(raw: string): MapData {
     }
   }
 
-  // Treatment/inhibitor nodes are excluded from topological sort.
-  // They are placed at the same row as their target after all regular rows are set.
   const treatmentCats = new Set(['treatment', 'inhibitor'])
   const treatmentNodes = nodes.filter(n => treatmentCats.has(n.cat))
   const regularNodes   = nodes.filter(n => !treatmentCats.has(n.cat))
 
-  // Assign rows to regular nodes from topological sort
   for (const n of regularNodes) n.row = rowMap[n.id] ?? 0
 
-  // Place each treatment/inhibitor node beside its target
   for (const n of treatmentNodes) {
     const targetEdge = edges.find(e => e.from === n.id)
     if (targetEdge) {
@@ -157,7 +145,6 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
   const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const [paths, setPaths] = useState<EdgePath[]>([])
 
-  // Group nodes by row
   const rowsMap: Record<number, MNNode[]> = {}
   for (const n of nodes) {
     ;(rowsMap[n.row] = rowsMap[n.row] || []).push(n)
@@ -173,24 +160,76 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
       const fromEl = nodeRefs.current[e.from]
       const toEl   = nodeRefs.current[e.to]
       if (!fromEl || !toEl) return null
+
       const fr = fromEl.getBoundingClientRect()
       const tr = toEl.getBoundingClientRect()
-      const x1 = fr.left + fr.width / 2 - cRect.left
-      const x2 = tr.left + tr.width / 2 - cRect.left
-      // If target is above or same level as source, draw from top of source to bottom of target
-      const goingDown = tr.top >= fr.bottom - 10
-      const sy1 = goingDown ? fr.bottom - cRect.top : fr.top - cRect.top
-      const sy2 = goingDown ? tr.top - cRect.top  : tr.bottom - cRect.top
-      const dy = Math.max(20, Math.abs(sy2 - sy1) / 2)
-      const d = goingDown
-        ? `M ${x1} ${sy1} C ${x1} ${sy1 + dy}, ${x2} ${sy2 - dy}, ${x2} ${sy2}`
-        : `M ${x2} ${sy2} C ${x2} ${sy2 + dy}, ${x1} ${sy1 - dy}, ${x1} ${sy1}`
+
+      // المراكز النسبية داخل الحاوية
+      const fCx = fr.left + fr.width / 2 - cRect.left
+      const fCy = fr.top + fr.height / 2 - cRect.top
+      const tCx = tr.left + tr.width / 2 - cRect.left
+      const tCy = tr.top + tr.height / 2 - cRect.top
+
+      const deltaX = tCx - fCx
+      const deltaY = tCy - fCy
+
+      let x1: number, y1: number, x2: number, y2: number
+      let cx1: number, cy1: number, cx2: number, cy2: number
+
+      // التمييز بين الاتصال الأفقي (العناصر الجانبية) والاتصال الرأسي
+      const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY) * 1.2 || Math.abs(deltaY) < 35
+
+      if (isHorizontal) {
+        // اتصال أفقي (مثل الأدوية والعلاجات الجانبية)
+        if (deltaX > 0) {
+          x1 = fr.right - cRect.left
+          y1 = fCy
+          x2 = tr.left - cRect.left
+          y2 = tCy
+        } else {
+          x1 = fr.left - cRect.left
+          y1 = fCy
+          x2 = tr.right - cRect.left
+          y2 = tCy
+        }
+        const dx = Math.max(25, Math.abs(x2 - x1) / 2)
+        cx1 = deltaX > 0 ? x1 + dx : x1 - dx
+        cy1 = y1
+        cx2 = deltaX > 0 ? x2 - dx : x2 + dx
+        cy2 = y2
+      } else {
+        // اتصال رأسي (من أعلى لأسفل أو العكس)
+        if (deltaY >= 0) {
+          x1 = fCx
+          y1 = fr.bottom - cRect.top
+          x2 = tCx
+          y2 = tr.top - cRect.top
+        } else {
+          x1 = fCx
+          y1 = fr.top - cRect.top
+          x2 = tCx
+          y2 = tr.bottom - cRect.top
+        }
+        const dy = Math.max(25, Math.abs(y2 - y1) / 2)
+        cx1 = x1
+        cy1 = deltaY >= 0 ? y1 + dy : y1 - dy
+        cx2 = x2
+        cy2 = deltaY >= 0 ? y2 - dy : y2 + dy
+      }
+
+      // رسم المسار دائمًا من المصدر (x1,y1) إلى الهدف (x2,y2)
+      const d = `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`
+
+      // حساب منتصف المنحنى بدقة عالية عند (t = 0.5) لوضع الشارة فيه
+      const labelX = 0.125 * x1 + 0.375 * cx1 + 0.375 * cx2 + 0.125 * x2
+      const labelY = 0.125 * y1 + 0.375 * cy1 + 0.375 * cy2 + 0.125 * y2
+
       return {
         d,
         label: e.label,
         labelColor: e.label ? (VERB_COLORS[e.label] || '#475569') : undefined,
-        labelX: (x1 + x2) / 2,
-        labelY: (sy1 + sy2) / 2,
+        labelX,
+        labelY,
       }
     }).filter(Boolean) as EdgePath[]
 
@@ -198,12 +237,17 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
   }, [edges])
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => computePaths())
-    const timer = setTimeout(() => computePaths(), 300)
+    computePaths()
+    const timer = setTimeout(() => computePaths(), 200)
+
+    // متابعة تغير أحجام العناصر ديناميكياً
+    const observer = new ResizeObserver(() => computePaths())
+    if (containerRef.current) observer.observe(containerRef.current)
+
     window.addEventListener('resize', computePaths)
     return () => {
-      cancelAnimationFrame(frame)
       clearTimeout(timer)
+      observer.disconnect()
       window.removeEventListener('resize', computePaths)
     }
   }, [computePaths, content])
@@ -224,17 +268,17 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
         {/* SVG arrows layer */}
         <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
           <defs>
-            <marker id="mn-arrow" markerWidth="9" markerHeight="9" refX="6" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <marker id="mn-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3.5" orient="auto" markerUnits="strokeWidth">
               <path d="M0,0 L7,3.5 L0,7 Z" fill="#94a3b8"/>
             </marker>
           </defs>
           {paths.map((p, i) => (
             <g key={i}>
-              <path d={p.d} stroke="#94a3b8" strokeWidth="1.4" fill="none" markerEnd="url(#mn-arrow)"/>
+              <path d={p.d} stroke="#94a3b8" strokeWidth="1.5" fill="none" markerEnd="url(#mn-arrow)"/>
               {p.label && (
-                <foreignObject x={p.labelX - 40} y={p.labelY - 11} width="80" height="22" style={{ overflow: 'visible' }}>
+                <foreignObject x={p.labelX - 45} y={p.labelY - 11} width="90" height="22" style={{ overflow: 'visible' }}>
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <span style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '2px 8px', fontSize: '10.5px', fontWeight: 700, whiteSpace: 'nowrap', color: p.labelColor ?? '#475569' }}>
+                    <span style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '2px 8px', fontSize: '10.5px', fontWeight: 700, whiteSpace: 'nowrap', color: p.labelColor ?? '#475569', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                       {p.label}
                     </span>
                   </div>
@@ -245,9 +289,9 @@ export default function ConceptMapBlock({ content }: ConceptMapBlockProps) {
         </svg>
 
         {/* Nodes layer */}
-        <div ref={containerRef} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '36px' }}>
+        <div ref={containerRef} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '40px' }}>
           {rows.map((row, ri) => (
-            <div key={ri} style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
+            <div key={ri} style={{ display: 'flex', justifyContent: 'center', gap: '24px', flexWrap: 'wrap' }}>
               {row.map(node => {
                 const s = CAT_STYLES[node.cat] ?? CAT_STYLES.neutral
                 return (

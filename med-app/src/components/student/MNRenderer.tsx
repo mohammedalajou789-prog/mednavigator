@@ -531,7 +531,7 @@ function renderBlock(
                 </div>
               )}
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', minWidth: 0 }}>
                 {imageUrl ? (
                   <div style={{ maxWidth: '520px', width: '100%' }}>
                     <ImageLightbox

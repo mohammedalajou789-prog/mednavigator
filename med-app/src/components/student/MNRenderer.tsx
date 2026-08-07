@@ -244,7 +244,6 @@ function parseContent(raw: string): Block[] {
         if (leftBlock) {
           for (const ll of leftBlock[1].split('\n').map(l => l.trim()).filter(Boolean)) {
             const m = ll.match(/^\[(\d+)\|(\w+)\]\s*(.+?)\s+--\s+(.+)$/)
-            const m = ll.match(/^\[(\d+)\|(\w+)\]\s*(.+?)\s+--\s+(.+)$/)
             if (m) leftPanel.push({ num: +m[1], color: m[2], title: m[3], desc: m[4] })
           }
         }

@@ -510,7 +510,7 @@ function renderBlock(
           )}
 
           <div style={{ overflowX: 'auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr 220px', gap: '20px', padding: '20px', alignItems: 'stretch', minWidth: '640px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '20px', padding: '20px', alignItems: 'stretch' }}>
 
               {block.leftPanel && block.leftPanel.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>

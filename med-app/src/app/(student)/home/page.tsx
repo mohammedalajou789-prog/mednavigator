@@ -326,7 +326,15 @@ export default async function StudentDashboard() {
       {/* ── Continue Learning ── */}
       {lastChecklist && lastChecklist.lecture && (
         <div style={{ background: `linear-gradient(120deg,rgba(37,99,235,0.06),${CARD_BG} 60%)`, border: `1px solid ${CARD_BDR}`, borderRadius: '18px', overflow: 'hidden', marginBottom: '22px', boxShadow: '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '22px 24px' }}>
+          <style>{`
+            .cl-inner { display: flex; align-items: center; gap: 20px; padding: 22px 24px; }
+            .cl-stars-resume { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+            @media (max-width: 640px) {
+              .cl-inner { flex-direction: column; align-items: flex-start; gap: 14px; padding: 18px; }
+              .cl-stars-resume { width: 100%; justify-content: space-between; }
+            }
+          `}</style>
+          <div className="cl-inner">
             <div style={{ width: '54px', height: '54px', flexShrink: 0, borderRadius: '15px', background: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 16px rgba(37,99,235,.35)' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="7 4 20 12 7 20 7 4"/></svg>
             </div>
@@ -341,36 +349,38 @@ export default async function StudentDashboard() {
                 Last reviewed {formatTimeAgo(lastChecklist.updated_at)}
               </div>
             </div>
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div style={{ display: 'flex', gap: 3 }}>
-                {[1,2,3].map(i => (
-                  <svg key={i} width="18" height="18" viewBox="0 0 24 24"
-                    fill={i <= lastChecklist.stars ? (i === 1 ? '#EF4444' : i === 2 ? '#F59E0B' : '#22C55E') : 'none'}
-                    stroke={i <= lastChecklist.stars ? (i === 1 ? '#EF4444' : i === 2 ? '#F59E0B' : '#22C55E') : '#CBD5E1'}
-                    strokeWidth="1.5">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                  </svg>
-                ))}
+            <div className="cl-stars-resume">
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ display: 'flex', gap: 3 }}>
+                  {[1,2,3].map(i => (
+                    <svg key={i} width="18" height="18" viewBox="0 0 24 24"
+                      fill={i <= lastChecklist.stars ? (i === 1 ? '#EF4444' : i === 2 ? '#F59E0B' : '#22C55E') : 'none'}
+                      stroke={i <= lastChecklist.stars ? (i === 1 ? '#EF4444' : i === 2 ? '#F59E0B' : '#22C55E') : '#CBD5E1'}
+                      strokeWidth="1.5">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                  ))}
+                </div>
+                <div style={{ fontSize: '11.5px', color: INK3, fontWeight: 600, marginTop: 4 }}>
+                  {lastChecklist.stars === 3 ? 'Mastered' : lastChecklist.stars === 2 ? 'Almost There' : lastChecklist.stars === 1 ? 'Need Review' : 'Not started'}
+                </div>
               </div>
-              <div style={{ fontSize: '11.5px', color: INK3, fontWeight: 600, marginTop: 4 }}>
-                {lastChecklist.stars === 3 ? 'Mastered' : lastChecklist.stars === 2 ? 'Almost There' : lastChecklist.stars === 1 ? 'Need Review' : 'Not started'}
-              </div>
+              {(() => {
+                const lec     = lastChecklist.lecture as any
+                const subject = lec?.subjects
+                const subSlug = subject?.slug ?? lec?.subject_id ?? ''
+                const lecSlug = lec?.slug ?? lec?.id ?? ''
+                const uniSlug = university?.slug ?? university?.id ?? ''
+                const href    = subSlug && lecSlug ? `/${uniSlug}/${subSlug}/${lecSlug}` : '#'
+                return (
+                  <Link href={href}
+                    style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 20px', border: 'none', borderRadius: '12px', background: PRIMARY, color: '#fff', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>
+                    Resume
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                  </Link>
+                )
+              })()}
             </div>
-            {(() => {
-              const lec     = lastChecklist.lecture as any
-              const subject = lec?.subjects
-              const subSlug = subject?.slug ?? lec?.subject_id ?? ''
-              const lecSlug = lec?.slug ?? lec?.id ?? ''
-              const uniSlug = university?.slug ?? university?.id ?? ''
-              const href    = subSlug && lecSlug ? `/${uniSlug}/${subSlug}/${lecSlug}` : '#'
-              return (
-                <Link href={href}
-                  style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 20px', border: 'none', borderRadius: '12px', background: PRIMARY, color: '#fff', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>
-                  Resume
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </Link>
-              )
-            })()}
           </div>
           <div style={{ height: '5px', background: 'rgba(37,99,235,0.12)' }}>
             <div style={{ height: '100%', width: `${Math.round((lastChecklist.stars / 3) * 100)}%`, background: PRIMARY, transition: 'width .6s ease' }} />

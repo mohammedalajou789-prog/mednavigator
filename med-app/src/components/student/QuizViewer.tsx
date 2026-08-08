@@ -1,5 +1,4 @@
 'use client'
-
 import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { QuizQuestion } from '@/types/database'

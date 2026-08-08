@@ -414,11 +414,13 @@ export default function LectureHub({
   // ── Restore last tab and scroll position on first load ─────────────────
   useEffect(() => {
     if (tabRestored) return
-    if (resumeState === undefined) return // still loading
+    // Wait until query is done loading (undefined = loading, null = no data)
+    if (resumeState === undefined) return
 
-    if (resumeState) {
+    if (resumeState && resumeState.active_tab) {
       const lastTab = resumeState.active_tab
       if (lastTab && allTabs.includes(lastTab)) {
+        console.log('[ResumeState] restoring tab:', lastTab, 'scroll:', resumeState.scroll_position)
         setActiveTab(lastTab)
         savedScrollPositionRef.current = resumeState.scroll_position ?? 0
       }
@@ -463,8 +465,9 @@ export default function LectureHub({
         // Small delay to ensure content is rendered
         setTimeout(() => {
           const target = savedScrollPositionRef.current
+          console.log('[ResumeState] restoring scroll to:', target)
           scrollContainer.scrollTo({ top: target, behavior: 'smooth' })
-        }, 400)
+        }, 1200)
       }
     }
   }, [currentTabProgress, activeTab])
@@ -574,21 +577,14 @@ export default function LectureHub({
 
   // ── Save resume state (tab + scroll) to dedicated table ───────────────
   async function saveResumeState(tab: string, scrollPosition: number) {
-    console.log('[ResumeState] saveResumeState called', { tab, scrollPosition, user: user?.id })
-    if (!user) {
-      console.log('[ResumeState] SKIPPED — no user')
-      return
-    }
-    const { data, error } = await (supabase as any)
-      .from('lecture_resume_state')
-      .upsert({
-        user_id:         user.id,
-        lecture_id:      lecture.id,
-        active_tab:      tab,
-        scroll_position: scrollPosition,
-        updated_at:      new Date().toISOString(),
-      }, { onConflict: 'user_id,lecture_id' })
-    console.log('[ResumeState] upsert result', { data, error })
+    if (!user) return
+    const { error } = await (supabase as any).rpc('save_resume_state', {
+      p_user_id:        user.id,
+      p_lecture_id:     lecture.id,
+      p_active_tab:     tab,
+      p_scroll_position: scrollPosition,
+    })
+    if (error) console.error('[ResumeState] save error:', error)
   }
 
   function handleTabChange(tab: string) {

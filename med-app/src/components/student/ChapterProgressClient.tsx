@@ -65,7 +65,8 @@ export default function ChapterProgressClient({
       <style>{`
         .ch-hero { padding: 18px 16px; border-radius: 16px; margin-bottom: 20px; }
         .ch-hero-inner { flex-direction: column; gap: 16px; }
-        .ch-hero-ring { display: flex; justify-content: flex-start; }
+        .ch-hero-ring { display: none; }
+        .ch-progress-bar { display: block; }
         .ch-title { font-size: 24px; }
         .ch-page { padding: 16px 16px 80px; }
 
@@ -77,6 +78,8 @@ export default function ChapterProgressClient({
         @media (min-width: 640px) {
           .ch-hero { padding: 24px 24px; border-radius: 20px; }
           .ch-hero-inner { flex-direction: row; gap: 24px; align-items: center; }
+          .ch-hero-ring { display: flex; justify-content: flex-start; }
+          .ch-progress-bar { display: none; }
           .ch-title { font-size: 28px; }
           .ch-page { padding: 24px 24px 80px; }
           .lec-card { padding: 18px 20px; }
@@ -116,7 +119,7 @@ export default function ChapterProgressClient({
             </div>
           </div>
 
-          {/* Progress Ring */}
+          {/* Progress Ring — tablet/desktop only */}
           <div className="ch-hero-ring" style={{ flexShrink: 0 }}>
             <div style={{ position: 'relative', width: 90, height: 90 }}>
               <svg width="90" height="90" viewBox="0 0 108 108" style={{ transform: 'rotate(-90deg)' }}>
@@ -136,6 +139,18 @@ export default function ChapterProgressClient({
                 {progressPercent}%
               </div>
             </div>
+          </div>
+
+          {/* Progress Bar — mobile only */}
+          <div className="ch-progress-bar" style={{ marginTop: 14, width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'rgb(136, 146, 168)' }}>Progress</span>
+              <span style={{ fontSize: 20, fontWeight: 800, color: 'rgb(36, 86, 214)', letterSpacing: '-0.02em' }}>{progressPercent}%</span>
+            </div>
+            <div style={{ height: 8, borderRadius: 999, background: '#E1E9FA', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${progressPercent}%`, borderRadius: 999, background: 'linear-gradient(90deg, #3B79FF, #2456D6)', transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)' }} />
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 5 }}>{reviewedCount} of {totalLectures} mastered</div>
           </div>
         </div>
       </section>

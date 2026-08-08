@@ -8,6 +8,8 @@ import { useUserStore } from '@/stores/userStore'
 interface PreviousYearsViewerProps {
   questions: PreviousYearQuestion[]
   userName?: string
+  initialIndex?: number
+  onIndexChange?: (index: number) => void
   onStatsChange?: (stats: { total: number; important: number; answered: number }) => void
 }
 
@@ -24,11 +26,11 @@ const EXAM_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
 
 const OPTIONS = ['A', 'B', 'C', 'D', 'E'] as const
 
-export default function PreviousYearsViewer({ questions, userName, onStatsChange }: PreviousYearsViewerProps) {
+export default function PreviousYearsViewer({ questions, userName, initialIndex, onIndexChange, onStatsChange }: PreviousYearsViewerProps) {
   const { user } = useUserStore()
   const supabase = createClient()
 
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [currentIndex, setCurrentIndex] = useState(initialIndex ?? 0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [filterYear, setFilterYear] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
@@ -77,8 +79,14 @@ export default function PreviousYearsViewer({ questions, userName, onStatsChange
 
   // Reset index when filters change
   useEffect(() => {
-    setCurrentIndex(0)
+    goToIndex(0)
   }, [filterYear, filterType])
+
+  function goToIndex(index: number) {
+    const clamped = Math.max(0, Math.min(index, total - 1))
+    setCurrentIndex(clamped)
+    onIndexChange?.(clamped)
+  }
 
   async function toggleImportant(questionId: string) {
     if (!user) return
@@ -163,23 +171,16 @@ export default function PreviousYearsViewer({ questions, userName, onStatsChange
             </svg>
             {total} questions
           </span>
-
-          <select
-            value={filterYear}
-            onChange={e => setFilterYear(e.target.value)}
+          <select value={filterYear} onChange={e => setFilterYear(e.target.value)}
             style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid #E2E8F0', background: '#fff', fontSize: '13px', fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none', fontFamily: 'inherit' }}>
             <option value="all">All years</option>
             {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
           </select>
-
-          <select
-            value={filterType}
-            onChange={e => setFilterType(e.target.value)}
+          <select value={filterType} onChange={e => setFilterType(e.target.value)}
             style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid #E2E8F0', background: '#fff', fontSize: '13px', fontWeight: 600, color: '#374151', cursor: 'pointer', outline: 'none', fontFamily: 'inherit' }}>
             <option value="all">All types</option>
             {types.map(t => <option key={t} value={t ?? ''}>{EXAM_TYPE_LABELS[t ?? ''] ?? t}</option>)}
           </select>
-
           <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#94A3B8', fontWeight: 600 }}>{total} shown</span>
         </div>
 
@@ -207,15 +208,8 @@ export default function PreviousYearsViewer({ questions, userName, onStatsChange
             else if (ans && !isCorrect) { bg = 'rgb(251,220,218)'; color = 'rgb(220,72,66)' }
             else if (importantIds.has(q.id)) { bg = '#FEF3C7'; color = '#D97706' }
             return (
-              <button
-                key={q.id}
-                onClick={() => setCurrentIndex(i)}
-                style={{
-                  width: '32px', height: '32px', borderRadius: '9px',
-                  border: i === currentIndex ? '2px solid rgb(37,99,235)' : '1px solid transparent',
-                  background: bg, color,
-                  fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s'
-                }}>
+              <button key={q.id} onClick={() => goToIndex(i)}
+                style={{ width: '32px', height: '32px', borderRadius: '9px', border: i === currentIndex ? '2px solid rgb(37,99,235)' : '1px solid transparent', background: bg, color, fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
                 {i + 1}
               </button>
             )
@@ -249,9 +243,7 @@ export default function PreviousYearsViewer({ questions, userName, onStatsChange
               )}
             </div>
             {user && (
-              <button
-                onClick={() => toggleImportant(current.id)}
-                title="Mark important"
+              <button onClick={() => toggleImportant(current.id)} title="Mark important"
                 style={{ width: '30px', height: '30px', borderRadius: '8px', border: '1px solid rgb(226,232,240)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: isCurrentImportant ? '#2563EB' : '#94A3B8', transition: 'transform 0.15s' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill={isCurrentImportant ? '#2563EB' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
@@ -277,17 +269,8 @@ export default function PreviousYearsViewer({ questions, userName, onStatsChange
                 const letterBg = isAnswered && isCorrect ? 'rgb(19,138,90)' : isAnswered && isSelected ? 'rgb(220,72,66)' : '#F1F5F9'
                 const letterColor = isAnswered && (isCorrect || isSelected) ? '#fff' : '#64748B'
                 return (
-                  <button
-                    key={i}
-                    onClick={() => handleAnswer(current.id, label)}
-                    disabled={isAnswered}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
-                      padding: '14px 16px', borderRadius: '13px',
-                      cursor: isAnswered ? 'default' : 'pointer',
-                      textAlign: 'left', transition: 'background 0.15s, border-color 0.15s',
-                      ...optStyle,
-                    }}>
+                  <button key={i} onClick={() => handleAnswer(current.id, label)} disabled={isAnswered}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', borderRadius: '13px', cursor: isAnswered ? 'default' : 'pointer', textAlign: 'left', transition: 'background 0.15s, border-color 0.15s', ...optStyle }}>
                     <span style={{ width: '26px', height: '26px', borderRadius: '8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 800, background: letterBg, color: letterColor }}>
                       {label}
                     </span>
@@ -322,17 +305,14 @@ export default function PreviousYearsViewer({ questions, userName, onStatsChange
 
         {/* Previous / Next buttons */}
         <div style={{ display: 'flex', gap: '14px', marginTop: '4px' }}>
-          <button
-            onClick={() => setCurrentIndex(i => Math.max(i - 1, 0))}
-            disabled={currentIndex === 0}
+          <button onClick={() => goToIndex(currentIndex - 1)} disabled={currentIndex === 0}
             style={{ flex: 1, height: '52px', borderRadius: '14px', border: '1px solid rgb(226,232,240)', background: '#fff', color: currentIndex === 0 ? '#CBD5E1' : 'rgb(71,85,105)', fontSize: '14px', fontWeight: 700, cursor: currentIndex === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'transform 0.15s' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
             Previous
           </button>
-          <button
-            onClick={() => setCurrentIndex(i => i >= total - 1 ? 0 : i + 1)}
+          <button onClick={() => goToIndex(currentIndex >= total - 1 ? 0 : currentIndex + 1)}
             style={{ flex: 2, height: '52px', borderRadius: '14px', border: 'none', background: 'rgb(37,99,235)', color: '#fff', fontSize: '14.5px', fontWeight: 700, cursor: 'pointer', transition: 'transform 0.15s' }}>
             {currentIndex >= total - 1 ? 'Back to first' : 'Next question'}
           </button>

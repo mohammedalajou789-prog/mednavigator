@@ -10,16 +10,18 @@ interface QuizViewerProps {
   questions: QuizQuestion[]
   userName?: string
   lectureId?: string
+  initialIndex?: number
+  onIndexChange?: (index: number) => void
   onStatsChange?: (stats: { total: number; answered: number; correct: number; current: number; important: number }) => void
 }
 
 const OPTIONS = ['A', 'B', 'C', 'D', 'E'] as const
 
-export default function QuizViewer({ questions, userName, lectureId, onStatsChange }: QuizViewerProps) {
+export default function QuizViewer({ questions, userName, lectureId, initialIndex, onIndexChange, onStatsChange }: QuizViewerProps) {
   const { user } = useUserStore()
   const supabase = createClient()
 
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [currentIndex, setCurrentIndex] = useState(initialIndex ?? 0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [showExplanation, setShowExplanation] = useState<Record<string, boolean>>({})
   const [finished, setFinished] = useState(false)
@@ -60,6 +62,12 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
   useEffect(() => {
     onStatsChange?.({ total: questions.length, answered: answeredCount, correct: correctCount, current: currentIndex + 1, important: importantIds.size })
   }, [currentIndex, answeredCount, correctCount, importantIds.size, questions.length])
+
+  function goToIndex(index: number) {
+    const clamped = Math.max(0, Math.min(index, total - 1))
+    setCurrentIndex(clamped)
+    onIndexChange?.(clamped)
+  }
 
   async function toggleImportant(questionId: string) {
     if (!user) return
@@ -115,15 +123,15 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
         <p style={{ fontSize: '14px', color: '#64748B', margin: '0 0 24px' }}>{correctCount} correct out of {questions.length} questions</p>
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button
-            onClick={() => { setFinished(false); setCurrentIndex(0); setAnswers({}); setShowExplanation({}) }}
+            onClick={() => { setFinished(false); goToIndex(0); setAnswers({}); setShowExplanation({}) }}
             style={{ padding: '10px 24px', background: '#2563EB', color: '#fff', borderRadius: '12px', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             Retry quiz
           </button>
           {importantIds.size > 0 && (
             <button
-              onClick={() => { setFinished(false); setCurrentIndex(0); setAnswers({}); setShowExplanation({}); setShowImportantOnly(true) }}
+              onClick={() => { setFinished(false); goToIndex(0); setAnswers({}); setShowExplanation({}); setShowImportantOnly(true) }}
               style={{ padding: '10px 24px', background: '#FFF7ED', color: '#D97706', borderRadius: '12px', border: '1px solid #FDE68A', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-              ⭐ Review important
+              ★ Review important
             </button>
           )}
         </div>
@@ -134,7 +142,7 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
   if (showImportantOnly && displayQuestions.length === 0) {
     return (
       <div style={{ maxWidth: '560px', margin: '0 auto', padding: '60px 24px', textAlign: 'center' }}>
-        <p style={{ fontSize: '48px', marginBottom: '16px' }}>⭐</p>
+        <p style={{ fontSize: '48px', marginBottom: '16px' }}>★</p>
         <p style={{ fontSize: '15px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>No important questions yet</p>
         <p style={{ fontSize: '13px', color: '#94A3B8', marginBottom: '24px' }}>Mark questions as important while reviewing</p>
         <button onClick={() => setShowImportantOnly(false)} style={{ padding: '10px 24px', background: '#2563EB', color: '#fff', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
@@ -187,10 +195,10 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
             return (
               <button
                 key={q.id}
-                onClick={() => setCurrentIndex(i)}
+                onClick={() => goToIndex(i)}
                 style={{ width: '32px', height: '32px', borderRadius: '9px', border: i === currentIndex ? '2px solid rgb(37,99,235)' : 'transparent', background: bg, color, fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', position: 'relative', transition: 'all 0.15s' }}>
                 {i + 1}
-                {isImportant && !answered && <span style={{ position: 'absolute', top: '-4px', right: '-4px', fontSize: '8px' }}>⭐</span>}
+                {isImportant && !answered && <span style={{ position: 'absolute', top: '-4px', right: '-4px', fontSize: '8px' }}>★</span>}
               </button>
             )
           })}
@@ -279,7 +287,7 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
         {/* Navigation */}
         <div style={{ display: 'flex', gap: '14px', marginTop: '18px' }}>
           <button
-            onClick={() => setCurrentIndex(i => Math.max(i - 1, 0))}
+            onClick={() => goToIndex(currentIndex - 1)}
             disabled={currentIndex === 0}
             style={{ flex: 1, height: '52px', borderRadius: '14px', border: '1px solid rgb(226,232,240)', background: '#fff', color: 'rgb(71,85,105)', fontSize: '14px', fontWeight: 700, cursor: currentIndex === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: currentIndex === 0 ? 0.45 : 1, transition: 'transform 0.15s' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -288,7 +296,7 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
             Previous
           </button>
           <button
-            onClick={() => setCurrentIndex(i => Math.min(i + 1, total - 1))}
+            onClick={() => goToIndex(currentIndex + 1)}
             disabled={currentIndex === total - 1}
             style={{ flex: 2, height: '52px', borderRadius: '14px', border: 'none', background: 'rgb(37,99,235)', color: '#fff', fontSize: '14.5px', fontWeight: 700, cursor: currentIndex === total - 1 ? 'not-allowed' : 'pointer', transition: 'transform 0.15s' }}>
             Next question
@@ -297,14 +305,6 @@ export default function QuizViewer({ questions, userName, lectureId, onStatsChan
 
       </div>
     </div>
-  )
-}
-
-function StatBadge({ label, color, text }: { label: string; color: string; text: string }) {
-  return (
-    <span style={{ padding: '4px 10px', borderRadius: '20px', background: color, color: text, fontSize: '12px', fontWeight: 600 }}>
-      {label}
-    </span>
   )
 }
 

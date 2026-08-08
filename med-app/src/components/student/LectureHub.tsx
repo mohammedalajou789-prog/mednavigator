@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useUserStore } from '@/stores/userStore'
@@ -267,16 +267,33 @@ export default function LectureHub({
   const [progressPercent, setProgressPercent]   = useState(0)
   const [isCompleted, setIsCompleted]           = useState(false)
   const [isBookmarked, setIsBookmarked]         = useState(false)
-  const [tabRestored, setTabRestored]           = useState(false)
-  const scrollRestoredRef                       = useRef(false)
-  const savedScrollPositionRef                  = useRef<number>(0)
+  const [resumeReady, setResumeReady]           = useState(false)
 
-  // ── FIX 1: Throttle refs for progress DB writes ────────────────────────
-  const progressSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastSavedPct      = useRef<number>(-1)
+  // ── Resume state — all saved positions ────────────────────────────────
+  const resumeTabRef           = useRef<string>('')
+  const sheetScrollRef         = useRef<number>(0)
+  const summaryScrollRef       = useRef<number>(0)
+  const flashcardIndexRef      = useRef<number>(0)
+  const quizIndexRef           = useRef<number>(0)
+  const pyqIndexRef            = useRef<number>(0)
 
-  // ── FIX 3: TOC scroll — only call scrollIntoView when section changes ──
-  const prevSectionId = useRef<string>('')
+  // ── Scroll restoration tracking ────────────────────────────────────────
+  const scrollRestoredRef      = useRef(false)
+
+  // ── Throttle refs for progress DB writes ──────────────────────────────
+  const progressSaveTimer      = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSavedPct           = useRef<number>(-1)
+
+  // ── Resume save throttle ───────────────────────────────────────────────
+  const resumeSaveTimer        = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ── TOC scroll — only call scrollIntoView when section changes ─────────
+  const prevSectionId          = useRef<string>('')
+
+  // ── Current index state for index-based tabs ──────────────────────────
+  const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0)
+  const [currentQuizIndex,      setCurrentQuizIndex]      = useState(0)
+  const [currentPyqIndex,       setCurrentPyqIndex]       = useState(0)
 
   const [flashcardStats, setFlashcardStats] = useState<FlashcardStats>({
     total: flashcardsCount, easy: 0, medium: 0, hard: 0, current: 1, important: 0,
@@ -289,7 +306,7 @@ export default function LectureHub({
   })
 
   // ── Lazy content fetching ──────────────────────────────────────────────
-  const { data: sheetPayload, isLoading: sheetLoading } = useQuery({
+  const { data: sheetPayload,     isLoading: sheetLoading }     = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'sheet'],
     queryFn:  () => fetchTabContent(lecture.id, subject.id, 'sheet'),
     enabled:  activeTab === 'sheet',
@@ -298,7 +315,7 @@ export default function LectureHub({
     refetchOnMount: false,
   })
 
-  const { data: summaryPayload, isLoading: summaryLoading } = useQuery({
+  const { data: summaryPayload,   isLoading: summaryLoading }   = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'summary'],
     queryFn:  () => fetchTabContent(lecture.id, subject.id, 'summary'),
     enabled:  activeTab === 'summary',
@@ -316,7 +333,7 @@ export default function LectureHub({
     refetchOnMount: false,
   })
 
-  const { data: quizPayload, isLoading: quizLoading } = useQuery({
+  const { data: quizPayload,      isLoading: quizLoading }      = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'quiz'],
     queryFn:  () => fetchTabContent(lecture.id, subject.id, 'quiz'),
     enabled:  activeTab === 'quiz',
@@ -325,7 +342,7 @@ export default function LectureHub({
     refetchOnMount: false,
   })
 
-  const { data: pyqPayload, isLoading: pyqLoading } = useQuery({
+  const { data: pyqPayload,       isLoading: pyqLoading }       = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'previous_years'],
     queryFn:  () => fetchTabContent(lecture.id, subject.id, 'previous_years'),
     enabled:  activeTab === 'previous_years',
@@ -376,7 +393,7 @@ export default function LectureHub({
     return () => setSidebarOpen(true)
   }, [setSidebarOpen])
 
-  // ── Progress query (for reading % only) ────────────────────────────────
+  // ── Progress query ─────────────────────────────────────────────────────
   const { data: progressData } = useQuery({
     queryKey: ['progress', user?.id, lecture.id],
     queryFn: async () => {
@@ -393,17 +410,24 @@ export default function LectureHub({
     refetchOnMount: false,
   })
 
-  // ── Resume state query — restores last tab + scroll position ───────────
+  // ── Resume state query ─────────────────────────────────────────────────
   const { data: resumeState } = useQuery({
     queryKey: ['resume-state', user?.id, lecture.id],
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from('lecture_resume_state')
-        .select('active_tab, scroll_position')
+        .select('active_tab, sheet_scroll, summary_scroll, flashcard_index, quiz_index, pyq_index')
         .eq('user_id', user!.id)
         .eq('lecture_id', lecture.id)
         .maybeSingle()
-      return data as { active_tab: string; scroll_position: number } | null
+      return data as {
+        active_tab: string
+        sheet_scroll: number
+        summary_scroll: number
+        flashcard_index: number
+        quiz_index: number
+        pyq_index: number
+      } | null
     },
     enabled: !!user?.id,
     staleTime: 0,
@@ -411,29 +435,76 @@ export default function LectureHub({
     refetchOnMount: true,
   })
 
-  // ── Restore last tab and scroll position on first load ─────────────────
+  // ── Apply resume state once query resolves ─────────────────────────────
   useEffect(() => {
-    if (tabRestored) return
-    // Wait until query is done loading (undefined = loading, null = no data)
-    if (resumeState === undefined) return
+    if (resumeReady) return
+    if (resumeState === undefined) return // still loading
 
-    if (resumeState && resumeState.active_tab) {
+    if (resumeState) {
       const lastTab = resumeState.active_tab
       if (lastTab && allTabs.includes(lastTab)) {
-        console.log('[ResumeState] restoring tab:', lastTab, 'scroll:', resumeState.scroll_position)
         setActiveTab(lastTab)
-        savedScrollPositionRef.current = resumeState.scroll_position ?? 0
       }
-    }
-    setTabRestored(true)
-  }, [resumeState, tabRestored, allTabs])
+      sheetScrollRef.current    = resumeState.sheet_scroll    ?? 0
+      summaryScrollRef.current  = resumeState.summary_scroll  ?? 0
+      flashcardIndexRef.current = resumeState.flashcard_index ?? 0
+      quizIndexRef.current      = resumeState.quiz_index      ?? 0
+      pyqIndexRef.current       = resumeState.pyq_index       ?? 0
 
-  // Derive current tab's progress from the fetched array
+      // Apply index-based positions immediately
+      if ((resumeState.flashcard_index ?? 0) > 0) setCurrentFlashcardIndex(resumeState.flashcard_index)
+      if ((resumeState.quiz_index      ?? 0) > 0) setCurrentQuizIndex(resumeState.quiz_index)
+      if ((resumeState.pyq_index       ?? 0) > 0) setCurrentPyqIndex(resumeState.pyq_index)
+    }
+
+    setResumeReady(true)
+  }, [resumeState, resumeReady, allTabs])
+
+  // ── Restore scroll AFTER content data arrives ──────────────────────────
+  useEffect(() => {
+    if (!resumeReady) return
+    if (scrollRestoredRef.current) return
+
+    // Only restore scroll for sheet and summary tabs
+    if (activeTab !== 'sheet' && activeTab !== 'summary') return
+
+    // Determine which scroll to restore
+    const targetScroll = activeTab === 'sheet'
+      ? sheetScrollRef.current
+      : summaryScrollRef.current
+
+    if (targetScroll <= 0) return
+
+    // Only attempt restore once the content data has arrived
+    const contentReady = activeTab === 'sheet'
+      ? (sheetPayload !== undefined && !sheetLoading)
+      : (summaryPayload !== undefined && !summaryLoading)
+
+    if (!contentReady) return
+
+    scrollRestoredRef.current = true
+
+    // Small delay to let the DOM render the content
+    setTimeout(() => {
+      const scrollContainer = document.getElementById('lecture-content-scroll')
+      if (scrollContainer) {
+        scrollContainer.scrollTo({ top: targetScroll, behavior: 'smooth' })
+      }
+    }, 400)
+
+  }, [resumeReady, activeTab, sheetPayload, summaryPayload, sheetLoading, summaryLoading])
+
+  // ── Derive current tab progress ────────────────────────────────────────
   const currentTabProgress = useMemo(() => {
     if (!progressData) return null
     return (progressData as { content_type: string; progress_percentage: number; completed: boolean }[])
       .find(r => r.content_type === activeTab) ?? null
   }, [progressData, activeTab])
+
+  useEffect(() => {
+    setProgressPercent(currentTabProgress?.progress_percentage ?? 0)
+    setIsCompleted(currentTabProgress?.completed ?? false)
+  }, [currentTabProgress])
 
   const { data: bookmarkData } = useQuery({
     queryKey: ['bookmark', 'lecture', user?.id, lecture.id],
@@ -454,29 +525,10 @@ export default function LectureHub({
   })
 
   useEffect(() => {
-    setProgressPercent(currentTabProgress?.progress_percentage ?? 0)
-    setIsCompleted(currentTabProgress?.completed ?? false)
-
-    // Restore scroll position after content loads (only once per session)
-    if (!scrollRestoredRef.current && savedScrollPositionRef.current > 0 && (activeTab === 'sheet' || activeTab === 'summary')) {
-      const scrollContainer = document.getElementById('lecture-content-scroll')
-      if (scrollContainer) {
-        scrollRestoredRef.current = true
-        // Small delay to ensure content is rendered
-        setTimeout(() => {
-          const target = savedScrollPositionRef.current
-          console.log('[ResumeState] restoring scroll to:', target)
-          scrollContainer.scrollTo({ top: target, behavior: 'smooth' })
-        }, 1200)
-      }
-    }
-  }, [currentTabProgress, activeTab])
-
-  useEffect(() => {
     setIsBookmarked(!!bookmarkData)
   }, [bookmarkData])
 
-  // ── FIX 3: TOC scroll handler — scrollIntoView only on section change ──
+  // ── TOC scroll handler ─────────────────────────────────────────────────
   useEffect(() => {
     if (tocSections.length === 0) return
     const scrollContainer = document.getElementById('lecture-content-scroll')
@@ -491,8 +543,6 @@ export default function LectureHub({
         if (top <= 140) current = section.id
       }
       setActiveSectionId(current)
-
-      // Only call scrollIntoView when the active section actually changes
       if (current !== prevSectionId.current) {
         prevSectionId.current = current
         const activeBtn = document.getElementById(`toc-btn-${current}`)
@@ -547,20 +597,44 @@ export default function LectureHub({
     }
   }
 
-  // ── FIX 1: Throttled progress update — max 1 DB write per 3 seconds ────
+  // ── Save resume state (debounced) ──────────────────────────────────────
+  const saveResumeState = useCallback((
+    tab: string,
+    sheetScroll: number,
+    summaryScroll: number,
+    flashcardIndex: number,
+    quizIndex: number,
+    pyqIndex: number,
+  ) => {
+    if (!user) return
+    if (resumeSaveTimer.current) clearTimeout(resumeSaveTimer.current)
+    resumeSaveTimer.current = setTimeout(async () => {
+      const { error } = await (supabase as any).rpc('save_resume_state', {
+        p_user_id:         user.id,
+        p_lecture_id:      lecture.id,
+        p_active_tab:      tab,
+        p_sheet_scroll:    sheetScroll,
+        p_summary_scroll:  summaryScroll,
+        p_flashcard_index: flashcardIndex,
+        p_quiz_index:      quizIndex,
+        p_pyq_index:       pyqIndex,
+      })
+      if (error) console.error('[ResumeState] save error:', error)
+    }, 1500)
+  }, [user, supabase, lecture.id])
+
+  // ── Throttled progress + resume save on scroll ─────────────────────────
   function handleProgressUpdate(pct: number) {
     setProgressPercent(pct)
     if (!user) return
-    // Skip if change is less than 3%
     if (Math.abs(pct - lastSavedPct.current) < 3) return
-    // Debounce: cancel previous timer and wait 3s after last scroll
     if (progressSaveTimer.current) clearTimeout(progressSaveTimer.current)
     progressSaveTimer.current = setTimeout(() => {
       lastSavedPct.current = pct
       const scrollContainer = document.getElementById('lecture-content-scroll')
-      const scrollPosition  = scrollContainer?.scrollTop ?? 0
+      const scrollPos = scrollContainer?.scrollTop ?? 0
 
-      // Save reading progress (percentage)
+      // Save reading progress
       supabase.from('user_progress').upsert({
         user_id:             user.id,
         lecture_id:          lecture.id,
@@ -570,31 +644,43 @@ export default function LectureHub({
         updated_at:          new Date().toISOString(),
       }, { onConflict: 'user_id,lecture_id,content_type' })
 
-      // Save resume state (tab + scroll position) separately
-      saveResumeState(activeTab, scrollPosition)
+      // Update scroll refs
+      if (activeTab === 'sheet')   sheetScrollRef.current   = scrollPos
+      if (activeTab === 'summary') summaryScrollRef.current = scrollPos
+
+      // Save full resume state
+      saveResumeState(
+        activeTab,
+        sheetScrollRef.current,
+        summaryScrollRef.current,
+        currentFlashcardIndex,
+        currentQuizIndex,
+        currentPyqIndex,
+      )
     }, 3000)
   }
 
-  // ── Save resume state (tab + scroll) to dedicated table ───────────────
-  async function saveResumeState(tab: string, scrollPosition: number) {
-    if (!user) return
-    const { error } = await (supabase as any).rpc('save_resume_state', {
-      p_user_id:        user.id,
-      p_lecture_id:     lecture.id,
-      p_active_tab:     tab,
-      p_scroll_position: scrollPosition,
-    })
-    if (error) console.error('[ResumeState] save error:', error)
+  // ── Index change handlers for sub-components ───────────────────────────
+  function handleFlashcardIndexChange(index: number) {
+    setCurrentFlashcardIndex(index)
+    saveResumeState(activeTab, sheetScrollRef.current, summaryScrollRef.current, index, currentQuizIndex, currentPyqIndex)
   }
 
+  function handleQuizIndexChange(index: number) {
+    setCurrentQuizIndex(index)
+    saveResumeState(activeTab, sheetScrollRef.current, summaryScrollRef.current, currentFlashcardIndex, index, currentPyqIndex)
+  }
+
+  function handlePyqIndexChange(index: number) {
+    setCurrentPyqIndex(index)
+    saveResumeState(activeTab, sheetScrollRef.current, summaryScrollRef.current, currentFlashcardIndex, currentQuizIndex, index)
+  }
+
+  // ── Tab change ─────────────────────────────────────────────────────────
   function handleTabChange(tab: string) {
     setActiveTab(tab)
     scrollRestoredRef.current = false
-    savedScrollPositionRef.current = 0
-    // Debug: log user state
-    console.log('[ResumeState] handleTabChange', { tab, userId: user?.id, user })
-    // Save the new tab immediately, scroll resets to 0
-    saveResumeState(tab, 0)
+    saveResumeState(tab, sheetScrollRef.current, summaryScrollRef.current, currentFlashcardIndex, currentQuizIndex, currentPyqIndex)
   }
 
   const displayName = userName ?? user?.full_name ?? ''
@@ -630,19 +716,8 @@ export default function LectureHub({
             const cfg      = TAB_CONFIG[tabId]
             const isActive = activeTab === tabId
             return (
-              <button
-                key={tabId}
-                onClick={() => handleTabChange(tabId)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  padding: '7px 14px', borderRadius: '20px', border: 'none',
-                  cursor: 'pointer', fontSize: '13px',
-                  fontWeight: isActive ? 600 : 500,
-                  background: isActive ? '#EEF3FF' : '#F3F4F6',
-                  color: isActive ? '#2563EB' : '#6B7280',
-                  whiteSpace: 'nowrap', flexShrink: 0,
-                }}
-              >
+              <button key={tabId} onClick={() => handleTabChange(tabId)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: isActive ? 600 : 500, background: isActive ? '#EEF3FF' : '#F3F4F6', color: isActive ? '#2563EB' : '#6B7280', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 {cfg.icon}
                 {cfg.label}
               </button>
@@ -747,6 +822,8 @@ export default function LectureHub({
                 <FlashcardsViewer
                   flashcards={flashcards as any}
                   userName={displayName}
+                  initialIndex={currentFlashcardIndex}
+                  onIndexChange={handleFlashcardIndexChange}
                   onStatsChange={setFlashcardStats}
                 />
               )}
@@ -755,6 +832,8 @@ export default function LectureHub({
                   questions={quizQuestions as any}
                   lectureId={lecture.id}
                   userName={displayName}
+                  initialIndex={currentQuizIndex}
+                  onIndexChange={handleQuizIndexChange}
                   onStatsChange={setQuizStats}
                 />
               )}
@@ -762,6 +841,8 @@ export default function LectureHub({
                 <PreviousYearsViewer
                   questions={previousYearQuestions as any}
                   userName={displayName}
+                  initialIndex={currentPyqIndex}
+                  onIndexChange={handlePyqIndexChange}
                   onStatsChange={setPyqStats}
                 />
               )}
@@ -774,23 +855,10 @@ export default function LectureHub({
       <aside
         id="lecture-right-sidebar"
         className="hidden lg:flex"
-        style={{
-          width:         sidebarCollapsed ? '64px' : '272px',
-          height:        'calc(100vh - 72px)',
-          overflowY:     'auto',
-          borderLeft:    '1px solid #EEF0F4',
-          background:    '#F7F8FA',
-          flexDirection: 'column',
-          gap:           '12px',
-          padding:       sidebarCollapsed ? '16px 8px' : '16px 12px',
-          flexShrink:    0,
-          transition:    'width 0.25s ease, padding 0.25s ease',
-        }}
+        style={{ width: sidebarCollapsed ? '64px' : '272px', height: 'calc(100vh - 72px)', overflowY: 'auto', borderLeft: '1px solid #EEF0F4', background: '#F7F8FA', flexDirection: 'column', gap: '12px', padding: sidebarCollapsed ? '16px 8px' : '16px 12px', flexShrink: 0, transition: 'width 0.25s ease, padding 0.25s ease' }}
       >
-        <button
-          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 36, borderRadius: 10, border: '1px solid #EAEDF2', background: '#fff', cursor: 'pointer', color: '#6B7280', flexShrink: 0 }}
-        >
+        <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 36, borderRadius: 10, border: '1px solid #EAEDF2', background: '#fff', cursor: 'pointer', color: '#6B7280', flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             {sidebarCollapsed ? <polyline points="15 18 9 12 15 6"/> : <polyline points="9 18 15 12 9 6"/>}
           </svg>
@@ -808,8 +876,7 @@ export default function LectureHub({
                 const isActive = activeTab === tabId
                 return (
                   <button key={tabId} onClick={() => handleTabChange(tabId)} title={cfg.label}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', padding: sidebarCollapsed ? '10px' : '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer', background: isActive ? '#EEF3FF' : 'transparent', color: isActive ? '#2563EB' : '#6B7280', transition: 'all 0.15s ease', textAlign: 'left' }}
-                  >
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', padding: sidebarCollapsed ? '10px' : '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer', background: isActive ? '#EEF3FF' : 'transparent', color: isActive ? '#2563EB' : '#6B7280', transition: 'all 0.15s ease', textAlign: 'left' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: sidebarCollapsed ? 0 : '10px' }}>
                       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: isActive ? '#DBEAFE' : '#F3F4F6', color: isActive ? '#2563EB' : '#9CA3AF', flexShrink: 0, transition: 'all 0.15s ease' }}>
                         {cfg.icon}

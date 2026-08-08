@@ -1,4 +1,4 @@
-﻿import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
@@ -11,24 +11,34 @@ export default async function UniversityPage({ params }: PageProps) {
 
   const supabase = await createServerClient()
 
+  // Single query: fetch university + all its subjects in one round trip
   const { data: university } = await supabase
     .from('universities')
-    .select('id, name, logo_url')
+    .select(`
+      id,
+      name,
+      logo_url,
+      subjects!inner (
+        id,
+        name,
+        slug,
+        subject_type,
+        category,
+        access_mode,
+        description
+      )
+    `)
     .eq('slug' as any, uniSlug)
-    .single()
+    .eq('subjects.is_published' as any, true)
+    .order('name', { referencedTable: 'subjects' })
+    .single() as any
 
   if (!university) notFound()
 
-  const { data: subjects } = await supabase
-    .from('subjects')
-    .select('id, name, slug, subject_type, category, access_mode, description')
-    .eq('university_id', university.id)
-    .eq('is_published', true)
-    .order('name') as any
-
-  const subjectList = (subjects ?? []) as Array<{
+  const subjectList = (university.subjects ?? []) as Array<{
     id: string
     name: string
+    slug: string | null
     subject_type: string
     category: string | null
     access_mode: string
@@ -121,13 +131,13 @@ export default async function UniversityPage({ params }: PageProps) {
                   {section.list.map(subject => {
                     const ts  = typeStyle[subject.subject_type]  ?? typeStyle.standard
                     const as_ = accessStyle[subject.access_mode] ?? accessStyle.free
-                    const isLocked   = subject.access_mode === 'premium'
-                    const typeLabel  = subject.subject_type === 'system' ? 'System' : subject.subject_type === 'clinical' ? 'Clinical' : 'Standard'
+                    const isLocked    = subject.access_mode === 'premium'
+                    const typeLabel   = subject.subject_type === 'system' ? 'System' : subject.subject_type === 'clinical' ? 'Clinical' : 'Standard'
                     const accessLabel = subject.access_mode === 'premium' ? 'Premium' : subject.access_mode === 'mixed' ? 'Mixed' : 'Free'
                     const grad = gradients[section.key]
 
                     return (
-                      <Link key={subject.id} href={`/${uniSlug}/${(subject as any).slug ?? subject.id}`} prefetch={false} style={{ textDecoration: 'none', display: 'block' }}>
+                      <Link key={subject.id} href={`/${uniSlug}/${subject.slug ?? subject.id}`} prefetch={false} style={{ textDecoration: 'none', display: 'block' }}>
                         <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, boxShadow: 'var(--shadow)', overflow: 'hidden', cursor: 'pointer', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
                           <div style={{ height: 6, background: grad }} />

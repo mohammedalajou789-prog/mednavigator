@@ -224,8 +224,8 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Progress ring — desktop only */}
-            <div className="hero-ring" style={{ flexShrink: 0, flexDirection: 'column', alignItems: 'center' }}>
+            {/* Progress ring — desktop only, logged in users only */}
+            {userId && <div className="hero-ring" style={{ flexShrink: 0, flexDirection: 'column', alignItems: 'center' }}>
               <div style={{ position: 'relative', width: 120, height: 120 }}>
                 <svg width="120" height="120" viewBox="0 0 148 148" style={{ transform: 'rotate(-90deg)' }}>
                   <circle cx="74" cy="74" r="62" fill="none" stroke="#E1E9FA" strokeWidth="13" />
@@ -242,10 +242,10 @@ export default async function SubjectPage({ params }: PageProps) {
                   <div style={{ fontSize: 10, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 3, textAlign: 'center' }}>{Math.floor(totalStars / 3)} of {totalLectures}</div>
                 </div>
               </div>
-            </div>
+            </div>}
 
-            {/* Progress bar — mobile only */}
-            <div className="hero-progress-bar" style={{ marginTop: 16, width: '100%' }}>
+            {/* Progress bar — mobile only, logged in users only */}
+            {userId && <div className="hero-progress-bar" style={{ marginTop: 16, width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'rgb(136, 146, 168)' }}>Overall Progress</span>
                 <span style={{ fontSize: 20, fontWeight: 800, color: 'rgb(36, 86, 214)', letterSpacing: '-0.02em' }}>{progressPercent}%</span>
@@ -254,7 +254,7 @@ export default async function SubjectPage({ params }: PageProps) {
                 <div style={{ height: '100%', width: `${progressPercent}%`, borderRadius: 999, background: 'linear-gradient(90deg, #3B79FF, #2456D6)', transition: 'width 1.1s cubic-bezier(0.4,0,0.2,1)' }} />
               </div>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 6 }}>{Math.floor(totalStars / 3)} of {totalLectures} lectures mastered</div>
-            </div>
+            </div>}
           </div>
         </section>
 
@@ -315,9 +315,9 @@ export default async function SubjectPage({ params }: PageProps) {
                     <div style={{ flex: 1, minWidth: 0, marginLeft: 12 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'rgb(21, 32, 58)', letterSpacing: '-0.01em' }}>{group.title}</h3>
-                        <span style={{ padding: '2px 9px', borderRadius: 999, background: gPct === 100 ? 'rgb(231, 247, 239)' : gPct > 0 ? 'rgb(255, 246, 224)' : 'rgb(238, 241, 248)', border: `1px solid ${gPct === 100 ? 'rgb(199, 235, 216)' : gPct > 0 ? 'rgb(243, 225, 174)' : 'rgb(222, 226, 238)'}`, color: gPct === 100 ? 'rgb(19, 138, 90)' : gPct > 0 ? 'rgb(161, 115, 10)' : 'rgb(136, 146, 168)', fontSize: 11, fontWeight: 700 }}>
+                        {userId && <span style={{ padding: '2px 9px', borderRadius: 999, background: gPct === 100 ? 'rgb(231, 247, 239)' : gPct > 0 ? 'rgb(255, 246, 224)' : 'rgb(238, 241, 248)', border: `1px solid ${gPct === 100 ? 'rgb(199, 235, 216)' : gPct > 0 ? 'rgb(243, 225, 174)' : 'rgb(222, 226, 238)'}`, color: gPct === 100 ? 'rgb(19, 138, 90)' : gPct > 0 ? 'rgb(161, 115, 10)' : 'rgb(136, 146, 168)', fontSize: 11, fontWeight: 700 }}>
                           {gPct === 100 ? 'Done' : gPct > 0 ? `${gPct}%` : 'Not started'}
-                        </span>
+                        </span>}
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 6, fontSize: 12.5, fontWeight: 600, color: 'rgb(136, 146, 168)' }}>
                         <span>{gTotal} lecture{gTotal !== 1 ? 's' : ''}</span>
@@ -325,9 +325,9 @@ export default async function SubjectPage({ params }: PageProps) {
                         {gQuiz > 0  && <span>{gQuiz} Q</span>}
                         {gPyq > 0   && <span>{gPyq} PYQ</span>}
                       </div>
-                      <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'rgb(234, 240, 251)', overflow: 'hidden' }}>
+                      {userId && <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'rgb(234, 240, 251)', overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${gPct}%`, borderRadius: 999, background: gPct === 100 ? 'linear-gradient(90deg, rgb(23, 166, 107), rgb(16, 128, 81))' : 'linear-gradient(90deg, rgb(59, 121, 255), rgb(36, 86, 214))' }} />
-                      </div>
+                      </div>}
                     </div>
                     <span className="chapter-view" style={{ alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 700, color: 'rgb(47, 107, 255)', flexShrink: 0, marginLeft: 12 }}>
                       View lectures

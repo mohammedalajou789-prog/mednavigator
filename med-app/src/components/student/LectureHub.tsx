@@ -278,8 +278,9 @@ export default function LectureHub({
   const quizIndexRef           = useRef<number>(0)
   const pyqIndexRef            = useRef<number>(0)
 
-  // ── Scroll restoration tracking ────────────────────────────────────────
-  const scrollRestoredRef      = useRef(false)
+  // ── Scroll restoration tracking — one ref per tab ─────────────────────
+  const sheetScrollRestoredRef   = useRef(false)
+  const summaryScrollRestoredRef = useRef(false)
 
   // ── Throttle refs for progress DB writes ──────────────────────────────
   const progressSaveTimer      = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -468,35 +469,23 @@ export default function LectureHub({
   // ── Restore scroll AFTER content data arrives ──────────────────────────
   useEffect(() => {
     if (!resumeReady) return
-    if (scrollRestoredRef.current) return
-
-    // Only restore scroll for sheet and summary tabs
     if (activeTab !== 'sheet' && activeTab !== 'summary') return
-
-    // Determine which scroll to restore
-    const targetScroll = activeTab === 'sheet'
-      ? sheetScrollRef.current
-      : summaryScrollRef.current
-
+    const isSheet = activeTab === 'sheet'
+    const restoredRef = isSheet ? sheetScrollRestoredRef : summaryScrollRestoredRef
+    if (restoredRef.current) return
+    const targetScroll = isSheet ? sheetScrollRef.current : summaryScrollRef.current
     if (targetScroll <= 0) return
-
-    // Only attempt restore once the content data has arrived
-    const contentReady = activeTab === 'sheet'
+    const contentReady = isSheet
       ? (sheetPayload !== undefined && !sheetLoading)
       : (summaryPayload !== undefined && !summaryLoading)
-
     if (!contentReady) return
-
-    scrollRestoredRef.current = true
-
-    // Small delay to let the DOM render the content
+    restoredRef.current = true
     setTimeout(() => {
       const scrollContainer = document.getElementById('lecture-content-scroll')
       if (scrollContainer) {
         scrollContainer.scrollTo({ top: targetScroll, behavior: 'smooth' })
       }
     }, 400)
-
   }, [resumeReady, activeTab, sheetPayload, summaryPayload, sheetLoading, summaryLoading])
 
   // ── Derive current tab progress ────────────────────────────────────────
@@ -684,7 +673,6 @@ export default function LectureHub({
   // ── Tab change ─────────────────────────────────────────────────────────
   function handleTabChange(tab: string) {
     setActiveTab(tab)
-    scrollRestoredRef.current = false
     const scrollContainer = document.getElementById('lecture-content-scroll')
     if (scrollContainer) scrollContainer.scrollTop = 0
     saveResumeState(tab, sheetScrollRef.current, summaryScrollRef.current, flashcardIndexLive.current, quizIndexLive.current, pyqIndexLive.current)
@@ -844,9 +832,8 @@ export default function LectureHub({
                   onStatsChange={setQuizStats}
                 />
               )}
-              {activeTab === 'previous_years' && previousYearQuestions.length > 0 && (
+              {activeTab === 'previous_years' && previousYearQuestions.length > 0 && resumeReady && (
                 <PreviousYearsViewer
-                  key={`pyq-${currentPyqIndex}`}
                   questions={previousYearQuestions as any}
                   userName={displayName}
                   initialIndex={currentPyqIndex}

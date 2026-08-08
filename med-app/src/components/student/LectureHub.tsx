@@ -573,19 +573,22 @@ export default function LectureHub({
   }
 
   // ── Save resume state (tab + scroll) to dedicated table ───────────────
-  function saveResumeState(tab: string, scrollPosition: number) {
+  async function saveResumeState(tab: string, scrollPosition: number) {
     console.log('[ResumeState] saveResumeState called', { tab, scrollPosition, user: user?.id })
     if (!user) {
       console.log('[ResumeState] SKIPPED — no user')
       return
     }
-    ;(supabase as any).from('lecture_resume_state').upsert({
-      user_id:         user.id,
-      lecture_id:      lecture.id,
-      active_tab:      tab,
-      scroll_position: scrollPosition,
-      updated_at:      new Date().toISOString(),
-    }, { onConflict: 'user_id,lecture_id' })
+    const { data, error } = await (supabase as any)
+      .from('lecture_resume_state')
+      .upsert({
+        user_id:         user.id,
+        lecture_id:      lecture.id,
+        active_tab:      tab,
+        scroll_position: scrollPosition,
+        updated_at:      new Date().toISOString(),
+      }, { onConflict: 'user_id,lecture_id' })
+    console.log('[ResumeState] upsert result', { data, error })
   }
 
   function handleTabChange(tab: string) {

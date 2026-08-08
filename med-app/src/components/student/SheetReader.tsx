@@ -53,9 +53,6 @@ export default function SheetReader({
       }, 1500)
     }
 
-    // Fire once on mount to restore saved progress position
-    handleScroll()
-
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
     return () => {
       scrollContainer.removeEventListener('scroll', handleScroll)

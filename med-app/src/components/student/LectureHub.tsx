@@ -656,18 +656,21 @@ export default function LectureHub({
 
   // ── Index change handlers for sub-components ───────────────────────────
   function handleFlashcardIndexChange(index: number) {
+    flashcardIndexLive.current = index
     setCurrentFlashcardIndex(index)
-    saveResumeState(activeTab, sheetScrollRef.current, summaryScrollRef.current, index, currentQuizIndex, currentPyqIndex)
+    saveResumeState(activeTab, sheetScrollRef.current, summaryScrollRef.current, index, quizIndexLive.current, pyqIndexLive.current)
   }
 
   function handleQuizIndexChange(index: number) {
+    quizIndexLive.current = index
     setCurrentQuizIndex(index)
-    saveResumeState(activeTab, sheetScrollRef.current, summaryScrollRef.current, currentFlashcardIndex, index, currentPyqIndex)
+    saveResumeState(activeTab, sheetScrollRef.current, summaryScrollRef.current, flashcardIndexLive.current, index, pyqIndexLive.current)
   }
 
   function handlePyqIndexChange(index: number) {
+    pyqIndexLive.current = index
     setCurrentPyqIndex(index)
-    saveResumeState(activeTab, sheetScrollRef.current, summaryScrollRef.current, currentFlashcardIndex, currentQuizIndex, index)
+    saveResumeState(activeTab, sheetScrollRef.current, summaryScrollRef.current, flashcardIndexLive.current, quizIndexLive.current, index)
   }
 
   // ── Tab change ─────────────────────────────────────────────────────────

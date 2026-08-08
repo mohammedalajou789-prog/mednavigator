@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { PreviousYearQuestion } from '@/types/database'
 import { createClient } from '@/lib/supabase/client'
@@ -28,7 +28,7 @@ const OPTIONS = ['A', 'B', 'C', 'D', 'E'] as const
 
 export default function PreviousYearsViewer({ questions, userName, initialIndex, onIndexChange, onStatsChange }: PreviousYearsViewerProps) {
   const { user } = useUserStore()
-  const supabase = useMemo(() => createClient(), [])
+  const supabase = createClient()
 
   const [currentIndex, setCurrentIndex] = useState(initialIndex ?? 0)
   const [answers, setAnswers] = useState<Record<string, string>>({})

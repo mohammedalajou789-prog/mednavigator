@@ -376,13 +376,13 @@ export default function LectureHub({
     return () => setSidebarOpen(true)
   }, [setSidebarOpen])
 
-  // ── FIX 2: progress query — no activeTab in key, fetch all at once ─────
+  // ── Progress query (for reading % only) ────────────────────────────────
   const { data: progressData } = useQuery({
     queryKey: ['progress', user?.id, lecture.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('user_progress')
-        .select('content_type, progress_percentage, completed, last_position, last_accessed_at')
+        .select('content_type, progress_percentage, completed')
         .eq('user_id', user!.id)
         .eq('lecture_id', lecture.id)
       return data ?? []
@@ -393,28 +393,38 @@ export default function LectureHub({
     refetchOnMount: false,
   })
 
+  // ── Resume state query — restores last tab + scroll position ───────────
+  const { data: resumeState } = useQuery({
+    queryKey: ['resume-state', user?.id, lecture.id],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('lecture_resume_state')
+        .select('active_tab, scroll_position')
+        .eq('user_id', user!.id)
+        .eq('lecture_id', lecture.id)
+        .maybeSingle()
+      return data as { active_tab: string; scroll_position: number } | null
+    },
+    enabled: !!user?.id,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+  })
+
   // ── Restore last tab and scroll position on first load ─────────────────
   useEffect(() => {
-    if (!progressData || tabRestored) return
-    const rows = progressData as { content_type: string; progress_percentage: number; completed: boolean; last_position?: number; last_accessed_at?: string }[]
-    if (rows.length === 0) { setTabRestored(true); return }
+    if (tabRestored) return
+    if (resumeState === undefined) return // still loading
 
-    // Find the tab with the most recent access
-    const sorted = [...rows].sort((a, b) => {
-      const aTime = a.last_accessed_at ? new Date(a.last_accessed_at).getTime() : 0
-      const bTime = b.last_accessed_at ? new Date(b.last_accessed_at).getTime() : 0
-      return bTime - aTime
-    })
-    const lastRow = sorted[0]
-    const lastTab = lastRow?.content_type
-
-    if (lastTab && allTabs.includes(lastTab)) {
-      setActiveTab(lastTab)
-      // Save scroll position to restore after content loads
-      savedScrollPositionRef.current = lastRow?.last_position ?? 0
+    if (resumeState) {
+      const lastTab = resumeState.active_tab
+      if (lastTab && allTabs.includes(lastTab)) {
+        setActiveTab(lastTab)
+        savedScrollPositionRef.current = resumeState.scroll_position ?? 0
+      }
     }
     setTabRestored(true)
-  }, [progressData, tabRestored, allTabs])
+  }, [resumeState, tabRestored, allTabs])
 
   // Derive current tab's progress from the fetched array
   const currentTabProgress = useMemo(() => {
@@ -544,38 +554,42 @@ export default function LectureHub({
     if (progressSaveTimer.current) clearTimeout(progressSaveTimer.current)
     progressSaveTimer.current = setTimeout(() => {
       lastSavedPct.current = pct
-      // Save actual scroll position in pixels for restoration
       const scrollContainer = document.getElementById('lecture-content-scroll')
       const scrollPosition  = scrollContainer?.scrollTop ?? 0
+
+      // Save reading progress (percentage)
       supabase.from('user_progress').upsert({
         user_id:             user.id,
         lecture_id:          lecture.id,
         content_type:        activeTab,
         progress_percentage: pct,
         completed:           pct >= 100,
-        last_position:       scrollPosition,
-        last_accessed_at:    new Date().toISOString(),
         updated_at:          new Date().toISOString(),
       }, { onConflict: 'user_id,lecture_id,content_type' })
+
+      // Save resume state (tab + scroll position) separately
+      saveResumeState(activeTab, scrollPosition)
     }, 3000)
   }
 
-  // ── Save tab switch to DB so we can restore it on next visit ──────────
+  // ── Save resume state (tab + scroll) to dedicated table ───────────────
+  function saveResumeState(tab: string, scrollPosition: number) {
+    if (!user) return
+    ;(supabase as any).from('lecture_resume_state').upsert({
+      user_id:         user.id,
+      lecture_id:      lecture.id,
+      active_tab:      tab,
+      scroll_position: scrollPosition,
+      updated_at:      new Date().toISOString(),
+    }, { onConflict: 'user_id,lecture_id' })
+  }
+
   function handleTabChange(tab: string) {
     setActiveTab(tab)
     scrollRestoredRef.current = false
     savedScrollPositionRef.current = 0
-    if (!user) return
-    // Save the newly active tab with current timestamp
-    supabase.from('user_progress').upsert({
-      user_id:             user.id,
-      lecture_id:          lecture.id,
-      content_type:        tab,
-      progress_percentage: 0,
-      completed:           false,
-      last_accessed_at:    new Date().toISOString(),
-      updated_at:          new Date().toISOString(),
-    }, { onConflict: 'user_id,lecture_id,content_type' })
+    // Save the new tab immediately, scroll resets to 0
+    saveResumeState(tab, 0)
   }
 
   const displayName = userName ?? user?.full_name ?? ''

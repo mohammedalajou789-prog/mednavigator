@@ -1,4 +1,4 @@
-import { getAuthUser } from '@/lib/services/user'
+import { getUserProfile } from '@/lib/services/user'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -9,34 +9,34 @@ interface PageProps {
 
 export default async function SubjectPage({ params }: PageProps) {
   const { uniSlug, subjectSlug } = await params
-
   const supabase = await createServerClient()
 
+  // Wave 1 — resolve slugs + auth in parallel
   const [
     { data: uniRow },
     { data: subRow },
-    authUser,
+    profile,
   ] = await Promise.all([
     supabase.from('universities').select('id, name').eq('slug' as any, uniSlug).single(),
     supabase.from('subjects').select('id, name, description, access_mode, subject_type').eq('slug' as any, subjectSlug).eq('is_published', true).single(),
-    getAuthUser(),
+    getUserProfile(),
   ])
-
   if (!uniRow || !subRow) notFound()
-
   const universityId = uniRow.id
   const subjectId    = subRow.id
   const university   = uniRow
   const subject      = subRow
+  const userId       = profile?.id ?? null
+  const isSystem     = subject.subject_type === 'system'
 
-  let userId: string | null = null
-  if (authUser) {
-    const { data: profile } = await supabase
-      .from('users').select('id').eq('auth_user_id', authUser.id).single()
-    userId = profile?.id ?? null
-  }
 
-  const isSystem = subject.subject_type === 'system'
+
+  const flashMap: Record<string, number> = {}
+  const quizMap:  Record<string, number> = {}
+  const pyqMap:   Record<string, number> = {}
+  type ChecklistRow = { lecture_id: string; stars: number }
+  let checklistRows: ChecklistRow[] = []
+
 
   const [
     { data: chapters },
@@ -57,30 +57,30 @@ export default async function SubjectPage({ params }: PageProps) {
   const lectureIds    = lectureList.map((l: any) => l.id)
   const totalLectures = lectureList.length
 
-  const flashMap: Record<string, number> = {}
-  const quizMap:  Record<string, number> = {}
-  const pyqMap:   Record<string, number> = {}
-
   if (lectureIds.length > 0) {
-    const { data: contentCounts } = await supabase.rpc('get_content_counts_by_lecture' as any, { lecture_ids: lectureIds })
-    contentCounts?.forEach((r: any) => {
+    const [contentCountsResult, checklistResult] = await Promise.all([
+      supabase.rpc('get_content_counts_by_lecture' as any, { lecture_ids: lectureIds }),
+      userId
+        ? supabase.from('checklist_progress').select('lecture_id,stars').eq('user_id', userId).in('lecture_id', lectureIds)
+        : Promise.resolve({ data: [] as { lecture_id: string; stars: number }[] }),
+    ])
+    contentCountsResult.data?.forEach((r: any) => {
       flashMap[r.lecture_id] = r.flashcards_count ?? 0
       quizMap[r.lecture_id]  = r.quiz_count ?? 0
       pyqMap[r.lecture_id]   = r.pyq_count ?? 0
     })
+    checklistRows = (checklistResult.data ?? []) as ChecklistRow[]
   }
 
-  type ChecklistRow = { lecture_id: string; stars: number }
-  let checklistRows: ChecklistRow[] = []
 
-  if (userId && lectureIds.length > 0) {
-    const { data } = await supabase
-      .from('checklist_progress')
-      .select('lecture_id,stars')
-      .eq('user_id', userId)
-      .in('lecture_id', lectureIds)
-    checklistRows = (data ?? []) as ChecklistRow[]
-  }
+
+
+
+
+
+
+
+
 
   const starsByLecture: Record<string, number> = {}
   checklistRows.forEach(r => { starsByLecture[r.lecture_id] = r.stars })

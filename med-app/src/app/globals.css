@@ -162,3 +162,33 @@ aside nav::-webkit-scrollbar    { width: 0px; }
   #lecture-content-scroll span { font-size: 13.5px  !important; }
   #lecture-content-scroll .mn-block { font-size: 13px !important; }
 }
+
+/* ── Image Slot Figure Layout ── */
+.figure-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr 220px;
+  gap: 20px;
+  padding: 20px;
+  align-items: start;
+}
+.figure-grid-left  { display: flex; flex-direction: column; gap: 14px; }
+.figure-grid-image { display: flex; align-items: flex-start; justify-content: center; }
+.figure-grid-right { background: #fff; border: 1px solid #e6ebf3; border-radius: 12px; padding: 14px 16px; }
+
+@media (max-width: 900px) {
+  .figure-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px;
+  }
+  .figure-grid-image {
+    order: -1;
+  }
+}
+@media (min-width: 640px) and (max-width: 900px) {
+  .figure-grid-left-right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+}

@@ -510,10 +510,10 @@ function renderBlock(
           )}
 
           <div style={{ overflowX: 'auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '20px', padding: '20px', alignItems: 'stretch' }}>
+            <div className="figure-grid">
 
               {block.leftPanel && block.leftPanel.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0 }}>
+                <div className="figure-grid-left">
                   {block.leftPanel.map((item, idx) => {
                     const c = FC[item.color] ?? '#2f6fd1'
                     return (
@@ -531,7 +531,7 @@ function renderBlock(
                 </div>
               )}
 
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', minWidth: 0 }}>
+              <div className="figure-grid-image">
                 {imageUrl ? (
                   <div style={{ maxWidth: '520px', width: '100%' }}>
                     <ImageLightbox
@@ -549,7 +549,7 @@ function renderBlock(
               </div>
 
               {block.rightPanel && block.rightPanel.length > 0 && (
-                <div style={{ background: '#fff', border: '1px solid #e6ebf3', borderRadius: '12px', padding: '14px 16px' }}>
+                <div className="figure-grid-right">
                   {block.rightPanelTitle && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
                       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#2f6fd1" strokeWidth={2}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>

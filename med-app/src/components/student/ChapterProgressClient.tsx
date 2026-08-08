@@ -54,6 +54,8 @@ export default function ChapterProgressClient({
     return () => window.removeEventListener('star-changed', handleStarChanged)
   }, [])
 
+  const isGuest = !userId
+
   const totalStars      = Object.values(starsByLecture).reduce((s, n) => s + n, 0)
   const progressPercent = totalLectures > 0 ? Math.round((totalStars / (totalLectures * 3)) * 100) : 0
   const ringOffset      = RING_CIRC * (1 - progressPercent / 100)
@@ -112,47 +114,86 @@ export default function ChapterProgressClient({
             </h1>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 0', marginTop: 12, fontSize: 13, fontWeight: 600, color: 'rgb(136, 146, 168)' }}>
               <span style={{ marginRight: 8 }}>{totalLectures} lecture{totalLectures !== 1 ? 's' : ''}</span>
-              <span style={{ marginRight: 8 }}>· {reviewedCount} of {totalLectures} reviewed</span>
+              {!isGuest && <span style={{ marginRight: 8 }}>· {reviewedCount} of {totalLectures} reviewed</span>}
               {totalFlash > 0 && <span style={{ marginRight: 8 }}>· {totalFlash} flashcards</span>}
               {totalQuiz > 0  && <span style={{ marginRight: 8 }}>· {totalQuiz} questions</span>}
             </div>
           </div>
 
-          {/* Progress Ring — tablet/desktop only */}
-          <div className="ch-hero-ring" style={{ flexShrink: 0 }}>
-            <div style={{ position: 'relative', width: 90, height: 90 }}>
-              <svg width="90" height="90" viewBox="0 0 108 108" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="54" cy="54" r="45" fill="none" stroke="#E1E9FA" strokeWidth="10" />
-                <circle cx="54" cy="54" r="45" fill="none" stroke="url(#chRing)" strokeWidth="10" strokeLinecap="round"
-                  strokeDasharray={RING_CIRC} strokeDashoffset={ringOffset}
-                  style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1)' }}
-                />
-                <defs>
-                  <linearGradient id="chRing" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0" stopColor="#3B79FF" />
-                    <stop offset="1" stopColor="#2456D6" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: 'rgb(36, 86, 214)' }}>
-                {progressPercent}%
+          {/* Progress Ring — tablet/desktop — only for logged in users */}
+          {!isGuest && (
+            <div className="ch-hero-ring" style={{ flexShrink: 0 }}>
+              <div style={{ position: 'relative', width: 90, height: 90 }}>
+                <svg width="90" height="90" viewBox="0 0 108 108" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx="54" cy="54" r="45" fill="none" stroke="#E1E9FA" strokeWidth="10" />
+                  <circle cx="54" cy="54" r="45" fill="none" stroke="url(#chRing)" strokeWidth="10" strokeLinecap="round"
+                    strokeDasharray={RING_CIRC} strokeDashoffset={ringOffset}
+                    style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1)' }}
+                  />
+                  <defs>
+                    <linearGradient id="chRing" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0" stopColor="#3B79FF" />
+                      <stop offset="1" stopColor="#2456D6" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: 'rgb(36, 86, 214)' }}>
+                  {progressPercent}%
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Progress Bar — mobile only */}
-          <div className="ch-progress-bar" style={{ marginTop: 14, width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'rgb(136, 146, 168)' }}>Progress</span>
-              <span style={{ fontSize: 20, fontWeight: 800, color: 'rgb(36, 86, 214)', letterSpacing: '-0.02em' }}>{progressPercent}%</span>
+          {/* Progress Bar — mobile — only for logged in users */}
+          {!isGuest && (
+            <div className="ch-progress-bar" style={{ marginTop: 14, width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'rgb(136, 146, 168)' }}>Progress</span>
+                <span style={{ fontSize: 20, fontWeight: 800, color: 'rgb(36, 86, 214)', letterSpacing: '-0.02em' }}>{progressPercent}%</span>
+              </div>
+              <div style={{ height: 8, borderRadius: 999, background: '#E1E9FA', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${progressPercent}%`, borderRadius: 999, background: 'linear-gradient(90deg, #3B79FF, #2456D6)', transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)' }} />
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 5 }}>{reviewedCount} of {totalLectures} mastered</div>
             </div>
-            <div style={{ height: 8, borderRadius: 999, background: '#E1E9FA', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${progressPercent}%`, borderRadius: 999, background: 'linear-gradient(90deg, #3B79FF, #2456D6)', transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)' }} />
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 5 }}>{reviewedCount} of {totalLectures} mastered</div>
-          </div>
+          )}
         </div>
       </section>
+
+      {/* Guest progress banner */}
+      {isGuest && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 16, flexWrap: 'wrap',
+          background: 'linear-gradient(120deg, rgba(37,99,235,0.06), rgba(124,58,237,0.04))',
+          border: '1px solid rgba(37,99,235,0.15)',
+          borderRadius: 14, padding: '14px 18px', marginBottom: 20,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(37,99,235,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+                <polyline points="16 7 22 7 22 13"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'rgb(21, 32, 58)' }}>Track your progress</div>
+              <div style={{ fontSize: 12, color: 'rgb(136, 146, 168)', marginTop: 1 }}>Create a free account to rate lectures and track your progress</div>
+            </div>
+          </div>
+          <Link href="/register" prefetch={false} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            height: 38, padding: '0 16px', borderRadius: 10,
+            background: '#2563EB', color: '#fff',
+            fontSize: 13, fontWeight: 700, textDecoration: 'none', flexShrink: 0,
+          }}>
+            Create Free Account
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </Link>
+        </div>
+      )}
 
       {/* Lectures Section */}
       <div>
@@ -173,15 +214,13 @@ export default function ChapterProgressClient({
           const statusColor = isMastered ? 'rgb(19, 138, 90)' : lectureStars > 0 ? 'rgb(161, 115, 10)' : 'rgb(136, 146, 168)'
           const statusBg    = isMastered ? 'rgba(19,138,90,0.11)' : lectureStars > 0 ? 'rgba(216,154,6,0.11)' : 'rgb(241, 243, 249)'
 
-          const iconBg    = isMastered ? 'rgb(231, 247, 239)' : 'rgb(238, 241, 248)'
-          const iconColor = isMastered ? 'rgb(23, 166, 107)' : 'rgb(154, 164, 188)'
-          const iconMark  = isMastered ? '✓' : '•'
+          const iconBg    = 'rgb(238, 241, 248)'
+          const iconColor = 'rgb(154, 164, 188)'
 
           const metaParts: string[] = []
           if (sheetMap[lecture.id])             metaParts.push('Sheet')
           if ((flashMap[lecture.id] ?? 0) > 0) metaParts.push(`${flashMap[lecture.id]} cards`)
           if ((quizMap[lecture.id]  ?? 0) > 0) metaParts.push(`${quizMap[lecture.id]} Q`)
-          const metaText = metaParts.join(' · ')
 
           const starFills = [
             lectureStars >= 1 ? '#EF4444' : '#CBD5E1',
@@ -204,7 +243,7 @@ export default function ChapterProgressClient({
                   background: iconBg, color: iconColor,
                   flexShrink: 0, fontSize: 16, fontWeight: 800,
                 }}>
-                  {iconMark}
+                  •
                 </span>
 
                 {/* Title + meta */}
@@ -221,32 +260,28 @@ export default function ChapterProgressClient({
                   )}
                 </div>
 
-                {/* Stars */}
-                <span style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-                  {userId ? (
+                {/* Stars — only for logged in users */}
+                {!isGuest && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
                     <LectureStarsClient
                       lectureId={lecture.id}
                       initialStars={lectureStars}
-                      userId={userId}
+                      userId={userId!}
                     />
-                  ) : (
-                    starFills.map((fill, i) => (
-                      <svg key={i} width="16" height="16" viewBox="0 0 24 24" fill={fill} stroke={fill} strokeWidth="1">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                    ))
-                  )}
-                </span>
+                  </span>
+                )}
 
-                {/* Status badge — hidden on mobile */}
-                <span className="lec-status" style={{
-                  padding: '4px 10px', borderRadius: 8,
-                  fontSize: 11, fontWeight: 700,
-                  background: statusBg, color: statusColor,
-                  flexShrink: 0, alignItems: 'center',
-                }}>
-                  {statusLabel}
-                </span>
+                {/* Status badge — only for logged in users, hidden on mobile */}
+                {!isGuest && (
+                  <span className="lec-status" style={{
+                    padding: '4px 10px', borderRadius: 8,
+                    fontSize: 11, fontWeight: 700,
+                    background: statusBg, color: statusColor,
+                    flexShrink: 0, alignItems: 'center',
+                  }}>
+                    {statusLabel}
+                  </span>
+                )}
 
                 {/* View lecture */}
                 <Link

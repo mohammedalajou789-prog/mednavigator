@@ -291,7 +291,7 @@ export default async function StudentDashboard() {
           </div>
         </div>
         {university && (
-          <Link href={`/${university.slug ?? university.id}`}
+          <Link prefetch={false} href={`/${university.slug ?? university.id}`}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', height: '42px', padding: '0 18px', borderRadius: '11px', border: `1px solid ${CARD_BDR}`, background: CARD_BG, color: INK, fontSize: '14px', fontWeight: 600, textDecoration: 'none', boxShadow: '0 1px 2px rgba(15,23,42,.06)', whiteSpace: 'nowrap' }}>
             Browse subjects
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -373,7 +373,7 @@ export default async function StudentDashboard() {
                 const uniSlug = university?.slug ?? university?.id ?? ''
                 const href    = subSlug && lecSlug ? `/${uniSlug}/${subSlug}/${lecSlug}` : '#'
                 return (
-                  <Link href={href}
+                  <Link prefetch={false} href={href}
                     style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 20px', border: 'none', borderRadius: '12px', background: PRIMARY, color: '#fff', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>
                     Resume
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -496,7 +496,7 @@ export default async function StudentDashboard() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
           <div style={{ fontSize: '16px', fontWeight: 700, letterSpacing: '-.01em', color: INK }}>Pinned subjects</div>
           {university && (
-            <Link href={`/${university.slug ?? university.id}`} style={{ fontSize: '13px', fontWeight: 600, color: PRIMARY, textDecoration: 'none' }}>View all</Link>
+            <Link prefetch={false} href={`/${university.slug ?? university.id}`} style={{ fontSize: '13px', fontWeight: 600, color: PRIMARY, textDecoration: 'none' }}>View all</Link>
           )}
         </div>
         {pinnedSubjects.length === 0 ? (
@@ -507,7 +507,7 @@ export default async function StudentDashboard() {
             <div style={{ fontSize: '15px', fontWeight: 700, color: INK }}>No pinned subjects yet</div>
             <div style={{ fontSize: '13.5px', color: INK2, maxWidth: '340px' }}>Pin a subject from its page and it will show up here for quick access.</div>
             {university && (
-              <Link href={`/${university.slug ?? university.id}`}
+              <Link prefetch={false} href={`/${university.slug ?? university.id}`}
                 style={{ marginTop: '6px', height: '38px', padding: '0 16px', borderRadius: '10px', border: `1px solid ${CARD_BDR}`, background: '#F1F5F9', color: INK, fontSize: '13.5px', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
                 Browse subjects
               </Link>
@@ -516,7 +516,7 @@ export default async function StudentDashboard() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '14px' }}>
             {pinnedSubjects.map(({ subject_id, subject }) => (
-              <Link key={subject_id}
+              <Link prefetch={false} key={subject_id}
                 href={`/${(subject.university as any)?.slug ?? subject.university_id}/${subject.slug ?? subject_id}`}
                 style={{ background: CARD_BG, border: `1px solid ${CARD_BDR}`, borderRadius: '18px', overflow: 'hidden', textDecoration: 'none', display: 'block', boxShadow: '0 1px 3px rgba(15,23,42,.04),0 10px 24px -16px rgba(15,23,42,.10)' }}>
                 <div style={{ height: '5px', background: `linear-gradient(90deg,${PRIMARY},${PURPLE})` }} />

@@ -483,7 +483,7 @@ function renderBlock(
             )}
             <div style={{ background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', minHeight: '120px' }}>
               {imageUrl ? (
-                <div style={{ maxWidth: '100%' }}>
+                <div style={{ maxWidth: '600px', width: '100%' }}>
                   <ImageLightbox src={imageUrl} alt={block.slotDescription ?? 'Image ' + slotNum} className="max-w-full h-auto rounded-xl block" />
                 </div>
               ) : (

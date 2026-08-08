@@ -166,7 +166,7 @@ export default async function ProgressPage() {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '28px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '12px', marginBottom: '28px' }}>
         <KpiCard
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>}
           label="Overall Progress" value={`${overallPercent}%`} sub="across all lectures" color="#2563EB" bg="#EFF6FF"
@@ -259,7 +259,7 @@ export default async function ProgressPage() {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '18px', alignItems: 'stretch' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '18px', alignItems: 'stretch' }}>
 
           {/* Summary */}
           <div style={{ background: 'var(--card)', borderRadius: '18px', border: '1px solid var(--line)', padding: '20px', boxShadow: 'var(--shadow)' }}>

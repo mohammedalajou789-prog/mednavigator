@@ -36,8 +36,6 @@ const studentNavItems = [
 
 const studentOtherItems = [
   { label: 'Notifications', href: '/notifications', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg> },
-
-
 ]
 
 const ExploreIcon = () => (
@@ -104,13 +102,23 @@ const firstSectionLabel: React.CSSProperties = {
   ...sectionLabel, padding: '6px 12px 6px',
 }
 
-// ── Active bar indicator ───────────────────────────────────────────────────
 const ActiveBar = () => (
   <span style={{
     position: 'absolute', left: 0, top: '6px', bottom: '6px',
     width: '3px', borderRadius: '0 3px 3px 0', background: ACTIVE_BAR,
   }} />
 )
+
+// ── Breakpoints ────────────────────────────────────────────────────────────
+// phone  : < 768px  → bottom nav, no sidebar
+// tablet : 768–1279px → sidebar visible (narrower: 220px), no bottom nav
+// desktop: >= 1280px → sidebar visible (264px), no bottom nav
+
+function getDeviceType(width: number): 'phone' | 'tablet' | 'desktop' {
+  if (width < 768)  return 'phone'
+  if (width < 1280) return 'tablet'
+  return 'desktop'
+}
 
 export default function StudentLayout({ children, universities = [], myUniSlug }: StudentLayoutProps) {
   const pathname  = usePathname()
@@ -122,15 +130,23 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
   const [exploreOpen,  setExploreOpen]  = useState(false)
   const [guestToast,   setGuestToast]   = useState(false)
   const [profileOpen,  setProfileOpen]  = useState(false)
+  const [deviceType,   setDeviceType]   = useState<'phone' | 'tablet' | 'desktop'>('desktop')
 
   const isGuest = !isLoading && !user
 
   useEffect(() => { setMobileOpen(false) }, [pathname])
 
+  // ── Responsive: decide sidebar visibility based on device type ──────────
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) setSidebarOpen(true)
-      else setSidebarOpen(false)
+    function handleResize() {
+      const type = getDeviceType(window.innerWidth)
+      setDeviceType(type)
+      if (type === 'phone') {
+        setSidebarOpen(false)
+      } else {
+        // tablet + desktop: sidebar always visible
+        setSidebarOpen(true)
+      }
     }
     handleResize()
     window.addEventListener('resize', handleResize)
@@ -170,7 +186,17 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
     ? user.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
     : 'MN'
 
+  // Sidebar width: narrower on tablet, full on desktop
+  const sidebarWidth = deviceType === 'tablet' ? '220px' : '264px'
+
+  // On phone: sidebar is a drawer (fixed overlay). On tablet/desktop: static.
   const sidebarVisible = sidebarOpen || mobileOpen
+
+  // Show bottom nav ONLY on phone
+  const showBottomNav = deviceType === 'phone'
+
+  // Show sidebar toggle button ONLY on phone (to open drawer)
+  const showSidebarToggle = deviceType === 'phone'
 
   return (
     <div className="flex h-screen" style={{ background: '#F8FAFC', fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" }}>
@@ -191,33 +217,61 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
         </div>
       )}
 
-      {/* ── Mobile overlay ── */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-20 bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)} />
+      {/* ── Mobile overlay (phone drawer only) ── */}
+      {mobileOpen && deviceType === 'phone' && (
+        <div className="fixed inset-0 z-20 bg-black/50" onClick={() => setMobileOpen(false)} />
       )}
 
       {/* ════════════════════════════════════════════════════════
           SIDEBAR
+          - phone:   fixed drawer, hidden by default, slides in
+          - tablet:  static, always visible, 220px wide
+          - desktop: static, always visible, 264px wide
       ════════════════════════════════════════════════════════ */}
       <aside
-      className={`fixed lg:static inset-y-0 left-0 z-30 flex flex-col transition-all duration-200
-          ${sidebarVisible ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
-        style={{ width: sidebarOpen ? '264px' : '0px', flexShrink: 0, background: SIDEBAR_BG, color: MUTED_COLOR, borderRight: sidebarOpen ? `1px solid ${SIDEBAR_BORDER}` : 'none', overflow: 'hidden' }}
-
+        style={{
+          width: sidebarVisible ? sidebarWidth : (deviceType === 'phone' ? '0px' : sidebarWidth),
+          flexShrink: 0,
+          background: SIDEBAR_BG,
+          color: MUTED_COLOR,
+          borderRight: `1px solid ${SIDEBAR_BORDER}`,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          // Phone: fixed overlay drawer. Tablet+Desktop: static in flow.
+          position: deviceType === 'phone' ? 'fixed' : 'relative',
+          top: deviceType === 'phone' ? 0 : undefined,
+          left: deviceType === 'phone' ? 0 : undefined,
+          bottom: deviceType === 'phone' ? 0 : undefined,
+          zIndex: deviceType === 'phone' ? 30 : undefined,
+          transform: deviceType === 'phone'
+            ? (mobileOpen ? 'translateX(0)' : 'translateX(-100%)')
+            : 'none',
+          transition: 'transform 0.2s ease, width 0.2s ease',
+          height: deviceType === 'phone' ? '100vh' : '100%',
+        }}
       >
 
         {/* ── Logo ── */}
         <div style={{ height: '64px', display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: `1px solid ${SIDEBAR_BORDER}`, flexShrink: 0 }}>
           <Link href="/home" prefetch={false} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
             <LogoIcon />
-            <span style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
-              Med<span style={{ color: '#60A5FA' }}>Navigator</span>
-            </span>
+            {/* Hide text label on tablet to save space */}
+            {deviceType !== 'tablet' && (
+              <span style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
+                Med<span style={{ color: '#60A5FA' }}>Navigator</span>
+              </span>
+            )}
+            {deviceType === 'tablet' && (
+              <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
+                Med<span style={{ color: '#60A5FA' }}>Nav</span>
+              </span>
+            )}
           </Link>
         </div>
 
         {/* ── User / Guest card ── */}
-        <div style={{ padding: '12px 12px 4px', flexShrink: 0 }}>
+        <div style={{ padding: '12px 10px 4px', flexShrink: 0 }}>
           {isLoading ? (
             <div style={{ padding: '12px', borderRadius: '13px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${SIDEBAR_BORDER}` }}>
               <div style={{ height: '11px', borderRadius: '6px', background: 'rgba(255,255,255,0.08)', marginBottom: '8px', width: '55%' }} />
@@ -225,54 +279,59 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
             </div>
           ) : isGuest ? (
             <div style={{ borderRadius: '13px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${SIDEBAR_BORDER}`, overflow: 'hidden' }}>
-              <div style={{ padding: '12px 14px 8px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#60A5FA', letterSpacing: '.06em', marginBottom: '4px' }}>BROWSING AS GUEST</div>
-                <div style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.5 }}>Sign up to track progress and save bookmarks.</div>
+              <div style={{ padding: '10px 12px 8px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#60A5FA', letterSpacing: '.06em', marginBottom: '4px' }}>BROWSING AS GUEST</div>
+                {deviceType !== 'tablet' && (
+                  <div style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.5 }}>Sign up to track progress and save bookmarks.</div>
+                )}
               </div>
               <Link href="/register" prefetch={false} style={{
-                display: 'block', textAlign: 'center', padding: '9px',
+                display: 'block', textAlign: 'center', padding: '8px',
                 background: '#2563EB', color: '#fff',
-                fontSize: '13px', fontWeight: 700, textDecoration: 'none',
+                fontSize: '12px', fontWeight: 700, textDecoration: 'none',
                 borderTop: `1px solid ${SIDEBAR_BORDER}`,
               }}>
-                Create Free Account →
+                {deviceType === 'tablet' ? 'Sign Up →' : 'Create Free Account →'}
               </Link>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '12px', borderRadius: '13px', background: 'rgba(255,255,255,0.05)', border: `1px solid ${SIDEBAR_BORDER}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '13px', background: 'rgba(255,255,255,0.05)', border: `1px solid ${SIDEBAR_BORDER}` }}>
               {/* Avatar */}
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(140deg, rgb(91, 140, 255), rgb(47, 107, 255))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="8.6" r="3.9"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0z"/></svg>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(140deg, rgb(91, 140, 255), rgb(47, 107, 255))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="8.6" r="3.9"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0z"/></svg>
               </div>
+              {/* On tablet show only name, no email */}
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#F1F5F9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.full_name ?? 'Student'}</div>
-                <div style={{ fontSize: '11.5px', color: MUTED_COLOR, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email ?? ''}</div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#F1F5F9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.full_name ?? 'Student'}</div>
+                {deviceType !== 'tablet' && (
+                  <div style={{ fontSize: '11px', color: MUTED_COLOR, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email ?? ''}</div>
+                )}
               </div>
             </div>
           )}
         </div>
 
         {/* ── Nav ── */}
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '4px 12px 8px', display: 'flex', flexDirection: 'column', gap: '2px', scrollbarWidth: 'none' }}>
+        <nav style={{ flex: 1, overflowY: 'auto', padding: '4px 10px 8px', display: 'flex', flexDirection: 'column', gap: '2px', scrollbarWidth: 'none' }}>
 
           {/* EXPLORE */}
           <div style={firstSectionLabel}>EXPLORE</div>
 
-          {/* All Universities */}
           <Link href="/explore" prefetch={false} style={navItemStyle(pathname === '/explore')}>
             {pathname === '/explore' && <ActiveBar />}
             <span style={{ color: iconColor(pathname === '/explore') }}><ExploreIcon /></span>
             All Universities
           </Link>
 
-          {/* Universities list */}
           {universities.length > 0 && (
             <>
               <button
                 onClick={() => setExploreOpen(v => !v)}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px 5px', background: 'transparent', border: 'none', width: '100%', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#60A5FA' }}>Universities ({universities.length})</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#60A5FA' }}>
+                  {deviceType === 'tablet' ? `Unis (${universities.length})` : `Universities (${universities.length})`}
+                </span>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={MUTED_COLOR} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
                   style={{ transition: 'transform .2s', transform: exploreOpen ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>
                   <polyline points="6 9 12 15 18 9"/>
@@ -280,15 +339,15 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
               </button>
 
               {exploreOpen && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', paddingLeft: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', paddingLeft: '6px' }}>
                   {universities.map((uni) => {
                     const uniPath = uni.slug ?? uni.id
                     const active  = pathname.startsWith(`/${uniPath}`)
                     return (
                       <Link key={uni.id} href={`/${uniPath}`} prefetch={false} style={{
-                        display: 'flex', alignItems: 'center', gap: '10px',
-                        padding: '8px 12px', borderRadius: '9px',
-                        fontSize: '13px', fontWeight: active ? 600 : 400,
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        padding: '7px 10px', borderRadius: '9px',
+                        fontSize: '12.5px', fontWeight: active ? 600 : 400,
                         color: active ? ACTIVE_COLOR : '#64748B',
                         textDecoration: 'none',
                         background: active ? ACTIVE_BG : 'transparent',
@@ -374,7 +433,6 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
             )
           })}
 
-          {/* Guest sign in prompt */}
           {isGuest && (
             <div style={{ margin: '14px 4px 0', padding: '14px', borderRadius: '12px', background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.15)' }}>
               <div style={{ fontSize: '12px', color: MUTED_COLOR, marginBottom: '8px', lineHeight: 1.5 }}>
@@ -390,10 +448,10 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
 
         {/* ── Logout ── */}
         {!isGuest && (
-          <div style={{ borderTop: `1px solid ${SIDEBAR_BORDER}`, padding: '10px 12px', flexShrink: 0 }}>
+          <div style={{ borderTop: `1px solid ${SIDEBAR_BORDER}`, padding: '10px 10px', flexShrink: 0 }}>
             <button
               onClick={handleLogout}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '11px', fontSize: '14px', fontWeight: 600, color: '#F87171', cursor: 'pointer', background: 'transparent', border: 'none', width: '100%', fontFamily: 'inherit', transition: 'background .15s' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '11px', fontSize: '13px', fontWeight: 600, color: '#F87171', cursor: 'pointer', background: 'transparent', border: 'none', width: '100%', fontFamily: 'inherit', transition: 'background .15s' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
@@ -402,7 +460,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
                 <polyline points="16 17 21 12 16 7"/>
                 <line x1="21" y1="12" x2="9" y2="12"/>
               </svg>
-              Logout
+              {deviceType !== 'tablet' && 'Logout'}
             </button>
           </div>
         )}
@@ -415,28 +473,48 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
 
         {/* ── Top Bar ── */}
         <header style={{
-          height: '68px', flexShrink: 0,
+          height: deviceType === 'phone' ? '60px' : '68px',
+          flexShrink: 0,
           background: 'rgba(248,250,252,0.85)',
           backdropFilter: 'blur(10px)',
           borderBottom: '1px solid #E2E8F0',
-          display: 'flex', alignItems: 'center', gap: '14px', padding: '0 24px',
+          display: 'flex', alignItems: 'center',
+          gap: deviceType === 'phone' ? '10px' : '14px',
+          padding: deviceType === 'phone' ? '0 16px' : '0 24px',
           position: 'sticky', top: 0, zIndex: 20,
         }}>
 
-          {/* Sidebar toggle */}
-          <button
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#64748B', cursor: 'pointer', flexShrink: 0 }}
-            onClick={() => { if (window.innerWidth >= 1024) setSidebarOpen(!sidebarOpen); else setMobileOpen(!mobileOpen) }}
-          >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-          </button>
+          {/* Sidebar toggle — only on phone */}
+          {showSidebarToggle && (
+            <button
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#64748B', cursor: 'pointer', flexShrink: 0 }}
+              onClick={() => setMobileOpen(!mobileOpen)}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+            </button>
+          )}
 
-          {/* Search */}
-          <div style={{ position: 'relative', flex: 1, maxWidth: '480px' }}>
+          {/* Search — full width on tablet */}
+          <div style={{
+            position: 'relative',
+            flex: 1,
+            maxWidth: deviceType === 'tablet' ? '100%' : '480px',
+          }}>
             <svg style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', flexShrink: 0 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input
-              placeholder="Search lectures, sheets, quizzes..."
-              style={{ width: '100%', height: '40px', borderRadius: '10px', border: '1px solid #E2E8F0', background: '#fff', padding: '0 14px 0 38px', fontFamily: 'inherit', fontSize: '14px', color: '#0F172A', outline: 'none' }}
+              placeholder={deviceType === 'tablet' ? 'Search...' : 'Search lectures, sheets, quizzes...'}
+              style={{
+                width: '100%',
+                height: deviceType === 'phone' ? '38px' : '42px',
+                borderRadius: '10px',
+                border: '1px solid #E2E8F0',
+                background: '#fff',
+                padding: '0 14px 0 38px',
+                fontFamily: 'inherit',
+                fontSize: deviceType === 'phone' ? '13px' : '14px',
+                color: '#0F172A',
+                outline: 'none',
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   if (isGuest) { setGuestToast(true); return }
@@ -447,11 +525,11 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
             />
           </div>
 
-          <div style={{ flex: 1 }} />
+          <div style={{ flex: deviceType === 'tablet' ? 0 : 1 }} />
 
           {isGuest ? (
-            <Link href="/register" prefetch={false} style={{ display: 'flex', alignItems: 'center', height: '40px', padding: '0 18px', borderRadius: '10px', background: '#2563EB', color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
-              Sign Up Free
+            <Link href="/register" prefetch={false} style={{ display: 'flex', alignItems: 'center', height: '40px', padding: '0 14px', borderRadius: '10px', background: '#2563EB', color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}>
+              {deviceType === 'phone' ? 'Sign Up' : 'Sign Up Free'}
             </Link>
           ) : (
             <>
@@ -474,13 +552,8 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
 
                 {profileOpen && (
                   <>
-                    {/* Backdrop */}
                     <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setProfileOpen(false)} />
-
-                    {/* Dropdown */}
                     <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50, width: '240px', background: '#fff', borderRadius: '16px', border: '1px solid #E2E8F0', boxShadow: '0 8px 30px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
-
-                      {/* User info */}
                       <div style={{ padding: '16px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'linear-gradient(140deg, rgb(91, 140, 255), rgb(47, 107, 255))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="8.6" r="3.9"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0z"/></svg>
@@ -490,8 +563,6 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
                           <div style={{ fontSize: '12px', color: '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>{user?.email ?? ''}</div>
                         </div>
                       </div>
-
-                      {/* Menu items */}
                       <div style={{ padding: '8px' }}>
                         <Link href="/profile" prefetch={false} onClick={() => setProfileOpen(false)}
                           style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, color: '#1E293B', textDecoration: 'none', transition: 'background 0.15s' }}
@@ -501,16 +572,6 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8.6" r="3.9"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0z"/></svg>
                           My Profile
                         </Link>
-
-
-
-
-
-
-
-
-
-
                         <Link href="/help" prefetch={false} onClick={() => setProfileOpen(false)}
                           style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, color: '#1E293B', textDecoration: 'none', transition: 'background 0.15s' }}
                           onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
@@ -520,8 +581,6 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
                           Help Center
                         </Link>
                       </div>
-
-                      {/* Logout */}
                       <div style={{ padding: '8px', borderTop: '1px solid #F1F5F9' }}>
                         <button onClick={() => { setProfileOpen(false); handleLogout() }}
                           style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, color: '#EF4444', cursor: 'pointer', background: 'transparent', border: 'none', width: '100%', fontFamily: 'inherit', transition: 'background 0.15s' }}
@@ -532,7 +591,6 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
                           Logout
                         </button>
                       </div>
-
                     </div>
                   </>
                 )}
@@ -546,38 +604,44 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           {children}
         </main>
 
-        {/* ── Mobile bottom nav ── */}
-        <nav className="lg:hidden flex-shrink-0 border-t flex items-center justify-around px-2 py-1"
-          style={{ background: '#fff', borderColor: '#E2E8F0' }}>
-          {[
-            { label: 'Home',      href: '/home' },
-            { label: 'Explore',   href: '/explore' },
-            { label: 'Bookmarks', href: '/bookmarks' },
-            { label: 'Alerts',    href: '/notifications' },
-          ].map((item) => {
-            const isLocked = isGuest && GUEST_LOCKED_ROUTES.includes(item.href)
-            if (isLocked) {
+        {/* ── Bottom nav — PHONE ONLY ── */}
+        {showBottomNav && (
+          <nav style={{
+            flexShrink: 0,
+            borderTop: '1px solid #E2E8F0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-around',
+            padding: '4px 8px',
+            background: '#fff',
+            paddingBottom: 'env(safe-area-inset-bottom, 4px)',
+          }}>
+            {[
+              { label: 'Home',      href: '/home' },
+              { label: 'Explore',   href: '/explore' },
+              { label: 'Bookmarks', href: '/bookmarks' },
+              { label: 'Alerts',    href: '/notifications' },
+            ].map((item) => {
+              const isLocked = isGuest && GUEST_LOCKED_ROUTES.includes(item.href)
+              if (isLocked) {
+                return (
+                  <button key={item.href} onClick={handleLockedClick}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: '6px 12px', borderRadius: '8px', fontSize: '10px', fontWeight: 500, color: '#CBD5E1', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {item.label}
+                  </button>
+                )
+              }
+              const active = pathname.startsWith(item.href)
               return (
-                <button key={item.href} onClick={handleLockedClick}
-                  className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] font-medium"
-                  style={{ color: '#CBD5E1' }}>
+                <Link key={item.href} href={item.href} prefetch={false}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: '6px 12px', borderRadius: '8px', fontSize: '10px', fontWeight: 500, color: active ? '#2563EB' : '#94A3B8', textDecoration: 'none' }}>
                   {item.label}
-                </button>
+                </Link>
               )
-            }
-            const active = pathname.startsWith(item.href)
-            return (
-              <Link key={item.href} href={item.href} prefetch={false}
-                className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] font-medium"
-                style={{ color: active ? '#2563EB' : '#94A3B8' }}>
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
+            })}
+          </nav>
+        )}
       </div>
     </div>
   )
 }
-
-

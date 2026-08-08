@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { QuizQuestion } from '@/types/database'
 import { createClient } from '@/lib/supabase/client'
@@ -19,7 +19,7 @@ const OPTIONS = ['A', 'B', 'C', 'D', 'E'] as const
 
 export default function QuizViewer({ questions, userName, lectureId, initialIndex, onIndexChange, onStatsChange }: QuizViewerProps) {
   const { user } = useUserStore()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const [currentIndex, setCurrentIndex] = useState(initialIndex ?? 0)
   const [answers, setAnswers] = useState<Record<string, string>>({})

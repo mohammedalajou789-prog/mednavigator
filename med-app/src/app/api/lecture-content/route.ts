@@ -14,9 +14,9 @@ export async function GET(req: NextRequest) {
 
   const supabase = await createServerClient()
 
-  // ── Auth + Profile in ONE parallel round trip ──────────────────────────
-  // FIX 7: Previously auth.getUser() then users.select() were sequential.
-  // Now both run together, then checkUserAccess uses the resolved userId.
+  // ── Auth then Profile — sequential by necessity ──────────────────────────
+  // auth.getUser() runs first. Profile lookup uses user.id from that result.
+  // Cannot be parallelized — profile query requires user.id from auth call.
   // ────────────────────────────────────────────────────────────────────────
   const { data: { user } } = await supabase.auth.getUser()
 

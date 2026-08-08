@@ -12,6 +12,7 @@ import PreviousYearsViewer from '@/components/student/PreviousYearsViewer'
 import LockedContentCard from '@/components/student/LockedContentCard'
 import LectureContentSearch from '@/components/student/LectureContentSearch'
 import { useQuery } from '@tanstack/react-query'
+import type { Flashcard, QuizQuestion, PreviousYearQuestion } from '@/types/database'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -43,35 +44,8 @@ interface Summary {
   updated_at: string | null
 }
 
-interface Flashcard {
-  id: string
-  front_text: string
-  back_text: string
-  tags: string[] | null
-}
 
-interface QuizQuestion {
-  id: string
-  question: string
-  option_a: string | null
-  option_b: string | null
-  option_c: string | null
-  option_d: string | null
-  option_e: string | null
-  correct_answer: string | null
-  explanation: string | null
-  tags: string[] | null
-}
 
-interface PreviousYearQuestion {
-  id: string
-  question: string
-  options: unknown
-  correct_answer: string | null
-  explanation: string | null
-  exam_year: number | null
-  exam_type: string | null
-}
 
 interface Video {
   id: string
@@ -820,7 +794,7 @@ export default function LectureHub({
               )}
               {activeTab === 'flashcards' && flashcards.length > 0 && (
                 <FlashcardsViewer
-                  flashcards={flashcards as any}
+                  flashcards={flashcards}
                   userName={displayName}
                   initialIndex={currentFlashcardIndex}
                   onIndexChange={handleFlashcardIndexChange}
@@ -829,7 +803,7 @@ export default function LectureHub({
               )}
               {activeTab === 'quiz' && quizQuestions.length > 0 && (
                 <QuizViewer
-                  questions={quizQuestions as any}
+                  questions={quizQuestions}
                   lectureId={lecture.id}
                   userName={displayName}
                   initialIndex={currentQuizIndex}
@@ -839,7 +813,7 @@ export default function LectureHub({
               )}
               {activeTab === 'previous_years' && previousYearQuestions.length > 0 && (
                 <PreviousYearsViewer
-                  questions={previousYearQuestions as any}
+                  questions={previousYearQuestions}
                   userName={displayName}
                   initialIndex={currentPyqIndex}
                   onIndexChange={handlePyqIndexChange}

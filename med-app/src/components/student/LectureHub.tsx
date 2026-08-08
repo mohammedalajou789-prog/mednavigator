@@ -249,17 +249,18 @@ export default function LectureHub({
   const supabase = useMemo(() => createClient(), [])
   const { setSidebarOpen } = useUIStore()
 
-  const availableTabs = [
-    hasSheet             && 'sheet',
-    hasSummary           && 'summary',
-    flashcardsCount > 0  && 'flashcards',
-    quizCount > 0        && 'quiz',
-    pyqCount > 0         && 'previous_years',
-  ].filter(Boolean) as string[]
-
-  const allTabs = availableTabs.length > 0
-    ? availableTabs
-    : ['sheet', 'summary', 'flashcards', 'quiz', 'previous_years']
+  const allTabs = useMemo(() => {
+    const available = [
+      hasSheet             && 'sheet',
+      hasSummary           && 'summary',
+      flashcardsCount > 0  && 'flashcards',
+      quizCount > 0        && 'quiz',
+      pyqCount > 0         && 'previous_years',
+    ].filter(Boolean) as string[]
+    return available.length > 0
+      ? available
+      : ['sheet', 'summary', 'flashcards', 'quiz', 'previous_years']
+  }, [hasSheet, hasSummary, flashcardsCount, quizCount, pyqCount])
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [activeSectionId, setActiveSectionId]   = useState<string>('')
@@ -684,7 +685,9 @@ export default function LectureHub({
   function handleTabChange(tab: string) {
     setActiveTab(tab)
     scrollRestoredRef.current = false
-    saveResumeState(tab, sheetScrollRef.current, summaryScrollRef.current, currentFlashcardIndex, currentQuizIndex, currentPyqIndex)
+    const scrollContainer = document.getElementById('lecture-content-scroll')
+    if (scrollContainer) scrollContainer.scrollTop = 0
+    saveResumeState(tab, sheetScrollRef.current, summaryScrollRef.current, flashcardIndexLive.current, quizIndexLive.current, pyqIndexLive.current)
   }
 
   const displayName = userName ?? user?.full_name ?? ''
@@ -843,6 +846,7 @@ export default function LectureHub({
               )}
               {activeTab === 'previous_years' && previousYearQuestions.length > 0 && (
                 <PreviousYearsViewer
+                  key={`pyq-${currentPyqIndex}`}
                   questions={previousYearQuestions as any}
                   userName={displayName}
                   initialIndex={currentPyqIndex}

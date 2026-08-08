@@ -227,8 +227,6 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
 
   // On desktop: sidebar is always in the layout (static, 264px)
   // On phone/tablet: sidebar is a fixed drawer over the content
-  const showDrawerOverlay = !isDesktop && drawerOpen
-  const showBottomNav     = !isDesktop
 
   // ── Sidebar inner content (shared between desktop + drawer) ──────────
   const sidebarContent = (
@@ -635,43 +633,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           {children}
         </main>
 
-        {/* ── Bottom nav — phone + tablet only ── */}
-        {showBottomNav && (
-          <nav style={{
-            flexShrink: 0,
-            borderTop: '1px solid #E2E8F0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-around',
-            padding: '4px 8px',
-            paddingBottom: 'env(safe-area-inset-bottom, 4px)',
-            background: '#fff',
-          }}>
-            {[
-              { label: 'Home',      href: '/home' },
-              { label: 'Explore',   href: '/explore' },
-              { label: 'Bookmarks', href: '/bookmarks' },
-              { label: 'Alerts',    href: '/notifications' },
-            ].map((item) => {
-              const isLocked = isGuest && GUEST_LOCKED_ROUTES.includes(item.href)
-              if (isLocked) {
-                return (
-                  <button key={item.href} onClick={handleLockedClick}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: '6px 12px', borderRadius: '8px', fontSize: '10px', fontWeight: 500, color: '#CBD5E1', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {item.label}
-                  </button>
-                )
-              }
-              const active = pathname.startsWith(item.href)
-              return (
-                <Link key={item.href} href={item.href} prefetch={false}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: '6px 12px', borderRadius: '8px', fontSize: '10px', fontWeight: 500, color: active ? '#2563EB' : '#94A3B8', textDecoration: 'none' }}>
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-        )}
+        
       </div>
     </div>
   )

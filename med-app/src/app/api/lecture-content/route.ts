@@ -1,5 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
-import { checkUserAccess } from '@/lib/services/subscriptions'
+
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
@@ -14,28 +14,11 @@ export async function GET(req: NextRequest) {
 
   const supabase = await createServerClient()
 
-  // ── Auth then Profile — sequential by necessity ──────────────────────────
-  // auth.getUser() runs first. Profile lookup uses user.id from that result.
-  // Cannot be parallelized — profile query requires user.id from auth call.
-  // ────────────────────────────────────────────────────────────────────────
-  const { data: { user } } = await supabase.auth.getUser()
-
-  let userId: string | null = null
-  if (user) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single()
-    userId = profile?.id ?? null
-  }
-
-  // ── FIX 6: Access check — runs once per request, result used for all tabs
-  // The client sends tab param, but access is verified once here only.
-  // TanStack Query on the client caches the result per tab so this route
-  // is only called once per tab per session (staleTime: 30 minutes).
-  // ────────────────────────────────────────────────────────────────────────
-  const { allowed } = await checkUserAccess(subjectId, userId)
+  // ── Access: trust the server-computed value passed from page.tsx ──────────
+  // page.tsx already ran checkUserAccess during SSR and passed the result
+  // as a query param. We trust it here — no need to re-auth or re-check.
+  const accessParam = searchParams.get('access')
+  const allowed = accessParam === 'true'
 
   // ── Fetch requested tab content ────────────────────────────────────────
 

@@ -219,10 +219,10 @@ export function extractToc(content: string): TocSection[] {
 
 // ── Content fetcher ────────────────────────────────────────────────────────
 
-async function fetchTabContent(lectureId: string, subjectId: string, tab: string) {
+async function fetchTabContent(lectureId: string, subjectId: string, tab: string, accessAllowed: boolean) {
   const res = await fetch(
-    `/api/lecture-content?lectureId=${lectureId}&subjectId=${subjectId}&tab=${tab}`,
-    { cache: 'no-store' }
+    `/api/lecture-content?lectureId=${lectureId}&subjectId=${subjectId}&tab=${tab}&access=${accessAllowed}`,
+    { cache: 'default' }
   )
   if (!res.ok) throw new Error('Failed to fetch content')
   return res.json()
@@ -308,7 +308,7 @@ export default function LectureHub({
   // ── Lazy content fetching ──────────────────────────────────────────────
   const { data: sheetPayload,     isLoading: sheetLoading }     = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'sheet'],
-    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'sheet'),
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'sheet', accessAllowed),
     enabled:  activeTab === 'sheet',
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: false,
@@ -317,7 +317,7 @@ export default function LectureHub({
 
   const { data: summaryPayload,   isLoading: summaryLoading }   = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'summary'],
-    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'summary'),
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'summary', accessAllowed),
     enabled:  activeTab === 'summary',
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: false,
@@ -326,7 +326,7 @@ export default function LectureHub({
 
   const { data: flashcardsPayload, isLoading: flashcardsLoading } = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'flashcards'],
-    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'flashcards'),
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'flashcards', accessAllowed),
     enabled:  activeTab === 'flashcards',
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: false,
@@ -335,7 +335,7 @@ export default function LectureHub({
 
   const { data: quizPayload,      isLoading: quizLoading }      = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'quiz'],
-    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'quiz'),
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'quiz', accessAllowed),
     enabled:  activeTab === 'quiz',
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: false,
@@ -344,7 +344,7 @@ export default function LectureHub({
 
   const { data: pyqPayload,       isLoading: pyqLoading }       = useQuery({
     queryKey: ['tab-content', lecture.id, subject.id, 'previous_years'],
-    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'previous_years'),
+    queryFn:  () => fetchTabContent(lecture.id, subject.id, 'previous_years', accessAllowed),
     enabled:  activeTab === 'previous_years',
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: false,
@@ -430,7 +430,7 @@ export default function LectureHub({
       } | null
     },
     enabled: !!user?.id,
-    staleTime: 0,
+    staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
   })
@@ -1128,7 +1128,7 @@ function StatPill({ label, value, color }: { label: string; value: number; color
 
 function NotesPanel({ lectureId }: { lectureId: string }) {
   const { user }   = useUserStore()
-  const supabase   = createClient()
+  const supabase   = useMemo(() => createClient(), [])
   const [note, setNote]       = useState('')
   const [saved, setSaved]     = useState(false)
   const [loading, setLoading] = useState(true)

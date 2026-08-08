@@ -110,12 +110,11 @@ export default function ChapterProgressClient({
             <h1 className="ch-title" style={{ margin: 0, lineHeight: 1.08, fontWeight: 800, letterSpacing: '-0.03em', color: 'rgb(21, 32, 58)' }}>
               {groupTitle}
             </h1>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12, fontSize: 13, fontWeight: 600, color: 'rgb(136, 146, 168)' }}>
-              <span>{totalLectures} lecture{totalLectures !== 1 ? 's' : ''}</span>
-              <span>·</span>
-              <span>{reviewedCount} of {totalLectures} reviewed</span>
-              {totalFlash > 0 && <><span>·</span><span>{totalFlash} flashcards</span></>}
-              {totalQuiz > 0  && <><span>·</span><span>{totalQuiz} questions</span></>}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 0', marginTop: 12, fontSize: 13, fontWeight: 600, color: 'rgb(136, 146, 168)' }}>
+              <span style={{ marginRight: 8 }}>{totalLectures} lecture{totalLectures !== 1 ? 's' : ''}</span>
+              <span style={{ marginRight: 8 }}>· {reviewedCount} of {totalLectures} reviewed</span>
+              {totalFlash > 0 && <span style={{ marginRight: 8 }}>· {totalFlash} flashcards</span>}
+              {totalQuiz > 0  && <span style={{ marginRight: 8 }}>· {totalQuiz} questions</span>}
             </div>
           </div>
 
@@ -213,9 +212,11 @@ export default function ChapterProgressClient({
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'rgb(21, 32, 58)', lineHeight: 1.3 }}>
                     {lecture.title}
                   </div>
-                  {metaText && (
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(154, 164, 188)', marginTop: 3 }}>
-                      {metaText}
+                  {metaParts.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 0', fontSize: 12, fontWeight: 600, color: 'rgb(154, 164, 188)', marginTop: 3 }}>
+                      {metaParts.map((part, i) => (
+                        <span key={i} style={{ marginRight: 6 }}>{i > 0 ? '· ' : ''}{part}</span>
+                      ))}
                     </div>
                   )}
                 </div>

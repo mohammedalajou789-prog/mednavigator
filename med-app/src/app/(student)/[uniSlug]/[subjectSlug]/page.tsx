@@ -158,9 +158,9 @@ export default async function SubjectPage({ params }: PageProps) {
 
         {/* Breadcrumb */}
         <nav style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, fontWeight: 600, marginBottom: 18, flexWrap: 'wrap' }}>
-          <Link href="/home" style={{ color: 'rgb(107, 118, 144)', textDecoration: 'none' }}>Home</Link>
+          <Link prefetch={false} href="/home" style={{ color: 'rgb(107, 118, 144)', textDecoration: 'none' }}>Home</Link>
           <span style={{ color: 'rgb(194, 202, 219)' }}>/</span>
-          <Link href={`/${uniSlug}`} style={{ color: 'rgb(107, 118, 144)', textDecoration: 'none' }}>{university.name}</Link>
+          <Link prefetch={false} href={`/${uniSlug}`} style={{ color: 'rgb(107, 118, 144)', textDecoration: 'none' }}>{university.name}</Link>
           <span style={{ color: 'rgb(194, 202, 219)' }}>/</span>
           <span style={{ color: 'rgb(21, 32, 58)' }}>{subject.name}</span>
         </nav>
@@ -280,7 +280,7 @@ export default async function SubjectPage({ params }: PageProps) {
                 </div>
                 <div style={{ fontSize: 11, color: 'rgb(148, 163, 184)', fontWeight: 600, marginTop: 3 }}>Mastered</div>
               </div>
-              <Link
+              <Link prefetch={false}
                 className="continue-resume"
                 href={`/${uniSlug}/${subjectSlug}/${(lastAccessedLecture as any).slug ?? lastAccessedLecture.id}`}
                 style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 8, height: 42, padding: '0 18px', border: 'none', borderRadius: 11, background: 'rgb(37, 99, 235)', color: 'rgb(255, 255, 255)', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }}>
@@ -363,7 +363,7 @@ export default async function SubjectPage({ params }: PageProps) {
             )}
 
             {/* Previous Years */}
-            <Link href={`/${uniSlug}/${subjectSlug}/previous-years`} style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
+            <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/previous-years`} style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 14, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '14px 16px' }}>
                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, background: 'rgb(238, 243, 255)', color: 'rgb(47, 107, 255)', flexShrink: 0 }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -379,7 +379,7 @@ export default async function SubjectPage({ params }: PageProps) {
             </Link>
 
             {/* Quiz Bank */}
-            <Link href={`/${uniSlug}/${subjectSlug}/quiz-bank`} style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
+            <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/quiz-bank`} style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 14, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '14px 16px' }}>
                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, background: 'rgb(238, 246, 238)', color: 'rgb(23, 166, 107)', flexShrink: 0 }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -395,7 +395,7 @@ export default async function SubjectPage({ params }: PageProps) {
             </Link>
 
             {/* Flashcards Bank */}
-            <Link href={`/${uniSlug}/${subjectSlug}/flashcards-bank`} style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
+            <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/flashcards-bank`} style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 14, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '14px 16px' }}>
                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, background: 'rgb(255, 246, 224)', color: 'rgb(201, 148, 0)', flexShrink: 0 }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -428,7 +428,7 @@ export default async function SubjectPage({ params }: PageProps) {
                 {clinicalModules.map(mod => (
                   <div key={mod.id}>
                     <div style={{ height: 1, background: 'rgb(231, 236, 246)', margin: '0 16px' }} />
-                    <Link href={`/${uniSlug}/${subjectSlug}/clinical/${mod.id}`} style={{ padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit' }}>
+                    <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/clinical/${mod.id}`} style={{ padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit' }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgb(23, 166, 107)' }} />
                       <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'rgb(85, 97, 125)' }}>{moduleLabels[mod.module_type] ?? mod.module_type}</span>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>

@@ -448,7 +448,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           DESKTOP SIDEBAR — static, always in layout flow
           Only rendered on >= 1024px
       ════════════════════════════════════════════════════════ */}
-      {isDesktop && (
+      {isDesktop && sidebarOpen && (
         <aside style={{
           width: `${SIDEBAR_WIDTH_DESKTOP}px`,
           flexShrink: 0,
@@ -458,6 +458,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           borderRight: `1px solid ${SIDEBAR_BORDER}`,
           height: '100dvh',
           overflow: 'hidden',
+          transition: 'width 0.2s ease',
         }}>
           {sidebarContent}
         </aside>
@@ -521,20 +522,24 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           position: 'sticky', top: 0, zIndex: 20,
         }}>
 
-          {/* Hamburger — phone + tablet only */}
-          {!isDesktop && (
-            <button
-              onClick={() => setDrawerOpen(v => !v)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#64748B', cursor: 'pointer', flexShrink: 0 }}
-              aria-label="Open menu"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="6"  x2="21" y2="6"/>
-                <line x1="3" y1="12" x2="21" y2="12"/>
-                <line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
-            </button>
-          )}
+          {/* Sidebar toggle — all screen sizes */}
+          <button
+            onClick={() => {
+              if (isDesktop) {
+                setSidebarOpen(!sidebarOpen)
+              } else {
+                setDrawerOpen(v => !v)
+              }
+            }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#64748B', cursor: 'pointer', flexShrink: 0 }}
+            aria-label="Toggle menu"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6"  x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
 
           {/* Search bar */}
           <div style={{ position: 'relative', flex: 1, maxWidth: isDesktop ? '480px' : '100%' }}>

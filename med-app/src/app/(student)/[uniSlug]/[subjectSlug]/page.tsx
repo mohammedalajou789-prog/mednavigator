@@ -124,7 +124,8 @@ export default async function SubjectPage({ params }: PageProps) {
         .subject-main { padding: 20px 16px 80px; }
         .hero-section { padding: 20px 18px; }
         .hero-inner { flex-direction: column; gap: 20px; }
-        .hero-ring { display: flex; justify-content: center; }
+        .hero-ring { display: none; }
+        .hero-progress-bar { display: block; }
         .hero-title { font-size: 28px; }
         .continue-inner { flex-wrap: wrap; gap: 14px; padding: 16px; }
         .continue-stars { display: none; }
@@ -145,6 +146,7 @@ export default async function SubjectPage({ params }: PageProps) {
           .hero-section { padding: 30px 34px; }
           .hero-inner { flex-direction: row; gap: 30px; }
           .hero-ring { display: flex; }
+          .hero-progress-bar { display: none; }
           .hero-title { font-size: 42px; }
           .subject-grid { grid-template-columns: 1fr 348px; gap: 34px; }
           .chapter-card { padding: 22px 24px; gap: 16px; }
@@ -222,7 +224,7 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Progress ring */}
+            {/* Progress ring — desktop only */}
             <div className="hero-ring" style={{ flexShrink: 0, flexDirection: 'column', alignItems: 'center' }}>
               <div style={{ position: 'relative', width: 120, height: 120 }}>
                 <svg width="120" height="120" viewBox="0 0 148 148" style={{ transform: 'rotate(-90deg)' }}>
@@ -240,6 +242,18 @@ export default async function SubjectPage({ params }: PageProps) {
                   <div style={{ fontSize: 10, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 3, textAlign: 'center' }}>{Math.floor(totalStars / 3)} of {totalLectures}</div>
                 </div>
               </div>
+            </div>
+
+            {/* Progress bar — mobile only */}
+            <div className="hero-progress-bar" style={{ marginTop: 16, width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'rgb(136, 146, 168)' }}>Overall Progress</span>
+                <span style={{ fontSize: 20, fontWeight: 800, color: 'rgb(36, 86, 214)', letterSpacing: '-0.02em' }}>{progressPercent}%</span>
+              </div>
+              <div style={{ height: 8, borderRadius: 999, background: '#E1E9FA', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${progressPercent}%`, borderRadius: 999, background: 'linear-gradient(90deg, #3B79FF, #2456D6)', transition: 'width 1.1s cubic-bezier(0.4,0,0.2,1)' }} />
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(136, 146, 168)', marginTop: 6 }}>{Math.floor(totalStars / 3)} of {totalLectures} lectures mastered</div>
             </div>
           </div>
         </section>

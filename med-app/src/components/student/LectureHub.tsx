@@ -574,7 +574,11 @@ export default function LectureHub({
 
   // ── Save resume state (tab + scroll) to dedicated table ───────────────
   function saveResumeState(tab: string, scrollPosition: number) {
-    if (!user) return
+    console.log('[ResumeState] saveResumeState called', { tab, scrollPosition, user: user?.id })
+    if (!user) {
+      console.log('[ResumeState] SKIPPED — no user')
+      return
+    }
     ;(supabase as any).from('lecture_resume_state').upsert({
       user_id:         user.id,
       lecture_id:      lecture.id,
@@ -588,6 +592,8 @@ export default function LectureHub({
     setActiveTab(tab)
     scrollRestoredRef.current = false
     savedScrollPositionRef.current = 0
+    // Debug: log user state
+    console.log('[ResumeState] handleTabChange', { tab, userId: user?.id, user })
     // Save the new tab immediately, scroll resets to 0
     saveResumeState(tab, 0)
   }

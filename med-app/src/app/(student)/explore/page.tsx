@@ -17,7 +17,7 @@ export default async function ExplorePage() {
     { data: subjectCounts },
   ] = await Promise.all([
     supabase.from('universities').select('id, name, logo_url, slug').eq('is_active', true).order('name'),
-    supabase.from('subjects').select('university_id').eq('is_published', true),
+    supabase.from('subjects').select('university_id, id', { count: 'exact' }).eq('is_published', true),
   ])
 
   const countMap: Record<string, number> = {}
@@ -52,7 +52,7 @@ export default async function ExplorePage() {
             {unis.map((uni) => {
               const subjectCount = countMap[uni.id] ?? 0
               return (
-                <Link key={uni.id} href={`/${uni.slug ?? uni.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+                <Link key={uni.id} href={`/${uni.slug ?? uni.id}`} prefetch={false} style={{ textDecoration: 'none', display: 'block' }}>
                   <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, boxShadow: 'var(--shadow)', overflow: 'hidden', cursor: 'pointer' }}>
                     <div style={{ padding: '22px 22px 18px', display: 'flex', alignItems: 'center', gap: 16 }}>
                       {uni.logo_url ? (

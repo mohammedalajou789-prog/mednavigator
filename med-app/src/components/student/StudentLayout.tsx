@@ -114,7 +114,7 @@ const ActiveBar = () => (
 )
 
 // ── isDesktop: >= 1024px gets the permanent sidebar ────────────────────────
-function isDesktopWidth(w: number) { return w >= 1024 }
+function isDesktopWidth(w: number) { return w >= 1280 }
 
 export default function StudentLayout({ children, universities = [], myUniSlug }: StudentLayoutProps) {
   const pathname = usePathname()

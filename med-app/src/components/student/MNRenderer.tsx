@@ -573,18 +573,6 @@ function renderBlock(
             </div>
           </div>
 
-          {imageUrl && (
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', padding: '4px 20px 16px' }}>
-              <a href={imageUrl} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '20px', border: '1px solid #d7dde8', background: '#fff', color: '#2c3547', fontSize: '13px', fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>
-                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                Zoom
-              </a>
-              <a href={imageUrl} download
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '20px', border: '1px solid #d7dde8', background: '#fff', color: '#2c3547', fontSize: '13px', fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>
-                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Download
-              </a>
             </div>
           )}
 

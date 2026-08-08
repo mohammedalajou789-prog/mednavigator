@@ -267,6 +267,9 @@ export default function LectureHub({
   const [progressPercent, setProgressPercent]   = useState(0)
   const [isCompleted, setIsCompleted]           = useState(false)
   const [isBookmarked, setIsBookmarked]         = useState(false)
+  const [tabRestored, setTabRestored]           = useState(false)
+  const scrollRestoredRef                       = useRef(false)
+  const savedScrollPositionRef                  = useRef<number>(0)
 
   // ── FIX 1: Throttle refs for progress DB writes ────────────────────────
   const progressSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -379,7 +382,7 @@ export default function LectureHub({
     queryFn: async () => {
       const { data } = await supabase
         .from('user_progress')
-        .select('content_type, progress_percentage, completed')
+        .select('content_type, progress_percentage, completed, last_position, last_accessed_at')
         .eq('user_id', user!.id)
         .eq('lecture_id', lecture.id)
       return data ?? []
@@ -389,6 +392,29 @@ export default function LectureHub({
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   })
+
+  // ── Restore last tab and scroll position on first load ─────────────────
+  useEffect(() => {
+    if (!progressData || tabRestored) return
+    const rows = progressData as { content_type: string; progress_percentage: number; completed: boolean; last_position?: number; last_accessed_at?: string }[]
+    if (rows.length === 0) { setTabRestored(true); return }
+
+    // Find the tab with the most recent access
+    const sorted = [...rows].sort((a, b) => {
+      const aTime = a.last_accessed_at ? new Date(a.last_accessed_at).getTime() : 0
+      const bTime = b.last_accessed_at ? new Date(b.last_accessed_at).getTime() : 0
+      return bTime - aTime
+    })
+    const lastRow = sorted[0]
+    const lastTab = lastRow?.content_type
+
+    if (lastTab && allTabs.includes(lastTab)) {
+      setActiveTab(lastTab)
+      // Save scroll position to restore after content loads
+      savedScrollPositionRef.current = lastRow?.last_position ?? 0
+    }
+    setTabRestored(true)
+  }, [progressData, tabRestored, allTabs])
 
   // Derive current tab's progress from the fetched array
   const currentTabProgress = useMemo(() => {
@@ -418,7 +444,20 @@ export default function LectureHub({
   useEffect(() => {
     setProgressPercent(currentTabProgress?.progress_percentage ?? 0)
     setIsCompleted(currentTabProgress?.completed ?? false)
-  }, [currentTabProgress])
+
+    // Restore scroll position after content loads (only once per session)
+    if (!scrollRestoredRef.current && savedScrollPositionRef.current > 0 && (activeTab === 'sheet' || activeTab === 'summary')) {
+      const scrollContainer = document.getElementById('lecture-content-scroll')
+      if (scrollContainer) {
+        scrollRestoredRef.current = true
+        // Small delay to ensure content is rendered
+        setTimeout(() => {
+          const target = savedScrollPositionRef.current
+          scrollContainer.scrollTo({ top: target, behavior: 'smooth' })
+        }, 400)
+      }
+    }
+  }, [currentTabProgress, activeTab])
 
   useEffect(() => {
     setIsBookmarked(!!bookmarkData)
@@ -505,16 +544,38 @@ export default function LectureHub({
     if (progressSaveTimer.current) clearTimeout(progressSaveTimer.current)
     progressSaveTimer.current = setTimeout(() => {
       lastSavedPct.current = pct
+      // Save actual scroll position in pixels for restoration
+      const scrollContainer = document.getElementById('lecture-content-scroll')
+      const scrollPosition  = scrollContainer?.scrollTop ?? 0
       supabase.from('user_progress').upsert({
         user_id:             user.id,
         lecture_id:          lecture.id,
         content_type:        activeTab,
         progress_percentage: pct,
         completed:           pct >= 100,
+        last_position:       scrollPosition,
         last_accessed_at:    new Date().toISOString(),
         updated_at:          new Date().toISOString(),
       }, { onConflict: 'user_id,lecture_id,content_type' })
     }, 3000)
+  }
+
+  // ── Save tab switch to DB so we can restore it on next visit ──────────
+  function handleTabChange(tab: string) {
+    setActiveTab(tab)
+    scrollRestoredRef.current = false
+    savedScrollPositionRef.current = 0
+    if (!user) return
+    // Save the newly active tab with current timestamp
+    supabase.from('user_progress').upsert({
+      user_id:             user.id,
+      lecture_id:          lecture.id,
+      content_type:        tab,
+      progress_percentage: 0,
+      completed:           false,
+      last_accessed_at:    new Date().toISOString(),
+      updated_at:          new Date().toISOString(),
+    }, { onConflict: 'user_id,lecture_id,content_type' })
   }
 
   const displayName = userName ?? user?.full_name ?? ''
@@ -552,7 +613,7 @@ export default function LectureHub({
             return (
               <button
                 key={tabId}
-                onClick={() => setActiveTab(tabId)}
+                onClick={() => handleTabChange(tabId)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '6px',
                   padding: '7px 14px', borderRadius: '20px', border: 'none',
@@ -727,7 +788,7 @@ export default function LectureHub({
                 const cfg      = TAB_CONFIG[tabId]
                 const isActive = activeTab === tabId
                 return (
-                  <button key={tabId} onClick={() => setActiveTab(tabId)} title={cfg.label}
+                  <button key={tabId} onClick={() => handleTabChange(tabId)} title={cfg.label}
                     style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', padding: sidebarCollapsed ? '10px' : '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer', background: isActive ? '#EEF3FF' : 'transparent', color: isActive ? '#2563EB' : '#6B7280', transition: 'all 0.15s ease', textAlign: 'left' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: sidebarCollapsed ? 0 : '10px' }}>

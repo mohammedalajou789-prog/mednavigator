@@ -294,6 +294,10 @@ export default function LectureHub({
   const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0)
   const [currentQuizIndex,      setCurrentQuizIndex]      = useState(0)
   const [currentPyqIndex,       setCurrentPyqIndex]       = useState(0)
+  // ── Live refs — always hold latest index for closures ───────────────────
+  const flashcardIndexLive = useRef<number>(0)
+  const quizIndexLive      = useRef<number>(0)
+  const pyqIndexLive       = useRef<number>(0)
 
   const [flashcardStats, setFlashcardStats] = useState<FlashcardStats>({
     total: flashcardsCount, easy: 0, medium: 0, hard: 0, current: 1, important: 0,
@@ -452,9 +456,9 @@ export default function LectureHub({
       pyqIndexRef.current       = resumeState.pyq_index       ?? 0
 
       // Apply index-based positions immediately
-      if ((resumeState.flashcard_index ?? 0) > 0) setCurrentFlashcardIndex(resumeState.flashcard_index)
-      if ((resumeState.quiz_index      ?? 0) > 0) setCurrentQuizIndex(resumeState.quiz_index)
-      if ((resumeState.pyq_index       ?? 0) > 0) setCurrentPyqIndex(resumeState.pyq_index)
+      if ((resumeState.flashcard_index ?? 0) > 0) { setCurrentFlashcardIndex(resumeState.flashcard_index); flashcardIndexLive.current = resumeState.flashcard_index }
+      if ((resumeState.quiz_index      ?? 0) > 0) { setCurrentQuizIndex(resumeState.quiz_index); quizIndexLive.current = resumeState.quiz_index }
+      if ((resumeState.pyq_index       ?? 0) > 0) { setCurrentPyqIndex(resumeState.pyq_index); pyqIndexLive.current = resumeState.pyq_index }
     }
 
     setResumeReady(true)
@@ -653,9 +657,9 @@ export default function LectureHub({
         activeTab,
         sheetScrollRef.current,
         summaryScrollRef.current,
-        currentFlashcardIndex,
-        currentQuizIndex,
-        currentPyqIndex,
+        flashcardIndexLive.current,
+        quizIndexLive.current,
+        pyqIndexLive.current,
       )
     }, 3000)
   }

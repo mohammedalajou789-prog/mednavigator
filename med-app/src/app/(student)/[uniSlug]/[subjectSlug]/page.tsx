@@ -258,8 +258,8 @@ export default async function SubjectPage({ params }: PageProps) {
           </div>
         </section>
 
-        {/* Continue Learning Banner */}
-        {lastAccessedLecture && (
+        {/* Continue Learning Banner — logged in users only */}
+        {userId && lastAccessedLecture && (
           <div style={{ background: 'linear-gradient(120deg, rgba(37, 99, 235, 0.06), rgb(255, 255, 255) 60%)', border: '1px solid rgb(226, 232, 240)', borderRadius: 16, overflow: 'hidden', marginBottom: 24, boxShadow: 'rgba(15, 23, 42, 0.04) 0px 1px 3px, rgba(15, 23, 42, 0.10) 0px 10px 24px -16px' }}>
             <div className="continue-inner" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <div style={{ width: 46, height: 46, flexShrink: 0, borderRadius: 13, background: 'rgb(37, 99, 235)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'rgba(37, 99, 235, 0.35) 0px 6px 16px' }}>

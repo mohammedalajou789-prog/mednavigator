@@ -127,7 +127,7 @@ export default async function UniversityPage({ params }: PageProps) {
                     const grad = gradients[section.key]
 
                     return (
-                      <Link key={subject.id} href={`/${uniSlug}/${(subject as any).slug ?? subject.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+                      <Link key={subject.id} href={`/${uniSlug}/${(subject as any).slug ?? subject.id}`} prefetch={false} style={{ textDecoration: 'none', display: 'block' }}>
                         <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, boxShadow: 'var(--shadow)', overflow: 'hidden', cursor: 'pointer', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
                           <div style={{ height: 6, background: grad }} />

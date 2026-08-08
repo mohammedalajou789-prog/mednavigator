@@ -1,6 +1,8 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { requireAuth } from '@/lib/services/user'
+import PinSubjectButton from '@/components/student/PinSubjectButton'
 
 interface PageProps {
   params: Promise<{ uniSlug: string }>
@@ -10,6 +12,13 @@ export default async function UniversityPage({ params }: PageProps) {
   const { uniSlug } = await params
 
   const supabase = await createServerClient()
+
+  // Get user (optional — not required to view the page)
+  let userId: string | null = null
+  try {
+    const profile = await requireAuth()
+    userId = profile.id
+  } catch {}
 
   // Single query: fetch university + all its subjects in one round trip
   const { data: university } = await supabase
@@ -34,6 +43,20 @@ export default async function UniversityPage({ params }: PageProps) {
     .single() as any
 
   if (!university) notFound()
+
+  // Fetch pinned subject IDs for this user (parallel, does not block page)
+  const pinnedSet = new Set<string>()
+  if (userId) {
+    const subjectIds = (university.subjects ?? []).map((s: any) => s.id)
+    if (subjectIds.length > 0) {
+      const { data: pinned } = await supabase
+        .from('pinned_subjects')
+        .select('subject_id')
+        .eq('user_id', userId)
+        .in('subject_id', subjectIds)
+      ;(pinned ?? []).forEach((p: any) => pinnedSet.add(p.subject_id))
+    }
+  }
 
   const subjectList = (university.subjects ?? []) as Array<{
     id: string
@@ -159,11 +182,13 @@ export default async function UniversityPage({ params }: PageProps) {
                                   {accessLabel}
                                 </span>
                               </div>
-                              <div style={{ color: 'var(--ink-3)' }}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M12 2l2.4 7.4H22l-6 4.5 2.3 7.1-6.3-4.6L5.7 21 8 13.9 2 9.4h7.6z"/>
-                                </svg>
-                              </div>
+                              {userId && (
+                                <PinSubjectButton
+                                  subjectId={subject.id}
+                                  userId={userId}
+                                  initialPinned={pinnedSet.has(subject.id)}
+                                />
+                              )}
                             </div>
 
                             <h3 style={{ margin: '14px 0 6px', fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--ink)' }}>

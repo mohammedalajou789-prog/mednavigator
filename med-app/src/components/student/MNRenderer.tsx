@@ -573,8 +573,6 @@ function renderBlock(
             </div>
           </div>
 
-            </div>
-          )}
 
           {block.caption && (
             <div style={{ padding: '0 24px 20px', textAlign: 'center' }}>

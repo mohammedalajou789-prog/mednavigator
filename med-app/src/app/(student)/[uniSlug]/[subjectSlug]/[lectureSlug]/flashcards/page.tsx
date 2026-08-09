@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useMemo, useCallback } from 'react'
+import { useRef, useMemo, useCallback, useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUserStore } from '@/stores/userStore'
@@ -12,6 +12,10 @@ function emitSidebar(type: string, data: unknown) {
   window.dispatchEvent(new CustomEvent('lecture-sidebar-update', { detail: { type, data } }))
 }
 
+function getLocalKey(lectureId: string) {
+  return `lecture:${lectureId}:flashcard_index`
+}
+
 export default function FlashcardsPage() {
   const params      = useParams()
   const uniSlug     = params.uniSlug     as string
@@ -20,7 +24,11 @@ export default function FlashcardsPage() {
 
   const { user } = useUserStore()
   const supabase = useMemo(() => createClient(), [])
-  const resumeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dbSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const currentIndexRef = useRef<number>(0)
+
+  // Track whether we have applied the resume index
+  const [resolvedIndex, setResolvedIndex] = useState<number | null>(null)
 
   const { data: meta } = useQuery({
     queryKey: ['flashcards-meta', lectureSlug, subjectSlug],
@@ -65,26 +73,52 @@ export default function FlashcardsPage() {
     refetchOnWindowFocus: false,
   })
 
-  const { data: resumeState } = useQuery({
-    queryKey: ['resume-state-flashcards', user?.id, meta?.lecture?.id],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from('lecture_resume_state')
-        .select('flashcard_index')
-        .eq('user_id', user!.id)
-        .eq('lecture_id', meta!.lecture!.id)
-        .maybeSingle()
-      return data as { flashcard_index: number } | null
-    },
-    enabled: !!user?.id && !!meta?.lecture?.id,
-    staleTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: false,
-  })
+  // Resolve resume index: localStorage first, then DB
+  useEffect(() => {
+    if (!meta?.lecture?.id) return
+    if (resolvedIndex !== null) return
 
-  const saveResumeState = useCallback((index: number) => {
-    if (!user || !meta?.lecture?.id) return
-    if (resumeSaveTimer.current) clearTimeout(resumeSaveTimer.current)
-    resumeSaveTimer.current = setTimeout(async () => {
+    // Step 1: check localStorage immediately
+    const localKey = getLocalKey(meta.lecture.id)
+    const local = localStorage.getItem(localKey)
+    if (local !== null) {
+      const idx = parseInt(local, 10)
+      if (!isNaN(idx) && idx > 0) {
+        setResolvedIndex(idx)
+        currentIndexRef.current = idx
+        return
+      }
+    }
+
+    // Step 2: if no local value, check DB
+    if (!user?.id) { setResolvedIndex(0); return }
+
+    ;(supabase as any)
+      .from('lecture_resume_state')
+      .select('flashcard_index')
+      .eq('user_id', user.id)
+      .eq('lecture_id', meta.lecture.id)
+      .maybeSingle()
+      .then(({ data }: { data: { flashcard_index: number } | null }) => {
+        const idx = data?.flashcard_index ?? 0
+        setResolvedIndex(idx)
+        currentIndexRef.current = idx
+        if (idx > 0) localStorage.setItem(localKey, String(idx))
+      })
+  }, [meta?.lecture?.id, user?.id])
+
+  // Save to localStorage immediately + DB debounced
+  const saveIndex = useCallback((index: number) => {
+    if (!meta?.lecture?.id) return
+    currentIndexRef.current = index
+
+    // Save to localStorage immediately
+    localStorage.setItem(getLocalKey(meta.lecture.id), String(index))
+
+    // Save to DB debounced (2 seconds)
+    if (!user?.id) return
+    if (dbSaveTimer.current) clearTimeout(dbSaveTimer.current)
+    dbSaveTimer.current = setTimeout(async () => {
       await (supabase as any).rpc('save_resume_state', {
         p_user_id:         user.id,
         p_lecture_id:      meta.lecture!.id,
@@ -95,12 +129,29 @@ export default function FlashcardsPage() {
         p_quiz_index:      null,
         p_pyq_index:       null,
       })
-    }, 1500)
-  }, [user, meta?.lecture?.id, supabase])
+    }, 2000)
+  }, [meta?.lecture?.id, user?.id, supabase])
+
+  // Save immediately on page unload
+  useEffect(() => {
+    if (!meta?.lecture?.id || !user?.id) return
+    function handleUnload() {
+      if (dbSaveTimer.current) clearTimeout(dbSaveTimer.current)
+      const body = JSON.stringify({
+        p_user_id:         user!.id,
+        p_lecture_id:      meta!.lecture!.id,
+        p_active_tab:      'flashcards',
+        p_flashcard_index: currentIndexRef.current,
+      })
+      navigator.sendBeacon('/api/save-resume', body)
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    return () => window.removeEventListener('beforeunload', handleUnload)
+  }, [meta?.lecture?.id, user?.id])
 
   const handleIndexChange = useCallback((index: number) => {
-    saveResumeState(index)
-  }, [saveResumeState])
+    saveIndex(index)
+  }, [saveIndex])
 
   const handleStatsChange = useCallback((stats: { total: number; easy: number; medium: number; hard: number; current: number; important: number }) => {
     emitSidebar('flashcardStats', stats)
@@ -115,11 +166,10 @@ export default function FlashcardsPage() {
   }
   const TAB_LABELS: Record<string, string> = { sheet: 'Sheet', summary: 'Summary', flashcards: 'Flashcards', quiz: 'Quiz', 'previous-years': 'Previous Years' }
 
-  const subject      = meta?.subject
-  const flashcards   = flashcardsData ?? []
-  const locked       = !meta?.accessAllowed
-  const displayName  = user?.full_name ?? ''
-  const initialIndex = resumeState?.flashcard_index ?? 0
+  const subject     = meta?.subject
+  const flashcards  = flashcardsData ?? []
+  const locked      = !meta?.accessAllowed
+  const displayName = user?.full_name ?? ''
 
   const ContentSkeleton = () => (
     <div style={{ padding: '24px 0' }}>
@@ -129,6 +179,9 @@ export default function FlashcardsPage() {
       <style>{`@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }`}</style>
     </div>
   )
+
+  // Wait until resolvedIndex is known before rendering viewer
+  const viewerReady = resolvedIndex !== null && flashcards.length > 0 && !flashcardsLoading
 
   return (
     <>
@@ -179,7 +232,7 @@ export default function FlashcardsPage() {
           <ContentSkeleton />
         ) : locked ? (
           <LockedContentCard subjectName={subject?.name ?? ''} />
-        ) : flashcardsLoading ? (
+        ) : flashcardsLoading || resolvedIndex === null ? (
           <ContentSkeleton />
         ) : flashcards.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
@@ -187,9 +240,10 @@ export default function FlashcardsPage() {
           </div>
         ) : (
           <FlashcardsViewer
+            key={`flashcards-${resolvedIndex}`}
             flashcards={flashcards as any}
             userName={displayName}
-            initialIndex={initialIndex}
+            initialIndex={resolvedIndex}
             onIndexChange={handleIndexChange}
             onStatsChange={handleStatsChange}
           />

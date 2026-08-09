@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useMemo, useCallback } from 'react'
+import { useRef, useMemo, useCallback, useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUserStore } from '@/stores/userStore'
@@ -12,6 +12,10 @@ function emitSidebar(type: string, data: unknown) {
   window.dispatchEvent(new CustomEvent('lecture-sidebar-update', { detail: { type, data } }))
 }
 
+function getLocalKey(lectureId: string) {
+  return `lecture:${lectureId}:pyq_index`
+}
+
 export default function PreviousYearsPage() {
   const params      = useParams()
   const uniSlug     = params.uniSlug     as string
@@ -20,7 +24,9 @@ export default function PreviousYearsPage() {
 
   const { user } = useUserStore()
   const supabase = useMemo(() => createClient(), [])
-  const resumeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dbSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const currentIndexRef = useRef<number>(0)
+  const [resolvedIndex, setResolvedIndex] = useState<number | null>(null)
 
   const { data: meta } = useQuery({
     queryKey: ['pyq-meta', lectureSlug, subjectSlug],
@@ -65,43 +71,55 @@ export default function PreviousYearsPage() {
     refetchOnWindowFocus: false,
   })
 
-  const { data: resumeState } = useQuery({
-    queryKey: ['resume-state-pyq', user?.id, meta?.lecture?.id],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from('lecture_resume_state')
-        .select('pyq_index')
-        .eq('user_id', user!.id)
-        .eq('lecture_id', meta!.lecture!.id)
-        .maybeSingle()
-      return data as { pyq_index: number } | null
-    },
-    enabled: !!user?.id && !!meta?.lecture?.id,
-    staleTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: false,
-  })
-
-  const saveResumeState = useCallback((index: number) => {
-    if (!user || !meta?.lecture?.id) return
-    if (resumeSaveTimer.current) clearTimeout(resumeSaveTimer.current)
-    resumeSaveTimer.current = setTimeout(async () => {
-      await (supabase as any).rpc('save_resume_state', {
-        p_user_id:         user.id,
-        p_lecture_id:      meta.lecture!.id,
-        p_active_tab:      'previous-years',
-        p_sheet_scroll:    null,
-        p_summary_scroll:  null,
-        p_flashcard_index: null,
-        p_quiz_index:      null,
-        p_pyq_index:       index,
+  useEffect(() => {
+    if (!meta?.lecture?.id) return
+    if (resolvedIndex !== null) return
+    const localKey = getLocalKey(meta.lecture.id)
+    const local = localStorage.getItem(localKey)
+    if (local !== null) {
+      const idx = parseInt(local, 10)
+      if (!isNaN(idx) && idx > 0) { setResolvedIndex(idx); currentIndexRef.current = idx; return }
+    }
+    if (!user?.id) { setResolvedIndex(0); return }
+    ;(supabase as any)
+      .from('lecture_resume_state').select('pyq_index')
+      .eq('user_id', user.id).eq('lecture_id', meta.lecture.id).maybeSingle()
+      .then(({ data }: { data: { pyq_index: number } | null }) => {
+        const idx = data?.pyq_index ?? 0
+        setResolvedIndex(idx); currentIndexRef.current = idx
+        if (idx > 0) localStorage.setItem(localKey, String(idx))
       })
-    }, 1500)
-  }, [user, meta?.lecture?.id, supabase])
+  }, [meta?.lecture?.id, user?.id])
 
-  const handleIndexChange = useCallback((index: number) => {
-    saveResumeState(index)
-  }, [saveResumeState])
+  const saveIndex = useCallback((index: number) => {
+    if (!meta?.lecture?.id) return
+    currentIndexRef.current = index
+    localStorage.setItem(getLocalKey(meta.lecture.id), String(index))
+    if (!user?.id) return
+    if (dbSaveTimer.current) clearTimeout(dbSaveTimer.current)
+    dbSaveTimer.current = setTimeout(async () => {
+      await (supabase as any).rpc('save_resume_state', {
+        p_user_id: user.id, p_lecture_id: meta.lecture!.id,
+        p_active_tab: 'previous-years', p_sheet_scroll: null, p_summary_scroll: null,
+        p_flashcard_index: null, p_quiz_index: null, p_pyq_index: index,
+      })
+    }, 2000)
+  }, [meta?.lecture?.id, user?.id, supabase])
 
+  useEffect(() => {
+    if (!meta?.lecture?.id || !user?.id) return
+    function handleUnload() {
+      if (dbSaveTimer.current) clearTimeout(dbSaveTimer.current)
+      navigator.sendBeacon('/api/save-resume', JSON.stringify({
+        p_user_id: user!.id, p_lecture_id: meta!.lecture!.id,
+        p_active_tab: 'previous-years', p_pyq_index: currentIndexRef.current,
+      }))
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    return () => window.removeEventListener('beforeunload', handleUnload)
+  }, [meta?.lecture?.id, user?.id])
+
+  const handleIndexChange = useCallback((index: number) => { saveIndex(index) }, [saveIndex])
   const handleStatsChange = useCallback((stats: { total: number; important: number; answered: number }) => {
     emitSidebar('pyqStats', stats)
   }, [])
@@ -115,11 +133,10 @@ export default function PreviousYearsPage() {
   }
   const TAB_LABELS: Record<string, string> = { sheet: 'Sheet', summary: 'Summary', flashcards: 'Flashcards', quiz: 'Quiz', 'previous-years': 'Previous Years' }
 
-  const subject      = meta?.subject
-  const questions    = pyqData ?? []
-  const locked       = !meta?.accessAllowed
-  const displayName  = user?.full_name ?? ''
-  const initialIndex = resumeState?.pyq_index ?? 0
+  const subject     = meta?.subject
+  const questions   = pyqData ?? []
+  const locked      = !meta?.accessAllowed
+  const displayName = user?.full_name ?? ''
 
   const ContentSkeleton = () => (
     <div style={{ padding: '24px 0' }}>
@@ -144,7 +161,6 @@ export default function PreviousYearsPage() {
           )
         })}
       </div>
-
       <div style={{ padding: 'clamp(8px, 2vw, 14px) clamp(12px, 3vw, 26px) 0', background: '#F5F6FA' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#7A8499', fontWeight: 500, marginBottom: '18px' }}>
           <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -173,13 +189,12 @@ export default function PreviousYearsPage() {
           </div>
         </div>
       </div>
-
       <div style={{ padding: '0 clamp(12px, 3vw, 26px) 24px' }}>
         {!meta ? (
           <ContentSkeleton />
         ) : locked ? (
           <LockedContentCard subjectName={subject?.name ?? ''} />
-        ) : pyqLoading ? (
+        ) : pyqLoading || resolvedIndex === null ? (
           <ContentSkeleton />
         ) : questions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
@@ -187,9 +202,10 @@ export default function PreviousYearsPage() {
           </div>
         ) : (
           <PreviousYearsViewer
+            key={`pyq-${resolvedIndex}`}
             questions={questions as any}
             userName={displayName}
-            initialIndex={initialIndex}
+            initialIndex={resolvedIndex}
             onIndexChange={handleIndexChange}
             onStatsChange={handleStatsChange}
           />

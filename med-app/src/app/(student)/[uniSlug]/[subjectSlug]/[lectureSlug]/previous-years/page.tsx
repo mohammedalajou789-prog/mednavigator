@@ -22,6 +22,7 @@ export default function PreviousYearsPage() {
   const supabase = useMemo(() => createClient(), [])
 
   const [resolvedIndex, setResolvedIndex] = useState<number | null>(null)
+  const [savedAnswers, setSavedAnswers] = useState<Record<string, string> | null>(null)
   const isReadyRef = useRef(false)
 
   // ── Meta + access ─────────────────────────────────────────────────────────
@@ -72,20 +73,31 @@ export default function PreviousYearsPage() {
 
     if (!meta?.userId) {
       setResolvedIndex(0)
+      setSavedAnswers({})
       return
     }
 
     async function loadSavedState() {
-      const { data: progressData } = await supabase.from('user_progress')
-        .select('last_position')
-        .eq('user_id', meta!.userId!)
-        .eq('lecture_id', meta!.lecture!.id)
-        .eq('content_type', 'previous_years')
-        .maybeSingle()
-
-      const savedPosition = (progressData as any)?.last_position ?? 0
-      console.log('[PYQ] loaded savedPosition:', savedPosition)
+      const [progressResult, attemptsResult] = await Promise.all([
+        supabase.from('user_progress')
+          .select('last_position')
+          .eq('user_id', meta!.userId!)
+          .eq('lecture_id', meta!.lecture!.id)
+          .eq('content_type', 'previous_years')
+          .maybeSingle(),
+        supabase.from('lecture_question_attempts' as any)
+          .select('question_id, selected_answer')
+          .eq('user_id', meta!.userId!)
+          .eq('lecture_id', meta!.lecture!.id)
+          .eq('question_type', 'pyq'),
+      ])
+      const savedPosition = (progressResult.data as any)?.last_position ?? 0
+      const attempts = (attemptsResult.data ?? []) as { question_id: string; selected_answer: string }[]
+      const answersMap: Record<string, string> = {}
+      for (const a of attempts) answersMap[a.question_id] = a.selected_answer
+      console.log('[PYQ] loaded savedPosition:', savedPosition, 'answers:', Object.keys(answersMap).length)
       setResolvedIndex(savedPosition)
+      setSavedAnswers(answersMap)
     }
 
     loadSavedState()
@@ -107,6 +119,20 @@ export default function PreviousYearsPage() {
     }, { onConflict: 'user_id,lecture_id,content_type' })
     if (error) console.error('[PYQ] saveIndex error:', error)
     else console.log('[PYQ] saveIndex success for index:', index)
+  }, [meta?.userId, meta?.lecture?.id, supabase])
+
+  // ── Save answer immediately ───────────────────────────────────────────────
+  const saveAnswer = useCallback(async (questionId: string, selectedAnswer: string, isCorrect: boolean) => {
+    if (!meta?.userId || !meta?.lecture?.id) return
+    await supabase.from('lecture_question_attempts' as any).upsert({
+      user_id:         meta.userId,
+      lecture_id:      meta.lecture.id,
+      question_id:     questionId,
+      question_type:   'pyq',
+      selected_answer: selectedAnswer,
+      is_correct:      isCorrect,
+      updated_at:      new Date().toISOString(),
+    }, { onConflict: 'user_id,lecture_id,question_id,question_type' })
   }, [meta?.userId, meta?.lecture?.id, supabase])
 
   // ── Reset position ────────────────────────────────────────────────────────
@@ -216,17 +242,19 @@ export default function PreviousYearsPage() {
       <div style={{ padding: '0 clamp(12px,3vw,26px) 24px' }}>
         {!meta ? <ContentSkeleton />
         : locked ? <LockedContentCard subjectName={subject?.name ?? ''} />
-        : pyqLoading || resolvedIndex === null ? <ContentSkeleton />
+        : pyqLoading || resolvedIndex === null || savedAnswers === null ? <ContentSkeleton />
         : questions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
             <p style={{ fontSize: '15px', fontWeight: 500 }}>No previous year questions available for this lecture.</p>
           </div>
         ) : (
           <PreviousYearsViewer
-            key={`pyq-${resolvedIndex}`}
+            key={`pyq-${resolvedIndex}-${Object.keys(savedAnswers ?? {}).length}`}
             questions={questions as any}
             userName={displayName}
             initialIndex={resolvedIndex}
+            initialAnswers={savedAnswers!}
+            onAnswerSelect={saveAnswer}
             onIndexChange={handleIndexChange}
             onStatsChange={handleStatsChange}
           />

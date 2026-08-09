@@ -9,6 +9,8 @@ interface PreviousYearsViewerProps {
   questions: PreviousYearQuestion[]
   userName?: string
   initialIndex?: number
+  initialAnswers?: Record<string, string>
+  onAnswerSelect?: (questionId: string, answer: string, isCorrect: boolean) => void
   onIndexChange?: (index: number) => void
   onStatsChange?: (stats: { total: number; important: number; answered: number }) => void
 }
@@ -26,12 +28,12 @@ const EXAM_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
 
 const OPTIONS = ['A', 'B', 'C', 'D', 'E'] as const
 
-export default function PreviousYearsViewer({ questions, userName, initialIndex, onIndexChange, onStatsChange }: PreviousYearsViewerProps) {
+export default function PreviousYearsViewer({ questions, userName, initialIndex, initialAnswers, onAnswerSelect, onIndexChange, onStatsChange }: PreviousYearsViewerProps) {
   const { user } = useUserStore()
   const supabase = createClient()
 
   const [currentIndex, setCurrentIndex] = useState(initialIndex ?? 0)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers ?? {})
   const [filterYear, setFilterYear] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
   const [importantIds, setImportantIds] = useState<Set<string>>(new Set())
@@ -102,6 +104,8 @@ export default function PreviousYearsViewer({ questions, userName, initialIndex,
   function handleAnswer(questionId: string, option: string) {
     if (answers[questionId]) return
     setAnswers(prev => ({ ...prev, [questionId]: option }))
+    const isCorrect = questions.find(q => q.id === questionId)?.correct_answer === option ?? false
+    onAnswerSelect?.(questionId, option, isCorrect)
   }
 
   function getOptionStyle(q: PreviousYearQuestion, option: string): React.CSSProperties {

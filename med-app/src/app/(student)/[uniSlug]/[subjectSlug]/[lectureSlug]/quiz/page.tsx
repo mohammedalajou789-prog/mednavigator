@@ -23,7 +23,7 @@ export default function QuizPage() {
 
   const [resolvedIndex, setResolvedIndex]   = useState<number | null>(null)
   const [savedAnswers, setSavedAnswers]     = useState<Record<string, string> | null>(null)
-  const viewerMountedRef                    = useRef(false)
+
   const indexSaveTimer                      = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── Meta + access ─────────────────────────────────────────────────────────
@@ -158,12 +158,10 @@ export default function QuizPage() {
     ])
     setSavedAnswers({})
     setResolvedIndex(0)
-    viewerMountedRef.current = false
   }, [meta?.userId, meta?.lecture?.id, supabase])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleIndexChange = useCallback((index: number) => {
-    if (!viewerMountedRef.current) return
     saveIndex(index)
   }, [saveIndex])
 
@@ -171,12 +169,7 @@ export default function QuizPage() {
     emitSidebar('quizStats', stats)
   }, [])
 
-  // Mark viewer as mounted after resolvedIndex is applied
-  useEffect(() => {
-    if (resolvedIndex === null) return
-    const t = setTimeout(() => { viewerMountedRef.current = true }, 500)
-    return () => clearTimeout(t)
-  }, [resolvedIndex])
+
 
   // ── UI ────────────────────────────────────────────────────────────────────
   const TAB_ICONS: Record<string, React.ReactNode> = {

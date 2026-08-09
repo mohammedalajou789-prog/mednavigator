@@ -39,6 +39,7 @@ export default function PreviousYearsViewer({ questions, userName, initialIndex,
   const [importantIds, setImportantIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const isFilterChangeRef = useRef(false)
+  const filtersInitializedRef = useRef(false)
 
   const years = [...new Set(questions.map(q => q.exam_year).filter(Boolean))].sort((a, b) => (b ?? 0) - (a ?? 0))
   const types = [...new Set(questions.map(q => q.exam_type).filter(Boolean))]
@@ -82,6 +83,7 @@ export default function PreviousYearsViewer({ questions, userName, initialIndex,
 
   // Reset index when filters change
   useEffect(() => {
+    if (!filtersInitializedRef.current) { filtersInitializedRef.current = true; return }
     isFilterChangeRef.current = true
     goToIndex(0)
     setTimeout(() => { isFilterChangeRef.current = false }, 100)

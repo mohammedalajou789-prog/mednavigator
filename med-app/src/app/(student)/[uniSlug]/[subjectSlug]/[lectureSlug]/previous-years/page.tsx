@@ -21,9 +21,7 @@ export default function PreviousYearsPage() {
   const { user } = useUserStore()
   const supabase = useMemo(() => createClient(), [])
 
-  // resolvedIndex: null = not yet loaded, number = ready
   const [resolvedIndex, setResolvedIndex] = useState<number | null>(null)
-  const viewerMountedRef = useRef(false)
 
   // ── Meta + access ─────────────────────────────────────────────────────────
   const { data: meta } = useQuery({
@@ -66,13 +64,15 @@ export default function PreviousYearsPage() {
     refetchOnWindowFocus: false,
   })
 
-  // ── Load saved position + answers together ────────────────────────────────
+  // ── Load saved position ───────────────────────────────────────────────────
   useEffect(() => {
-    if (!meta?.lecture?.id || !meta?.userId) {
+    if (!meta?.lecture?.id) return
+    if (resolvedIndex !== null) return
+
+    if (!meta?.userId) {
       setResolvedIndex(0)
       return
     }
-    if (resolvedIndex !== null) return
 
     async function loadSavedState() {
       const { data: progressData } = await supabase.from('user_progress')
@@ -83,37 +83,35 @@ export default function PreviousYearsPage() {
         .maybeSingle()
 
       const savedPosition = (progressData as any)?.last_position ?? 0
+      console.log('[PYQ] loaded savedPosition:', savedPosition)
       setResolvedIndex(savedPosition)
     }
 
     loadSavedState()
   }, [meta?.lecture?.id, meta?.userId])
 
-  // ── Save current index to DB (debounced) ──────────────────────────────────
-  const indexSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const saveIndex = useCallback((index: number) => {
+  // ── Save index (immediate) ────────────────────────────────────────────────
+  const saveIndex = useCallback(async (index: number) => {
+    console.log('[PYQ] saveIndex:', index, 'userId:', meta?.userId, 'lectureId:', meta?.lecture?.id)
     if (!meta?.userId || !meta?.lecture?.id) return
-    if (indexSaveTimer.current) clearTimeout(indexSaveTimer.current)
-    indexSaveTimer.current = setTimeout(() => {
-      supabase.from('user_progress').upsert({
-        user_id:             meta.userId!,
-        lecture_id:          meta.lecture!.id,
-        content_type:        'previous_years',
-        progress_percentage: 0,
-        completed:           false,
-        last_position:       index,
-        last_accessed_at:    new Date().toISOString(),
-        updated_at:          new Date().toISOString(),
-      }, { onConflict: 'user_id,lecture_id,content_type' })
-    }, 1500)
+    const { error } = await supabase.from('user_progress').upsert({
+      user_id:             meta.userId!,
+      lecture_id:          meta.lecture!.id,
+      content_type:        'previous_years',
+      progress_percentage: 0,
+      completed:           false,
+      last_position:       index,
+      last_accessed_at:    new Date().toISOString(),
+      updated_at:          new Date().toISOString(),
+    }, { onConflict: 'user_id,lecture_id,content_type' })
+    if (error) console.error('[PYQ] saveIndex error:', error)
+    else console.log('[PYQ] saveIndex success for index:', index)
   }, [meta?.userId, meta?.lecture?.id, supabase])
 
   // ── Reset position ────────────────────────────────────────────────────────
   const resetPosition = useCallback(async () => {
     if (!meta?.userId || !meta?.lecture?.id) return
     setResolvedIndex(0)
-    viewerMountedRef.current = false
     await supabase.from('user_progress').upsert({
       user_id:             meta.userId,
       lecture_id:          meta.lecture.id,
@@ -127,20 +125,12 @@ export default function PreviousYearsPage() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleIndexChange = useCallback((index: number) => {
-    if (!viewerMountedRef.current) return
     saveIndex(index)
   }, [saveIndex])
 
   const handleStatsChange = useCallback((stats: { total: number; important: number; answered: number }) => {
     emitSidebar('pyqStats', stats)
   }, [])
-
-  // Mark viewer as mounted after resolvedIndex is applied
-  useEffect(() => {
-    if (resolvedIndex === null) return
-    const t = setTimeout(() => { viewerMountedRef.current = true }, 500)
-    return () => clearTimeout(t)
-  }, [resolvedIndex])
 
   // ── UI ────────────────────────────────────────────────────────────────────
   const TAB_ICONS: Record<string, React.ReactNode> = {

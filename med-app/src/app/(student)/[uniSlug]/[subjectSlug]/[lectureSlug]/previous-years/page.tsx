@@ -254,6 +254,7 @@ export default function PreviousYearsPage() {
             userName={displayName}
             initialIndex={resolvedIndex}
             initialAnswers={savedAnswers!}
+            lectureId={meta.lecture?.id ?? ''}
             onAnswerSelect={saveAnswer}
             onIndexChange={handleIndexChange}
             onStatsChange={handleStatsChange}

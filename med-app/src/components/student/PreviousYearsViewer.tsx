@@ -8,6 +8,7 @@ import { useUserStore } from '@/stores/userStore'
 interface PreviousYearsViewerProps {
   questions: PreviousYearQuestion[]
   userName?: string
+  lectureId?: string
   initialIndex?: number
   initialAnswers?: Record<string, string>
   onAnswerSelect?: (questionId: string, answer: string, isCorrect: boolean) => void
@@ -28,7 +29,7 @@ const EXAM_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
 
 const OPTIONS = ['A', 'B', 'C', 'D', 'E'] as const
 
-export default function PreviousYearsViewer({ questions, userName, initialIndex, initialAnswers, onAnswerSelect, onIndexChange, onStatsChange }: PreviousYearsViewerProps) {
+export default function PreviousYearsViewer({ questions, userName, initialIndex, initialAnswers, lectureId, onAnswerSelect, onIndexChange, onStatsChange }: PreviousYearsViewerProps) {
   const { user } = useUserStore()
   const supabase = createClient()
 
@@ -101,7 +102,7 @@ export default function PreviousYearsViewer({ questions, userName, initialIndex,
       await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('question_id', questionId).eq('bookmark_type', 'pyq_question')
       setImportantIds(prev => { const n = new Set(prev); n.delete(questionId); return n })
     } else {
-      await supabase.from('bookmarks').insert({ user_id: user.id, question_id: questionId, bookmark_type: 'pyq_question' })
+      await supabase.from('bookmarks').insert({ user_id: user.id, question_id: questionId, bookmark_type: 'pyq_question', lecture_id: lectureId ?? null })
       setImportantIds(prev => new Set([...prev, questionId]))
     }
   }

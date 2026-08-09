@@ -198,10 +198,10 @@ export default function SheetPage() {
         p_lecture_id:      meta.lecture!.id,
         p_active_tab:      'sheet',
         p_sheet_scroll:    scrollPos,
-        p_summary_scroll:  0,
-        p_flashcard_index: 0,
-        p_quiz_index:      0,
-        p_pyq_index:       0,
+        p_summary_scroll:  null,
+        p_flashcard_index: null,
+        p_quiz_index:      null,
+        p_pyq_index:       null,
       })
     }, 1500)
   }, [user, meta?.lecture?.id, supabase])

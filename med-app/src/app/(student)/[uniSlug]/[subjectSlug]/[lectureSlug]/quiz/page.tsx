@@ -89,11 +89,11 @@ export default function QuizPage() {
         p_user_id:         user.id,
         p_lecture_id:      meta.lecture!.id,
         p_active_tab:      'quiz',
-        p_sheet_scroll:    0,
-        p_summary_scroll:  0,
-        p_flashcard_index: 0,
+        p_sheet_scroll:    null,
+        p_summary_scroll:  null,
+        p_flashcard_index: null,
         p_quiz_index:      index,
-        p_pyq_index:       0,
+        p_pyq_index:       null,
       })
     }, 1500)
   }, [user, meta?.lecture?.id, supabase])

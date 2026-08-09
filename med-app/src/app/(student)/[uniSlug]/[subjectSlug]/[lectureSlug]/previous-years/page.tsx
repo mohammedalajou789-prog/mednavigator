@@ -89,10 +89,10 @@ export default function PreviousYearsPage() {
         p_user_id:         user.id,
         p_lecture_id:      meta.lecture!.id,
         p_active_tab:      'previous-years',
-        p_sheet_scroll:    0,
-        p_summary_scroll:  0,
-        p_flashcard_index: 0,
-        p_quiz_index:      0,
+        p_sheet_scroll:    null,
+        p_summary_scroll:  null,
+        p_flashcard_index: null,
+        p_quiz_index:      null,
         p_pyq_index:       index,
       })
     }, 1500)

@@ -135,7 +135,7 @@ export default function SummaryPage() {
     if (scrollApplied.current) return
     if (!summaryData) return
 
-    const localKey = meta?.lecture?.id ? `summary_scroll:${meta.lecture.id}` : null
+    const localKey = meta?.lecture?.id ? `Lecture:${meta.lecture.id}:summary_scroll` : null
     const localVal = localKey ? localStorage.getItem(localKey) : null
     const targetScroll = localVal ? parseInt(localVal, 10) : (summaryData.savedPosition ?? 0)
 
@@ -166,7 +166,7 @@ export default function SummaryPage() {
     const scrollEl  = document.getElementById('lecture-content-scroll')
     const scrollPos = scrollEl?.scrollTop ?? 0
     if (meta?.lecture?.id) {
-      localStorage.setItem(`summary_scroll:${meta.lecture.id}`, String(scrollPos))
+      localStorage.setItem(`Lecture:${meta.lecture.id}:summary_scroll`, String(scrollPos))
     }
 
     if (!user || !meta?.lecture?.id || !meta?.userId) return
@@ -196,7 +196,7 @@ export default function SummaryPage() {
       if (saveTimer.current) clearTimeout(saveTimer.current)
       const el  = document.getElementById('lecture-content-scroll')
       const pos = el?.scrollTop ?? 0
-      if (meta?.lecture?.id) localStorage.setItem(`summary_scroll:${meta.lecture.id}`, String(pos))
+      if (meta?.lecture?.id) localStorage.setItem(`Lecture:${meta.lecture.id}:summary_scroll`, String(pos))
     }
     window.addEventListener('beforeunload', handleUnload)
     return () => window.removeEventListener('beforeunload', handleUnload)

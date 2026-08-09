@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { PreviousYearQuestion } from '@/types/database'
 import { createClient } from '@/lib/supabase/client'
@@ -38,6 +38,7 @@ export default function PreviousYearsViewer({ questions, userName, initialIndex,
   const [filterType, setFilterType] = useState<string>('all')
   const [importantIds, setImportantIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const isFilterChangeRef = useRef(false)
 
   const years = [...new Set(questions.map(q => q.exam_year).filter(Boolean))].sort((a, b) => (b ?? 0) - (a ?? 0))
   const types = [...new Set(questions.map(q => q.exam_type).filter(Boolean))]
@@ -81,13 +82,15 @@ export default function PreviousYearsViewer({ questions, userName, initialIndex,
 
   // Reset index when filters change
   useEffect(() => {
+    isFilterChangeRef.current = true
     goToIndex(0)
+    setTimeout(() => { isFilterChangeRef.current = false }, 100)
   }, [filterYear, filterType])
 
   function goToIndex(index: number) {
     const clamped = Math.max(0, Math.min(index, total - 1))
     setCurrentIndex(clamped)
-    onIndexChange?.(clamped)
+    if (!isFilterChangeRef.current) onIndexChange?.(clamped)
   }
 
   async function toggleImportant(questionId: string) {

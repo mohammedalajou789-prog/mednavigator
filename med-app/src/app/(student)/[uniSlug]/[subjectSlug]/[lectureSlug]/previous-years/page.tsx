@@ -153,7 +153,7 @@ export default function PreviousYearsPage() {
   // Mark ready after viewer mounts with correct index
   useEffect(() => {
     if (resolvedIndex === null) return
-    const t = setTimeout(() => { isReadyRef.current = true }, 800)
+    const t = setTimeout(() => { isReadyRef.current = true }, 2000)
     return () => clearTimeout(t)
   }, [resolvedIndex])
 

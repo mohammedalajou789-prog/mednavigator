@@ -22,6 +22,7 @@ export default function PreviousYearsPage() {
   const supabase = useMemo(() => createClient(), [])
 
   const [resolvedIndex, setResolvedIndex] = useState<number | null>(null)
+  const isReadyRef = useRef(false)
 
   // ── Meta + access ─────────────────────────────────────────────────────────
   const { data: meta } = useQuery({
@@ -123,8 +124,16 @@ export default function PreviousYearsPage() {
     }, { onConflict: 'user_id,lecture_id,content_type' })
   }, [meta?.userId, meta?.lecture?.id, supabase])
 
+  // Mark ready after viewer mounts with correct index
+  useEffect(() => {
+    if (resolvedIndex === null) return
+    const t = setTimeout(() => { isReadyRef.current = true }, 800)
+    return () => clearTimeout(t)
+  }, [resolvedIndex])
+
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleIndexChange = useCallback((index: number) => {
+    if (!isReadyRef.current) return
     saveIndex(index)
   }, [saveIndex])
 

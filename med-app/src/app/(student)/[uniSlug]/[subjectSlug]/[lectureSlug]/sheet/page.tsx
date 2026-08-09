@@ -105,13 +105,16 @@ export default function SheetPage() {
     queryKey: ['sheet-content', meta?.lecture?.id],
     queryFn: async () => {
       const lectureId = meta!.lecture!.id
-      const [sheetResult, slotsResult] = await Promise.all([
-        supabase.from('sheets').select('id, content, status').eq('lecture_id', lectureId).maybeSingle(),
-        supabase.from('image_slots').select('slot_number, image_url').eq('lecture_id', lectureId).eq('content_type', 'sheet'),
-      ])
+      // Fetch sheet first to get its ID, then fetch image slots using sheet ID
+      const sheetResult = await supabase.from('sheets').select('id, content, status').eq('lecture_id', lectureId).maybeSingle()
+      const sheetId = sheetResult.data?.id ?? ''
+      const slotsResult = sheetId
+        ? await supabase.from('image_slots').select('slot_number, media_library(file_url)').eq('entity_id', sheetId).eq('entity_type', 'sheet')
+        : { data: [] }
       const imageSlots: Record<number, string> = {}
-      for (const slot of slotsResult.data ?? []) {
-        imageSlots[slot.slot_number] = slot.image_url
+      for (const slot of (slotsResult.data ?? []) as any[]) {
+        const url = (slot as any).media_library?.file_url
+        if (url) imageSlots[slot.slot_number] = url
       }
       return { sheet: sheetResult.data, imageSlots }
     },

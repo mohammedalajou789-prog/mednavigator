@@ -11,18 +11,20 @@ interface QuizViewerProps {
   userName?: string
   lectureId?: string
   initialIndex?: number
+  initialAnswers?: Record<string, string>
+  onAnswerSelect?: (questionId: string, answer: string, isCorrect: boolean) => void
   onIndexChange?: (index: number) => void
   onStatsChange?: (stats: { total: number; answered: number; correct: number; current: number; important: number }) => void
 }
 
 const OPTIONS = ['A', 'B', 'C', 'D', 'E'] as const
 
-export default function QuizViewer({ questions, userName, lectureId, initialIndex, onIndexChange, onStatsChange }: QuizViewerProps) {
+export default function QuizViewer({ questions, userName, lectureId, initialIndex, initialAnswers, onAnswerSelect, onIndexChange, onStatsChange }: QuizViewerProps) {
   const { user } = useUserStore()
   const supabase = createClient()
 
   const [currentIndex, setCurrentIndex] = useState(initialIndex ?? 0)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers ?? {})
   const [showExplanation, setShowExplanation] = useState<Record<string, boolean>>({})
   const [finished, setFinished] = useState(false)
   const [importantIds, setImportantIds] = useState<Set<string>>(new Set())
@@ -84,6 +86,8 @@ export default function QuizViewer({ questions, userName, lectureId, initialInde
     if (answers[questionId]) return
     setAnswers(prev => ({ ...prev, [questionId]: option }))
     setShowExplanation(prev => ({ ...prev, [questionId]: true }))
+    const isCorrect = questions.find(q => q.id === questionId)?.correct_answer === option ?? false
+    onAnswerSelect?.(questionId, option, isCorrect)
   }
 
   function getOptionLabel(q: QuizQuestion, option: string): string | null {

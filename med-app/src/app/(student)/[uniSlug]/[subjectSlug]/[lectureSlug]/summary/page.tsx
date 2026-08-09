@@ -149,15 +149,24 @@ export default function SummaryPage() {
   useEffect(() => {
     if (scrollRestored.current) return
     if (!summaryData) return
-    if (!resumeState) return
-    const targetScroll = resumeState.summary_scroll ?? 0
-    if (targetScroll <= 0) return
+    const localScroll = meta?.lecture?.id ? parseInt(localStorage.getItem(`lecture:${meta.lecture.id}:summary_scroll`) ?? '0', 10) : 0
+    const targetScroll = localScroll > 0 ? localScroll : (resumeState?.summary_scroll ?? 0)
+    if (targetScroll <= 0) { scrollRestored.current = true; return }
     scrollRestored.current = true
-    setTimeout(() => {
+    let attempts = 0
+    function tryScroll() {
       const el = document.getElementById('lecture-content-scroll')
-      if (el) el.scrollTo({ top: targetScroll, behavior: 'smooth' })
-    }, 400)
-  }, [summaryData, resumeState])
+      if (!el) return
+      const maxScroll = el.scrollHeight - el.clientHeight
+      if (maxScroll < targetScroll && attempts < 20) {
+        attempts++
+        requestAnimationFrame(tryScroll)
+        return
+      }
+      el.scrollTo({ top: targetScroll, behavior: 'smooth' })
+    }
+    requestAnimationFrame(() => requestAnimationFrame(tryScroll))
+  }, [summaryData, resumeState, meta?.lecture?.id])
 
   useEffect(() => {
     if (!savedProgress) return
@@ -193,6 +202,11 @@ export default function SummaryPage() {
 
   const handleProgressUpdate = useCallback((pct: number) => {
     emitSidebar('progress', { percent: pct, completed: pct >= 100 })
+    if (meta?.lecture?.id) {
+      const scrollEl = document.getElementById('lecture-content-scroll')
+      const scrollPos = scrollEl?.scrollTop ?? 0
+      localStorage.setItem(`lecture:${meta.lecture.id}:summary_scroll`, String(scrollPos))
+    }
     if (!user || !meta?.lecture?.id) return
     if (Math.abs(pct - lastSavedPct.current) < 3) return
     if (progressSaveTimer.current) clearTimeout(progressSaveTimer.current)

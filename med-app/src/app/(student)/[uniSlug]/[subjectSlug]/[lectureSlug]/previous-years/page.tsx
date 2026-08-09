@@ -26,6 +26,7 @@ export default function PreviousYearsPage() {
   const supabase = useMemo(() => createClient(), [])
   const dbSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentIndexRef = useRef<number>(0)
+  const isInitializedRef = useRef<boolean>(false)
   const [resolvedIndex, setResolvedIndex] = useState<number | null>(null)
 
   const { data: meta } = useQuery({
@@ -78,9 +79,9 @@ export default function PreviousYearsPage() {
     const local = localStorage.getItem(localKey)
     if (local !== null) {
       const idx = parseInt(local, 10)
-      if (!isNaN(idx) && idx > 0) { setResolvedIndex(idx); currentIndexRef.current = idx; return }
+      if (!isNaN(idx) && idx > 0) { setResolvedIndex(idx); currentIndexRef.current = idx; isInitializedRef.current = true; return }
     }
-    if (!user?.id) { setResolvedIndex(0); return }
+    if (!user?.id) { setResolvedIndex(0); isInitializedRef.current = true; return }
     ;(supabase as any)
       .from('lecture_resume_state').select('pyq_index')
       .eq('user_id', user.id).eq('lecture_id', meta.lecture.id).maybeSingle()
@@ -88,6 +89,7 @@ export default function PreviousYearsPage() {
         const idx = data?.pyq_index ?? 0
         setResolvedIndex(idx); currentIndexRef.current = idx
         if (idx > 0) localStorage.setItem(localKey, String(idx))
+        isInitializedRef.current = true
       })
   }, [meta?.lecture?.id, user?.id])
 
@@ -119,7 +121,17 @@ export default function PreviousYearsPage() {
     return () => window.removeEventListener('beforeunload', handleUnload)
   }, [meta?.lecture?.id, user?.id])
 
-  const handleIndexChange = useCallback((index: number) => { saveIndex(index) }, [saveIndex])
+  const handleIndexChange = useCallback((index: number) => {
+    if (!isInitializedRef.current) return
+    saveIndex(index)
+  }, [saveIndex])
+  // Mark initialized once viewer mounts with correct index
+  useEffect(() => {
+    if (resolvedIndex === null) return
+    const timer = setTimeout(() => { isInitializedRef.current = true }, 300)
+    return () => clearTimeout(timer)
+  }, [resolvedIndex])
+
   const handleStatsChange = useCallback((stats: { total: number; important: number; answered: number }) => {
     emitSidebar('pyqStats', stats)
   }, [])

@@ -105,22 +105,22 @@ export default function QuizPage() {
     loadSavedState()
   }, [meta?.lecture?.id, meta?.userId])
 
-  // ── Save index (debounced) ────────────────────────────────────────────────
-  const saveIndex = useCallback((index: number) => {
+  // ── Save index (immediate) ────────────────────────────────────────────────
+  const saveIndex = useCallback(async (index: number) => {
+    console.log('[Quiz] saveIndex:', index, 'userId:', meta?.userId, 'lectureId:', meta?.lecture?.id)
     if (!meta?.userId || !meta?.lecture?.id) return
-    if (indexSaveTimer.current) clearTimeout(indexSaveTimer.current)
-    indexSaveTimer.current = setTimeout(() => {
-      supabase.from('user_progress').upsert({
-        user_id:             meta.userId!,
-        lecture_id:          meta.lecture!.id,
-        content_type:        'quiz',
-        progress_percentage: 0,
-        completed:           false,
-        last_position:       index,
-        last_accessed_at:    new Date().toISOString(),
-        updated_at:          new Date().toISOString(),
-      }, { onConflict: 'user_id,lecture_id,content_type' })
-    }, 1500)
+    const { error } = await supabase.from('user_progress').upsert({
+      user_id:             meta.userId!,
+      lecture_id:          meta.lecture!.id,
+      content_type:        'quiz',
+      progress_percentage: 0,
+      completed:           false,
+      last_position:       index,
+      last_accessed_at:    new Date().toISOString(),
+      updated_at:          new Date().toISOString(),
+    }, { onConflict: 'user_id,lecture_id,content_type' })
+    if (error) console.error('[Quiz] saveIndex error:', error)
+    else console.log('[Quiz] saveIndex success for index:', index)
   }, [meta?.userId, meta?.lecture?.id, supabase])
 
   // ── Save answer immediately ───────────────────────────────────────────────

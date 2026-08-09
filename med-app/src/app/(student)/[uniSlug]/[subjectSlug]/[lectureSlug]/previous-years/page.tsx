@@ -249,7 +249,7 @@ export default function PreviousYearsPage() {
           </div>
         ) : (
           <PreviousYearsViewer
-            key={`pyq-${resolvedIndex}-${Object.keys(savedAnswers ?? {}).length}`}
+            key="pyq-viewer"
             questions={questions as any}
             userName={displayName}
             initialIndex={resolvedIndex}

@@ -304,9 +304,11 @@ export default function SheetPage() {
 
       {/* Content */}
       <div style={{ padding: '0 clamp(12px, 3vw, 26px) 24px' }}>
-        {locked ? (
+        {!meta ? (
+          <ContentSkeleton />
+        ) : locked ? (
           <LockedContentCard subjectName={subject?.name ?? ''} />
-        ) : sheetLoading || !meta ? (
+        ) : sheetLoading ? (
           <ContentSkeleton />
         ) : !sheet ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>

@@ -61,7 +61,7 @@ export default function PreviousYearsViewer({ questions, userName, initialIndex,
         .from('bookmarks')
         .select('question_id')
         .eq('user_id', user!.id)
-        .eq('bookmark_type', 'question')
+        .eq('bookmark_type', 'pyq_question')
         .not('question_id', 'is', null)
       return data ?? []
     },
@@ -98,10 +98,10 @@ export default function PreviousYearsViewer({ questions, userName, initialIndex,
   async function toggleImportant(questionId: string) {
     if (!user) return
     if (importantIds.has(questionId)) {
-      await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('question_id', questionId).eq('bookmark_type', 'question')
+      await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('question_id', questionId).eq('bookmark_type', 'pyq_question')
       setImportantIds(prev => { const n = new Set(prev); n.delete(questionId); return n })
     } else {
-      await supabase.from('bookmarks').insert({ user_id: user.id, question_id: questionId, bookmark_type: 'question' })
+      await supabase.from('bookmarks').insert({ user_id: user.id, question_id: questionId, bookmark_type: 'pyq_question' })
       setImportantIds(prev => new Set([...prev, questionId]))
     }
   }

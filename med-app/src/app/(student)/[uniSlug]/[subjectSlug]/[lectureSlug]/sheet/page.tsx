@@ -147,7 +147,7 @@ export default function SheetPage() {
     if (!sheetData) return
     
     // Read from localStorage first (most recent), fallback to DB value
-    const localKey = meta?.lecture?.id ? `sheet_scroll:${meta.lecture.id}` : null
+    const localKey = meta?.lecture?.id ? `Lecture:${meta.lecture.id}:sheet_scroll` : null
     const localVal = localKey ? localStorage.getItem(localKey) : null
     const targetScroll = localVal ? parseInt(localVal, 10) : (sheetData.savedPosition ?? 0)
     
@@ -181,7 +181,7 @@ export default function SheetPage() {
     const scrollEl  = document.getElementById('lecture-content-scroll')
     const scrollPos = scrollEl?.scrollTop ?? 0
     if (meta?.lecture?.id) {
-      localStorage.setItem(`sheet_scroll:${meta.lecture.id}`, String(scrollPos))
+      localStorage.setItem(`Lecture:${meta.lecture.id}:sheet_scroll`, String(scrollPos))
     }
 
     if (!user || !meta?.lecture?.id || !meta?.userId) return
@@ -212,7 +212,7 @@ export default function SheetPage() {
       if (saveTimer.current) clearTimeout(saveTimer.current)
       const el  = document.getElementById('lecture-content-scroll')
       const pos = el?.scrollTop ?? 0
-      if (meta?.lecture?.id) localStorage.setItem(`sheet_scroll:${meta.lecture.id}`, String(pos))
+      if (meta?.lecture?.id) localStorage.setItem(`Lecture:${meta.lecture.id}:sheet_scroll`, String(pos))
     }
     window.addEventListener('beforeunload', handleUnload)
     return () => window.removeEventListener('beforeunload', handleUnload)

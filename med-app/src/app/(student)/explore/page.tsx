@@ -1,23 +1,19 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAllUniversities } from '@/lib/services/universities'
+import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
-interface University {
-  id: string
-  name: string
-  slug: string | null
-  logo_url: string | null
-}
-
 export default async function ExplorePage() {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
 
-  // FIX: merge two separate queries into one parallel Promise.all
   const [
     { data: universities },
     { data: subjectCounts },
   ] = await Promise.all([
-    supabase.from('universities').select('id, name, logo_url, slug').eq('is_active', true).order('name'),
-    supabase.from('subjects').select('university_id, id', { count: 'exact' }).eq('is_published', true),
+    getAllUniversities(),
+    supabase
+      .from('subjects')
+      .select('university_id')
+      .eq('is_published', true),
   ])
 
   const countMap: Record<string, number> = {}
@@ -25,7 +21,12 @@ export default async function ExplorePage() {
     countMap[row.university_id] = (countMap[row.university_id] ?? 0) + 1
   })
 
-  const unis = (universities ?? []) as any[] as University[]
+  const unis = (universities ?? []) as {
+    id: string
+    name: string
+    slug: string | null
+    logo_url: string | null
+  }[]
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)', fontFamily: '"Plus Jakarta Sans", system-ui, -apple-system, sans-serif' }}>

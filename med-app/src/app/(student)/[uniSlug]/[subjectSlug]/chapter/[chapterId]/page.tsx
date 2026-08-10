@@ -2,7 +2,6 @@ import { getAuthUser } from '@/lib/services/user'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-
 import BfCacheReloader from '@/components/student/BfCacheReloader'
 import ChapterProgressClient from '@/components/student/ChapterProgressClient'
 
@@ -17,6 +16,7 @@ export default async function ChapterPage({ params }: PageProps) {
 
   const supabase = await createServerClient()
 
+  // ── Wave 1: all slug resolution + auth in parallel ────────────────────────
   const [{ data: uniRow }, { data: subRow }, authUser] = await Promise.all([
     supabase.from('universities').select('id,name').eq('slug' as any, uniSlug).single(),
     supabase.from('subjects').select('id,name,subject_type').eq('slug' as any, subjectSlug).eq('is_published', true).single(),
@@ -46,63 +46,31 @@ export default async function ChapterPage({ params }: PageProps) {
 
   const userId: string | null = (profileResult as any).data?.id ?? null
 
-  // ── Wave 3: lectures ──────────────────────────────────────────────────────
-  const { data: lectures } = await (supabase.from('lectures') as any)
-    .select('id,title,display_order,slug')
-    .eq('subject_id', subjectId)
-    .eq(colName, groupRow.id)
-    .eq('status', 'published')
-    .order('display_order')
+  // ── Wave 3: single RPC call replaces 5 separate queries ──────────────────
+  const { data: rpcData } = await (supabase as any).rpc('get_chapter_page_data', {
+    p_group_id:  groupRow.id,
+    p_is_system: isSystem,
+    p_user_id:   userId ?? null,
+  })
 
-  const lectureList = (lectures ?? []) as any[]
+  const lectureList: any[] = rpcData?.lectures ?? []
+  const checklistMap: Record<string, number> = rpcData?.checklist ?? {}
+
   const lectureIds  = lectureList.map((l: any) => l.id)
+  const totalLectures = lectureList.length
 
-  const sheetMap:   Record<string, boolean> = {}
-  const summaryMap: Record<string, boolean> = {}
-  const flashMap:   Record<string, number>  = {}
-  const quizMap:    Record<string, number>  = {}
-  const pyqMap:     Record<string, number>  = {}
+  const sheetMap:  Record<string, boolean> = {}
+  const flashMap:  Record<string, number>  = {}
+  const quizMap:   Record<string, number>  = {}
 
-  if (lectureIds.length > 0) {
-    const [{ data: sheets }, { data: summaries }, { data: contentCounts }] = await Promise.all([
-      supabase.from('sheets').select('lecture_id').in('lecture_id', lectureIds).eq('status', 'published'),
-      supabase.from('summaries').select('lecture_id').in('lecture_id', lectureIds).eq('status', 'published'),
-      supabase.rpc('get_content_counts_by_lecture' as any, { lecture_ids: lectureIds }),
-    ])
-    sheets?.forEach((r: any)    => { sheetMap[r.lecture_id]   = true })
-    summaries?.forEach((r: any) => { summaryMap[r.lecture_id] = true })
-    contentCounts?.forEach((r: any) => {
-      flashMap[r.lecture_id] = r.flashcards_count ?? 0
-      quizMap[r.lecture_id]  = r.quiz_count ?? 0
-      pyqMap[r.lecture_id]   = r.pyq_count ?? 0
-    })
-  }
-
-  type ChecklistRow = { lecture_id: string; stars: number }
-  let checklistRows: ChecklistRow[] = []
-
-  if (userId && lectureIds.length > 0) {
-    const { data } = await supabase
-      .from('checklist_progress')
-      .select('lecture_id,stars')
-      .eq('user_id', userId)
-      .in('lecture_id', lectureIds)
-    checklistRows = (data ?? []) as ChecklistRow[]
-  }
-
-  const starsByLecture: Record<string, number> = {}
-  checklistRows.forEach(r => { starsByLecture[r.lecture_id] = r.stars })
-
-  const totalStars      = Object.values(starsByLecture).reduce((s, n) => s + n, 0)
-  const totalLectures   = lectureList.length
-  const progressPercent = totalLectures > 0 ? Math.round((totalStars / (totalLectures * 3)) * 100) : 0
+  lectureList.forEach((l: any) => {
+    if (l.has_sheet)    sheetMap[l.id]  = true
+    if (l.flash_count)  flashMap[l.id]  = l.flash_count
+    if (l.quiz_count)   quizMap[l.id]   = l.quiz_count
+  })
 
   const totalFlash = Object.values(flashMap).reduce((s, n) => s + n, 0)
   const totalQuiz  = Object.values(quizMap).reduce((s, n) => s + n, 0)
-
-  // Ring: r=45, circ=2*π*45≈282.74
-  const ringCirc   = 282.74
-  const ringOffset = ringCirc * (1 - progressPercent / 100)
 
   return (
     <div style={{
@@ -111,7 +79,6 @@ export default async function ChapterPage({ params }: PageProps) {
       fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
       color: 'rgb(60, 70, 97)',
     }}>
-
       <BfCacheReloader />
       <main style={{ width: '100%', padding: 'clamp(16px, 4vw, 30px) clamp(16px, 4vw, 34px) 80px' }}>
 
@@ -126,7 +93,7 @@ export default async function ChapterPage({ params }: PageProps) {
           <span style={{ color: 'rgb(21, 32, 58)' }}>{groupRow.title}</span>
         </nav>
 
-            <ChapterProgressClient
+        <ChapterProgressClient
           uniSlug={uniSlug}
           subjectSlug={subjectSlug}
           groupLabel={groupLabel}
@@ -135,14 +102,12 @@ export default async function ChapterPage({ params }: PageProps) {
           totalFlash={totalFlash}
           totalQuiz={totalQuiz}
           lectureList={lectureList}
-          initialStarsByLecture={starsByLecture}
+          initialStarsByLecture={checklistMap}
           sheetMap={sheetMap}
           flashMap={flashMap}
           quizMap={quizMap}
           userId={userId}
         />
-
-
 
       </main>
     </div>

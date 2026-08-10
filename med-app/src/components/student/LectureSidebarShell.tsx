@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -214,76 +214,45 @@ export default function LectureSidebarShell({
   const pathname = usePathname()
   const router   = useRouter()
 
+  // Derive active tab from URL pathname
   const activeTab = allTabs.find(tab => pathname.endsWith('/' + tab)) ?? allTabs[0] ?? 'sheet'
 
-  // Desktop: collapsed/expanded. Tablet: drawer open/closed
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [drawerOpen,        setDrawerOpen]       = useState(false)
-  const [isTablet,          setIsTablet]         = useState(false)
 
-  // Detect screen size
+
   useEffect(() => {
-    function handleResize() {
-      const w = window.innerWidth
-      setIsTablet(w >= 768 && w < 1280)
-      setSidebarCollapsed(w < 1280)
-      if (w >= 1280) setDrawerOpen(false)
-    }
-    handleResize()
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    setSidebarCollapsed(window.innerWidth < 1280)
   }, [])
-
-  // Close drawer on route change
-  useEffect(() => { setDrawerOpen(false) }, [pathname])
-
-  // Swipe from right edge to open drawer on tablet
-  useEffect(() => {
-    if (!isTablet) return
-    let startX = 0
-    function onTouchStart(e: TouchEvent) { startX = e.touches[0].clientX }
-    function onTouchEnd(e: TouchEvent) {
-      const dx  = e.changedTouches[0].clientX - startX
-      const w   = window.innerWidth
-      if (dx < -50 && startX > w - 40 && !drawerOpen) setDrawerOpen(true)
-      if (dx > 50 && drawerOpen) setDrawerOpen(false)
-    }
-    document.addEventListener('touchstart', onTouchStart, { passive: true })
-    document.addEventListener('touchend',   onTouchEnd,   { passive: true })
-    return () => {
-      document.removeEventListener('touchstart', onTouchStart)
-      document.removeEventListener('touchend',   onTouchEnd)
-    }
-  }, [isTablet, drawerOpen])
-
-  const [isBookmarked,    setIsBookmarked]    = useState(false)
-  const [progressPercent, setProgressPercent] = useState(0)
-  const [isCompleted,     setIsCompleted]     = useState(false)
-  const [tocSections,     setTocSections]     = useState<TocSection[]>([])
-  const [activeSectionId, setActiveSectionId] = useState<string>('')
-  const [flashcardStats,  setFlashcardStats]  = useState<FlashcardStats>({ total: 0, easy: 0, medium: 0, hard: 0, current: 1, important: 0 })
-  const [quizStats,       setQuizStats]       = useState<QuizStats>({ total: 0, answered: 0, correct: 0, current: 1, important: 0 })
-  const [pyqStats,        setPyqStats]        = useState<PyqStats>({ total: 0, important: 0, answered: 0 })
-  const [sheetContent,    setSheetContent]    = useState('')
-  const [summaryContent,  setSummaryContent]  = useState('')
+  const [isBookmarked, setIsBookmarked]         = useState(false)
+  const [progressPercent, setProgressPercent]   = useState(0)
+  const [isCompleted, setIsCompleted]           = useState(false)
+  const [tocSections, setTocSections]           = useState<TocSection[]>([])
+  const [activeSectionId, setActiveSectionId]   = useState<string>('')
+  const [flashcardStats, setFlashcardStats]     = useState<FlashcardStats>({ total: 0, easy: 0, medium: 0, hard: 0, current: 1, important: 0 })
+  const [quizStats, setQuizStats]               = useState<QuizStats>({ total: 0, answered: 0, correct: 0, current: 1, important: 0 })
+  const [pyqStats, setPyqStats]                 = useState<PyqStats>({ total: 0, important: 0, answered: 0 })
+  const [sheetContent, setSheetContent]         = useState('')
+  const [summaryContent, setSummaryContent]     = useState('')
 
   const prevSectionId = useRef<string>('')
 
+  // ── Listen for events from child pages ────────────────────────────────────
   useEffect(() => {
     function handleSidebarEvent(e: CustomEvent) {
       const { type, data } = e.detail
-      if (type === 'progress')       { setProgressPercent(data.percent); setIsCompleted(data.completed) }
-      if (type === 'toc')            { setTocSections(data.sections) }
-      if (type === 'flashcardStats') { setFlashcardStats(data) }
-      if (type === 'quizStats')      { setQuizStats(data) }
-      if (type === 'pyqStats')       { setPyqStats(data) }
-      if (type === 'sheetContent')   { setSheetContent(data.content) }
-      if (type === 'summaryContent') { setSummaryContent(data.content) }
+      if (type === 'progress')        { setProgressPercent(data.percent); setIsCompleted(data.completed) }
+      if (type === 'toc')             { setTocSections(data.sections); }
+      if (type === 'flashcardStats')  { setFlashcardStats(data) }
+      if (type === 'quizStats')       { setQuizStats(data) }
+      if (type === 'pyqStats')        { setPyqStats(data) }
+      if (type === 'sheetContent')    { setSheetContent(data.content) }
+      if (type === 'summaryContent')  { setSummaryContent(data.content) }
     }
     window.addEventListener('lecture-sidebar-update', handleSidebarEvent as EventListener)
     return () => window.removeEventListener('lecture-sidebar-update', handleSidebarEvent as EventListener)
   }, [])
 
+  // ── Reset dynamic widgets when tab changes ────────────────────────────────
   useEffect(() => {
     setTocSections([])
     setActiveSectionId('')
@@ -292,10 +261,12 @@ export default function LectureSidebarShell({
     prevSectionId.current = ''
   }, [activeTab])
 
+  // ── TOC scroll tracking ───────────────────────────────────────────────────
   useEffect(() => {
     if (tocSections.length === 0) return
     const scrollContainer = document.getElementById('lecture-content-scroll')
     if (!scrollContainer) return
+
     function handleScroll() {
       let current = tocSections[0]?.id ?? ''
       for (const section of tocSections) {
@@ -311,6 +282,7 @@ export default function LectureSidebarShell({
         if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
       }
     }
+
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
     handleScroll()
     return () => scrollContainer.removeEventListener('scroll', handleScroll)
@@ -326,6 +298,7 @@ export default function LectureSidebarShell({
     scrollContainer.scrollTo({ top: offset, behavior: 'smooth' })
   }
 
+  // ── Bookmark ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return
     supabase.from('bookmarks').select('id')
@@ -345,47 +318,41 @@ export default function LectureSidebarShell({
     }
   }
 
-  // ── Shared sidebar content ─────────────────────────────────────────────────
-  const collapsed = isTablet ? false : sidebarCollapsed
+  return (
+    <aside
+      id="lecture-right-sidebar"
+      className="hidden md:flex"
+      style={{ width: sidebarCollapsed ? '64px' : '272px', height: 'calc(100vh - 72px)', overflowY: 'auto', borderLeft: '1px solid #EEF0F4', background: '#F7F8FA', flexDirection: 'column', gap: '12px', padding: sidebarCollapsed ? '16px 8px' : '16px 12px', flexShrink: 0, transition: 'width 0.25s ease, padding 0.25s ease' }}
+    >
+      {/* Collapse button */}
+      <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 36, borderRadius: 10, border: '1px solid #EAEDF2', background: '#fff', cursor: 'pointer', color: '#6B7280', flexShrink: 0 }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          {sidebarCollapsed ? <polyline points="15 18 9 12 15 6"/> : <polyline points="9 18 15 12 9 6"/>}
+        </svg>
+      </button>
 
-  const sidebarContent = (
-    <>
-      {/* Collapse button — desktop only */}
-      {!isTablet && (
-        <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 36, borderRadius: 10, border: '1px solid #EAEDF2', background: '#fff', cursor: 'pointer', color: '#6B7280', flexShrink: 0 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {collapsed ? <polyline points="15 18 9 12 15 6"/> : <polyline points="9 18 15 12 9 6"/>}
-          </svg>
-        </button>
-      )}
-
-      {/* Content Tabs */}
+      {/* Content Tabs — now Link-based navigation */}
       <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-        <div style={{ padding: collapsed ? '8px' : '14px 16px 10px' }}>
-          {!collapsed && (
+        <div style={{ padding: sidebarCollapsed ? '8px' : '14px 16px 10px' }}>
+          {!sidebarCollapsed && (
             <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Content</p>
           )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', ...(collapsed && { maxHeight: '300px', overflowY: 'auto', scrollbarWidth: 'none' }) }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', ...(sidebarCollapsed && { maxHeight: '300px', overflowY: 'auto', scrollbarWidth: 'none' }) }}>
             {allTabs.map((tabId) => {
               const cfg      = TAB_CONFIG[tabId]
               const isActive = activeTab === tabId
               const href     = `/${uniSlug}/${subjectSlug}/${lectureSlug}/${tabId}`
               return (
-                <button key={tabId} title={cfg?.label ?? tabId}
-                  onClick={() => {
-                    localStorage.setItem(`lecture:${lecture.id}:active_tab`, tabId)
-                    router.replace(href)
-                    if (isTablet) setDrawerOpen(false)
-                  }}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', padding: collapsed ? '10px' : '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer', background: isActive ? '#EEF3FF' : 'transparent', color: isActive ? '#2563EB' : '#6B7280', transition: 'all 0.15s ease' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : '10px' }}>
+                <button key={tabId} title={cfg?.label ?? tabId} onClick={() => { localStorage.setItem(`lecture:${lecture.id}:active_tab`, tabId); router.replace(href) }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', padding: sidebarCollapsed ? '10px' : '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer', background: isActive ? '#EEF3FF' : 'transparent', color: isActive ? '#2563EB' : '#6B7280', transition: 'all 0.15s ease', textDecoration: 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: sidebarCollapsed ? 0 : '10px' }}>
                     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: isActive ? '#DBEAFE' : '#F3F4F6', color: isActive ? '#2563EB' : '#9CA3AF', flexShrink: 0, transition: 'all 0.15s ease' }}>
                       {cfg?.icon}
                     </span>
-                    {!collapsed && <span style={{ fontSize: '13.5px', fontWeight: isActive ? 600 : 500 }}>{cfg?.label ?? tabId}</span>}
+                    {!sidebarCollapsed && <span style={{ fontSize: '13.5px', fontWeight: isActive ? 600 : 500 }}>{cfg?.label ?? tabId}</span>}
                   </div>
-                  {!collapsed && (
+                  {!sidebarCollapsed && (
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isActive ? '#2563EB' : '#D1D5DB'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="9 18 15 12 9 6"/>
                     </svg>
@@ -397,10 +364,10 @@ export default function LectureSidebarShell({
         </div>
       </div>
 
-      {/* Reading Progress */}
+      {/* Reading Progress — sheet and summary only */}
       {!!user && (activeTab === 'sheet' || activeTab === 'summary') && (
-        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: collapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-          {collapsed ? (
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          {sidebarCollapsed ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
               <div style={{ position: 'relative', width: '44px', height: '44px' }}>
                 <svg width="44" height="44" viewBox="0 0 56 56">
@@ -441,8 +408,8 @@ export default function LectureSidebarShell({
 
       {/* Flashcard Stats */}
       {activeTab === 'flashcards' && (
-        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: collapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-          {collapsed ? (
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          {sidebarCollapsed ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
               <div style={{ position: 'relative', width: '44px', height: '44px' }}>
                 <svg width="44" height="44" viewBox="0 0 56 56">
@@ -469,8 +436,8 @@ export default function LectureSidebarShell({
 
       {/* Quiz Stats */}
       {activeTab === 'quiz' && (
-        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: collapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-          {collapsed ? (
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          {sidebarCollapsed ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
               <div style={{ position: 'relative', width: '44px', height: '44px' }}>
                 <svg width="44" height="44" viewBox="0 0 56 56">
@@ -499,8 +466,8 @@ export default function LectureSidebarShell({
 
       {/* PYQ Stats */}
       {activeTab === 'previous-years' && (
-        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: collapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-          {collapsed ? (
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          {sidebarCollapsed ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
               <div style={{ position: 'relative', width: '44px', height: '44px' }}>
                 <svg width="44" height="44" viewBox="0 0 56 56">
@@ -527,7 +494,7 @@ export default function LectureSidebarShell({
       )}
 
       {/* Content Search */}
-      {!collapsed && (activeTab === 'sheet' || activeTab === 'summary') && (
+      {!sidebarCollapsed && (activeTab === 'sheet' || activeTab === 'summary') && (
         <LectureContentSearch
           sheetContent={activeTab === 'sheet' ? sheetContent : ''}
           summaryContent={activeTab === 'summary' ? summaryContent : ''}
@@ -537,8 +504,8 @@ export default function LectureSidebarShell({
 
       {/* Table of Contents */}
       {tocSections.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: collapsed ? '10px 6px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-          {collapsed ? (
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '10px 6px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          {sidebarCollapsed ? (
             <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', scrollbarWidth: 'none' }}>
               {tocSections.filter(s => s.level <= 2).map((section) => {
                 const isMain = section.level === 1
@@ -583,10 +550,10 @@ export default function LectureSidebarShell({
       )}
 
       {/* Notes */}
-      {!collapsed && <NotesPanel lectureId={lecture.id} />}
+      {!sidebarCollapsed && <NotesPanel lectureId={lecture.id} />}
 
       {/* Actions */}
-      {!collapsed && !!user && (
+      {!sidebarCollapsed && !!user && (
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Actions</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -607,95 +574,6 @@ export default function LectureSidebarShell({
       )}
 
       <div style={{ height: '8px' }} />
-    </>
-  )
-
-  // ── Render ─────────────────────────────────────────────────────────────────
-  return (
-    <>
-      {/* ── TABLET: Overlay + Drawer + Trigger button ── */}
-      {isTablet && (
-        <>
-          {/* Backdrop overlay */}
-          <div
-            onClick={() => setDrawerOpen(false)}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 49,
-              background: 'rgba(0,0,0,0.4)',
-              opacity: drawerOpen ? 1 : 0,
-              pointerEvents: drawerOpen ? 'auto' : 'none',
-              transition: 'opacity 0.25s ease',
-            }}
-          />
-
-          {/* Drawer panel */}
-          <aside
-            style={{
-              position: 'fixed', top: 72, right: 0, bottom: 0, zIndex: 50,
-              width: '300px',
-              background: '#F7F8FA',
-              borderLeft: '1px solid #EEF0F4',
-              display: 'flex', flexDirection: 'column', gap: '12px',
-              padding: '12px',
-              overflowY: 'auto',
-              transform: drawerOpen ? 'translateX(0)' : 'translateX(300px)',
-              transition: 'transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)',
-              willChange: 'transform',
-            }}
-          >
-            {/* Close button */}
-            <button
-              onClick={() => setDrawerOpen(false)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', height: 40, borderRadius: 10, border: '1px solid #EAEDF2', background: '#fff', cursor: 'pointer', color: '#6B7280', padding: '0 14px', flexShrink: 0 }}
-            >
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>Lecture Tools</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
-            {sidebarContent}
-          </aside>
-
-          {/* Floating trigger button */}
-          <button
-            onClick={() => setDrawerOpen(v => !v)}
-            style={{
-              position: 'fixed',
-              right: drawerOpen ? '300px' : '0',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              zIndex: 51,
-              width: 28, height: 64,
-              background: '#2563EB',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px 0 0 8px',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '-2px 0 8px rgba(37,99,235,0.3)',
-              transition: 'right 0.28s cubic-bezier(0.25,0.46,0.45,0.94)',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              {drawerOpen
-                ? <polyline points="9 18 15 12 9 6"/>
-                : <polyline points="15 18 9 12 15 6"/>
-              }
-            </svg>
-          </button>
-        </>
-      )}
-
-      {/* ── DESKTOP: Static sidebar ── */}
-      {!isTablet && (
-        <aside
-          id="lecture-right-sidebar"
-          className="hidden lg:flex"
-          style={{ width: sidebarCollapsed ? '64px' : '272px', height: 'calc(100vh - 72px)', overflowY: 'auto', borderLeft: '1px solid #EEF0F4', background: '#F7F8FA', flexDirection: 'column', gap: '12px', padding: sidebarCollapsed ? '16px 8px' : '16px 12px', flexShrink: 0, transition: 'width 0.25s ease, padding 0.25s ease' }}
-        >
-          {sidebarContent}
-        </aside>
-      )}
-    </>
+    </aside>
   )
 }

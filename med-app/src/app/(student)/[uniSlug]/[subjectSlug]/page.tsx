@@ -2,6 +2,7 @@ import { getUserProfile } from '@/lib/services/user'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import BfCacheReloader from '@/components/student/BfCacheReloader'
 
 export const dynamic = 'force-dynamic'
 
@@ -135,6 +136,7 @@ export default async function SubjectPage({ params }: PageProps) {
       fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
       color: 'rgb(60, 70, 97)',
     }}>
+      <BfCacheReloader />
       {/* ── Responsive styles ── */}
       <style>{`
         .subject-main { padding: 20px 16px 80px; }

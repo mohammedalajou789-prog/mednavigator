@@ -217,9 +217,12 @@ export default function LectureSidebarShell({
   // Derive active tab from URL pathname
   const activeTab = allTabs.find(tab => pathname.endsWith('/' + tab)) ?? allTabs[0] ?? 'sheet'
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(
-    typeof window !== 'undefined' ? window.innerWidth < 1280 : false
-  )
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
+
+  useEffect(() => {
+    setSidebarCollapsed(window.innerWidth < 1280)
+  }, [])
   const [isBookmarked, setIsBookmarked]         = useState(false)
   const [progressPercent, setProgressPercent]   = useState(0)
   const [isCompleted, setIsCompleted]           = useState(false)

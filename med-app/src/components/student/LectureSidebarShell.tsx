@@ -329,7 +329,7 @@ export default function LectureSidebarShell({
   return (
     <aside
       id="lecture-right-sidebar"
-      className={isTablet ? (sidebarCollapsed ? 'hidden' : 'flex') : 'hidden lg:flex'}
+      className="hidden md:flex"
       style={isTablet && !sidebarCollapsed ? {
         position: 'fixed', top: 72, right: 0, bottom: 0, zIndex: 50,
         width: '300px', overflowY: 'auto',

@@ -145,9 +145,9 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
       const desktop = isDesktopWidth(window.innerWidth)
       setIsDesktop(desktop)
       if (desktop) {
-        const segments = pathname.split('/').filter(Boolean)
-        const isLecturePage = segments.length >= 3
-        setSidebarOpen(!isLecturePage)
+        setSidebarOpen(true)
+
+
         setDrawerOpen(false)
       } else {
         setSidebarOpen(false)
@@ -157,6 +157,15 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+  // Close left sidebar automatically when entering a lecture page
+  useEffect(() => {
+    if (!isDesktop) return
+    const segments = pathname.split('/').filter(Boolean)
+    const isLecturePage = segments.length >= 3
+    if (isLecturePage) {
+      setSidebarOpen(false)
+    }
+  }, [pathname, isDesktop])
 
   // Auto-expand explore when on a university page
   useEffect(() => {

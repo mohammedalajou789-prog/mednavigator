@@ -1,8 +1,10 @@
 import { getAuthUser } from '@/lib/services/user'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import ChapterProgressClient from '@/components/student/ChapterProgressClient'
+import Link from 'next/link'
+import BfCacheReloader from '@/components/student/BfCacheReloader'
+import ChapterProgressClient from '@/components/student/ChapterProgressClient'
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{ uniSlug: string; subjectSlug: string; chapterId: string }>
@@ -103,7 +105,8 @@ export default async function ChapterPage({ params }: PageProps) {
       background: 'rgb(245, 247, 252)',
       fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
       color: 'rgb(60, 70, 97)',
-    }}>
+    }}>
+      <BfCacheReloader />
       <main style={{ width: '100%', padding: 'clamp(16px, 4vw, 30px) clamp(16px, 4vw, 34px) 80px' }}>
 
         {/* ── Breadcrumb ── */}

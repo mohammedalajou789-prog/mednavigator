@@ -107,7 +107,21 @@ export default async function SubjectPage({ params }: PageProps) {
     osce: 'OSCE Stations', mini_osce: 'Mini-OSCE', oral_exam: 'Oral Exam',
   }
 
-  const lastAccessedLecture = lectureList.length > 0 ? lectureList[0] as any : null
+  // Find last accessed lecture from user_progress
+  let lastAccessedLecture: any = null
+  if (userId && lectureIds.length > 0) {
+    const { data: lastProgress } = await supabase
+      .from('user_progress')
+      .select('lecture_id, last_accessed_at')
+      .eq('user_id', userId)
+      .in('lecture_id', lectureIds)
+      .order('last_accessed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (lastProgress) {
+      lastAccessedLecture = lectureList.find((l: any) => l.id === lastProgress.lecture_id) ?? null
+    }
+  }
 
   const ringCircumference = 389.56
   const ringOffset        = ringCircumference * (1 - progressPercent / 100)

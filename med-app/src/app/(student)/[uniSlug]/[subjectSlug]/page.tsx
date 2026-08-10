@@ -14,84 +14,57 @@ export default async function SubjectPage({ params }: PageProps) {
   const { uniSlug, subjectSlug } = await params
   const supabase = await createServerClient()
 
-  // Wave 1 — resolve slugs + auth in parallel
-  const [
-    { data: uniRow },
-    { data: subRow },
-    profile,
-  ] = await Promise.all([
+  // ── Wave 1: slugs + profile in parallel ───────────────────────────────────
+  const [{ data: uniRow }, { data: subRow }, profile] = await Promise.all([
     supabase.from('universities').select('id, name').eq('slug' as any, uniSlug).single(),
     supabase.from('subjects').select('id, name, description, access_mode, subject_type').eq('slug' as any, subjectSlug).eq('is_published', true).single(),
     getUserProfile(),
   ])
   if (!uniRow || !subRow) notFound()
-  const universityId = uniRow.id
-  const subjectId    = subRow.id
-  const university   = uniRow
-  const subject      = subRow
-  const userId       = profile?.id ?? null
-  const isSystem     = subject.subject_type === 'system'
 
+  const subjectId = subRow.id
+  const userId    = profile?.id ?? null
+  const isSystem  = subRow.subject_type === 'system'
 
-
-  const flashMap: Record<string, number> = {}
-  const quizMap:  Record<string, number> = {}
-  const pyqMap:   Record<string, number> = {}
-  type ChecklistRow = { lecture_id: string; stars: number }
-  let checklistRows: ChecklistRow[] = []
-
-
-  const [
-    { data: chapters },
-    { data: subSubjects },
-    { data: lectures },
-    { data: videos },
-    { data: clinicalModules },
-  ] = await Promise.all([
-    supabase.from('chapters').select('id,title,display_order,slug').eq('subject_id', subjectId).is('archived_at', null).order('display_order'),
-    supabase.from('sub_subjects').select('id,title,display_order,slug').eq('subject_id', subjectId).is('archived_at', null).order('display_order'),
-    supabase.from('lectures').select('id,title,chapter_id,sub_subject_id,display_order,slug' as any).eq('subject_id', subjectId).eq('status', 'published').order('display_order') as any,
+  // ── Wave 2: single RPC + videos + clinical modules in parallel ────────────
+  const [rpcResult, { data: videos }, { data: clinicalModules }] = await Promise.all([
+    (supabase as any).rpc('get_subject_page_data', {
+      p_subject_id: subjectId,
+      p_is_system:  isSystem,
+      p_user_id:    userId ?? null,
+    }),
     supabase.from('videos').select('id,title,video_url,is_preview,display_order').eq('subject_id', subjectId).is('archived_at', null).order('display_order'),
     supabase.from('clinical_modules').select('id,module_type').eq('subject_id', subjectId).is('archived_at', null),
   ])
 
-  const groups        = (isSystem ? (subSubjects ?? []) : (chapters ?? [])) as unknown as { id: string; title: string; display_order: number; slug: string }[]
-  const lectureList   = lectures ?? []
-  const lectureIds    = lectureList.map((l: any) => l.id)
+  const rpcData   = rpcResult.data ?? {}
+  const groups    = (rpcData.groups   ?? []) as any[]
+  const lectures  = (rpcData.lectures ?? []) as any[]
+  const checklist = (rpcData.checklist ?? {}) as Record<string, number>
+  const lastLectureId = rpcData.last_lecture?.lecture_id ?? null
+
+  const lectureList   = lectures
   const totalLectures = lectureList.length
 
-  if (lectureIds.length > 0) {
-    const [contentCountsResult, checklistResult] = await Promise.all([
-      supabase.rpc('get_content_counts_by_lecture' as any, { lecture_ids: lectureIds }),
-      userId
-        ? supabase.from('checklist_progress').select('lecture_id,stars').eq('user_id', userId).in('lecture_id', lectureIds)
-        : Promise.resolve({ data: [] as { lecture_id: string; stars: number }[] }),
-    ])
-    contentCountsResult.data?.forEach((r: any) => {
-      flashMap[r.lecture_id] = r.flashcards_count ?? 0
-      quizMap[r.lecture_id]  = r.quiz_count ?? 0
-      pyqMap[r.lecture_id]   = r.pyq_count ?? 0
-    })
-    checklistRows = (checklistResult.data ?? []) as ChecklistRow[]
-  }
+  const flashMap: Record<string, number> = {}
+  const quizMap:  Record<string, number> = {}
+  const pyqMap:   Record<string, number> = {}
 
+  lectureList.forEach((l: any) => {
+    if (l.flash_count) flashMap[l.id] = l.flash_count
+    if (l.quiz_count)  quizMap[l.id]  = l.quiz_count
+    if (l.pyq_count)   pyqMap[l.id]   = l.pyq_count
+  })
 
-
-
-
-
-
-
-
-
-
-  const starsByLecture: Record<string, number> = {}
-  checklistRows.forEach(r => { starsByLecture[r.lecture_id] = r.stars })
-
-  const totalStars      = Object.values(starsByLecture).reduce((s, n) => s + n, 0)
+  const starsByLecture = checklist
+  const totalStars     = Object.values(starsByLecture).reduce((s: number, n: any) => s + n, 0)
   const progressPercent = totalLectures > 0 ? Math.round((totalStars / (totalLectures * 3)) * 100) : 0
 
-  const groupStats = groups.map(group => {
+  const lastAccessedLecture = lastLectureId
+    ? lectureList.find((l: any) => l.id === lastLectureId) ?? null
+    : null
+
+  const groupStats = groups.map((group: any) => {
     const gLectures = lectureList.filter((l: any) => isSystem ? l.sub_subject_id === group.id : l.chapter_id === group.id)
     const gTotal    = gLectures.length
     const gStars    = gLectures.reduce((s: number, l: any) => s + (starsByLecture[l.id] ?? 0), 0)
@@ -100,30 +73,14 @@ export default async function SubjectPage({ params }: PageProps) {
     const gPyq      = gLectures.reduce((s: number, l: any) => s + (pyqMap[l.id]   ?? 0), 0)
     const gPct      = gTotal > 0 ? Math.round((gStars / (gTotal * 3)) * 100) : 0
     return { group, gTotal, gStars, gFlash, gQuiz, gPyq, gPct }
-  }).filter(s => s.gTotal > 0)
+  }).filter((s: any) => s.gTotal > 0)
 
-  const typeBadge   = subject.subject_type === 'system' ? 'System' : subject.subject_type === 'standard' ? 'Standard' : 'Clinical'
-  const accessBadge = subject.access_mode  === 'free'   ? 'Free'   : subject.access_mode  === 'mixed'    ? 'Mixed'    : 'Premium'
+  const typeBadge   = subRow.subject_type === 'system' ? 'System' : subRow.subject_type === 'standard' ? 'Standard' : 'Clinical'
+  const accessBadge = subRow.access_mode  === 'free'   ? 'Free'   : subRow.access_mode  === 'mixed'    ? 'Mixed'    : 'Premium'
   const groupLabel  = isSystem ? 'Sub-Subject' : 'Chapter'
 
   const moduleLabels: Record<string, string> = {
     osce: 'OSCE Stations', mini_osce: 'Mini-OSCE', oral_exam: 'Oral Exam',
-  }
-
-  // Find last accessed lecture from user_progress
-  let lastAccessedLecture: any = null
-  if (userId && lectureIds.length > 0) {
-    const { data: lastProgress } = await supabase
-      .from('user_progress')
-      .select('lecture_id, last_accessed_at')
-      .eq('user_id', userId)
-      .in('lecture_id', lectureIds)
-      .order('last_accessed_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    if (lastProgress) {
-      lastAccessedLecture = lectureList.find((l: any) => l.id === lastProgress.lecture_id) ?? null
-    }
   }
 
   const ringCircumference = 389.56
@@ -178,9 +135,9 @@ export default async function SubjectPage({ params }: PageProps) {
         <nav style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, fontWeight: 600, marginBottom: 18, flexWrap: 'wrap' }}>
           <Link prefetch={false} href="/home" style={{ color: 'rgb(107, 118, 144)', textDecoration: 'none' }}>Home</Link>
           <span style={{ color: 'rgb(194, 202, 219)' }}>/</span>
-          <Link prefetch={false} href={`/${uniSlug}`} style={{ color: 'rgb(107, 118, 144)', textDecoration: 'none' }}>{university.name}</Link>
+          <Link prefetch={false} href={`/${uniSlug}`} style={{ color: 'rgb(107, 118, 144)', textDecoration: 'none' }}>{uniRow.name}</Link>
           <span style={{ color: 'rgb(194, 202, 219)' }}>/</span>
-          <span style={{ color: 'rgb(21, 32, 58)' }}>{subject.name}</span>
+          <span style={{ color: 'rgb(21, 32, 58)' }}>{subRow.name}</span>
         </nav>
 
         {/* Hero Banner */}
@@ -194,7 +151,6 @@ export default async function SubjectPage({ params }: PageProps) {
           <div style={{ position: 'absolute', top: -60, right: 260, width: 300, height: 180, background: 'radial-gradient(rgba(147, 197, 253, 0.32) 0%, rgba(196, 181, 253, 0.12) 55%, transparent 75%)', filter: 'blur(30px)', pointerEvents: 'none' }} />
 
           <div className="hero-inner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
-            {/* Left */}
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 20, background: 'rgb(231, 247, 239)', border: '1px solid rgb(199, 235, 216)', color: 'rgb(19, 138, 90)', fontSize: 12, fontWeight: 700 }}>
@@ -209,10 +165,10 @@ export default async function SubjectPage({ params }: PageProps) {
                 </span>
               </div>
 
-              <h1 className="hero-title" style={{ margin: 0, lineHeight: 1.08, fontWeight: 800, letterSpacing: '-0.03em', color: 'rgb(21, 32, 58)' }}>{subject.name}</h1>
+              <h1 className="hero-title" style={{ margin: 0, lineHeight: 1.08, fontWeight: 800, letterSpacing: '-0.03em', color: 'rgb(21, 32, 58)' }}>{subRow.name}</h1>
 
-              {subject.description && (
-                <p style={{ margin: '12px 0 0', fontSize: 14, lineHeight: 1.6, color: 'rgb(85, 97, 125)' }}>{subject.description}</p>
+              {subRow.description && (
+                <p style={{ margin: '12px 0 0', fontSize: 14, lineHeight: 1.6, color: 'rgb(85, 97, 125)' }}>{subRow.description}</p>
               )}
 
               <div style={{ display: 'flex', gap: 20, marginTop: 18, flexWrap: 'wrap' }}>
@@ -242,7 +198,6 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Progress ring — desktop only, logged in users only */}
             {userId && <div className="hero-ring" style={{ flexShrink: 0, flexDirection: 'column', alignItems: 'center' }}>
               <div style={{ position: 'relative', width: 120, height: 120 }}>
                 <svg width="120" height="120" viewBox="0 0 148 148" style={{ transform: 'rotate(-90deg)' }}>
@@ -262,7 +217,6 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             </div>}
 
-            {/* Progress bar — mobile only, logged in users only */}
             {userId && <div className="hero-progress-bar" style={{ marginTop: 16, width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'rgb(136, 146, 168)' }}>Overall Progress</span>
@@ -276,7 +230,7 @@ export default async function SubjectPage({ params }: PageProps) {
           </div>
         </section>
 
-        {/* Continue Learning Banner — logged in users only */}
+        {/* Continue Learning Banner */}
         {userId && lastAccessedLecture && (
           <div style={{ background: 'linear-gradient(120deg, rgba(37, 99, 235, 0.06), rgb(255, 255, 255) 60%)', border: '1px solid rgb(226, 232, 240)', borderRadius: 16, overflow: 'hidden', marginBottom: 24, boxShadow: 'rgba(15, 23, 42, 0.04) 0px 1px 3px, rgba(15, 23, 42, 0.10) 0px 10px 24px -16px' }}>
             <div className="continue-inner" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -285,7 +239,7 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'rgb(37, 99, 235)', marginBottom: 2 }}>CONTINUE LEARNING</div>
-                <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em', color: 'rgb(15, 23, 42)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lastAccessedLecture.title}</div>
+                <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em', color: 'rgb(15, 23, 42)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(lastAccessedLecture as any).title}</div>
                 <div style={{ fontSize: 12, color: 'rgb(100, 116, 139)', marginTop: 2 }}>Pick up where you left off</div>
               </div>
               <div className="continue-stars" style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -300,7 +254,7 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
               <Link prefetch={false}
                 className="continue-resume"
-                href={`/${uniSlug}/${subjectSlug}/${(lastAccessedLecture as any).slug ?? lastAccessedLecture.id}`}
+                href={`/${uniSlug}/${subjectSlug}/${(lastAccessedLecture as any).slug ?? (lastAccessedLecture as any).id}`}
                 style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 8, height: 42, padding: '0 18px', border: 'none', borderRadius: 11, background: 'rgb(37, 99, 235)', color: 'rgb(255, 255, 255)', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }}>
                 Resume →
               </Link>
@@ -311,7 +265,7 @@ export default async function SubjectPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Grid: Chapters + Sidebar */}
+        {/* Grid */}
         <div className="subject-grid" style={{ display: 'grid', alignItems: 'start' }}>
 
           {/* LEFT: Chapters */}
@@ -322,7 +276,7 @@ export default async function SubjectPage({ params }: PageProps) {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {groupStats.map(({ group, gTotal, gFlash, gQuiz, gPyq, gPct }) => (
+              {groupStats.map(({ group, gTotal, gFlash, gQuiz, gPyq, gPct }: any) => (
                 <Link key={group.id} href={`/${uniSlug}/${subjectSlug}/chapter/${(group as any).slug ?? group.id}`} prefetch={false} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
                   <div className="chapter-card" style={{ display: 'flex', alignItems: 'center', borderRadius: 16, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', cursor: 'pointer', boxShadow: 'rgba(16, 24, 40, 0.04) 0px 1px 2px, rgba(40, 90, 200, 0.4) 0px 14px 34px -26px' }}>
                     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 12, background: 'rgb(238, 243, 255)', color: 'rgb(47, 107, 255)', flexShrink: 0 }}>
@@ -351,7 +305,6 @@ export default async function SubjectPage({ params }: PageProps) {
                       View lectures
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
                     </span>
-                    
                   </div>
                 </Link>
               ))}
@@ -362,7 +315,6 @@ export default async function SubjectPage({ params }: PageProps) {
           <aside>
             <h2 style={{ margin: '20px 0 12px', fontSize: 12, fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'rgb(136, 146, 168)' }}>More in this subject</h2>
 
-            {/* Video Lectures */}
             {videos && videos.length > 0 && (
               <div style={{ borderRadius: 14, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '16px 16px 14px', marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -380,7 +332,6 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             )}
 
-            {/* Previous Years */}
             <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/previous-years`} style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 14, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '14px 16px' }}>
                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, background: 'rgb(238, 243, 255)', color: 'rgb(47, 107, 255)', flexShrink: 0 }}>
@@ -396,7 +347,6 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             </Link>
 
-            {/* Quiz Bank */}
             <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/quiz-bank`} style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 14, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '14px 16px' }}>
                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, background: 'rgb(238, 246, 238)', color: 'rgb(23, 166, 107)', flexShrink: 0 }}>
@@ -412,7 +362,6 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             </Link>
 
-            {/* Flashcards Bank */}
             <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/flashcards-bank`} style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 14, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', padding: '14px 16px' }}>
                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, background: 'rgb(255, 246, 224)', color: 'rgb(201, 148, 0)', flexShrink: 0 }}>
@@ -428,7 +377,6 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             </Link>
 
-            {/* Clinical Modules */}
             {clinicalModules && clinicalModules.length > 0 && (
               <div style={{ borderRadius: 14, border: '1px solid rgb(231, 236, 246)', background: 'rgb(255, 255, 255)', marginBottom: 10, overflow: 'hidden' }}>
                 <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -443,7 +391,7 @@ export default async function SubjectPage({ params }: PageProps) {
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 800, color: 'rgb(23, 166, 107)' }}>{clinicalModules.length}</span>
                 </div>
-                {clinicalModules.map(mod => (
+                {clinicalModules.map((mod: any) => (
                   <div key={mod.id}>
                     <div style={{ height: 1, background: 'rgb(231, 236, 246)', margin: '0 16px' }} />
                     <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/clinical/${mod.id}`} style={{ padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit' }}>

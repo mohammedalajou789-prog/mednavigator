@@ -214,8 +214,8 @@ export default function ChapterProgressClient({
           const statusColor = isMastered ? 'rgb(19, 138, 90)' : lectureStars > 0 ? 'rgb(161, 115, 10)' : 'rgb(136, 146, 168)'
           const statusBg    = isMastered ? 'rgba(19,138,90,0.11)' : lectureStars > 0 ? 'rgba(216,154,6,0.11)' : 'rgb(241, 243, 249)'
 
-          const iconBg    = isMastered ? 'rgb(220, 252, 231)' : 'rgb(238, 241, 248)'
-          const iconColor = isMastered ? 'rgb(22, 163, 74)' : 'rgb(154, 164, 188)'
+          const iconBg    = isMastered ? 'rgb(231, 247, 239)' : 'rgb(238, 241, 248)'
+          const iconColor = isMastered ? 'rgb(23, 166, 107)' : 'rgb(154, 164, 188)'
 
           const metaParts: string[] = []
           if (sheetMap[lecture.id])             metaParts.push('Sheet')
@@ -239,15 +239,15 @@ export default function ChapterProgressClient({
                 {/* Icon */}
                 <span style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 40, height: 40, borderRadius: 11,
+                  width: 44, height: 44, borderRadius: 12,
                   background: iconBg, color: iconColor,
-                  flexShrink: 0, fontSize: 16, fontWeight: 800,
+                  flexShrink: 0, fontSize: 18, fontWeight: 800,
                 }}>
-                  {isMastered ? (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                  ) : '•'}
+                  {isMastered ? '✓' : '•'}
+
+
+
+
                 </span>
 
                 {/* Title + meta */}

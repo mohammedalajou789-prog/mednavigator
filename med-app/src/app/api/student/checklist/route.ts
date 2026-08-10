@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         lecture_id,
         stars,
         updated_at: new Date().toISOString(),
-      }, {})
+      }, { onConflict: 'user_id,lecture_id' })
       .select()
       .single()
 

@@ -216,7 +216,9 @@ export default function LectureSidebarShell({
   // Derive active tab from URL pathname
   const activeTab = allTabs.find(tab => pathname.endsWith('/' + tab)) ?? allTabs[0] ?? 'sheet'
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 1280 : false
+  )
   const [isBookmarked, setIsBookmarked]         = useState(false)
   const [progressPercent, setProgressPercent]   = useState(0)
   const [isCompleted, setIsCompleted]           = useState(false)
@@ -315,7 +317,7 @@ export default function LectureSidebarShell({
   return (
     <aside
       id="lecture-right-sidebar"
-      className="hidden lg:flex"
+      className="hidden md:flex"
       style={{ width: sidebarCollapsed ? '64px' : '272px', height: 'calc(100vh - 72px)', overflowY: 'auto', borderLeft: '1px solid #EEF0F4', background: '#F7F8FA', flexDirection: 'column', gap: '12px', padding: sidebarCollapsed ? '16px 8px' : '16px 12px', flexShrink: 0, transition: 'width 0.25s ease, padding 0.25s ease' }}
     >
       {/* Collapse button */}

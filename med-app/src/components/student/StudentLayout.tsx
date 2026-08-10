@@ -145,7 +145,9 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
       const desktop = isDesktopWidth(window.innerWidth)
       setIsDesktop(desktop)
       if (desktop) {
-        setSidebarOpen(true)
+        const segments = pathname.split('/').filter(Boolean)
+        const isLecturePage = segments.length >= 3
+        setSidebarOpen(!isLecturePage)
         setDrawerOpen(false)
       } else {
         setSidebarOpen(false)

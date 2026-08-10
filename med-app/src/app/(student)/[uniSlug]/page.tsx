@@ -13,36 +13,36 @@ export default async function UniversityPage({ params }: PageProps) {
 
   const supabase = await createServerClient()
 
-  // Get user (optional — not required to view the page)
-  let userId: string | null = null
-  try {
-    const profile = await requireAuth()
-    userId = profile.id
-  } catch {}
 
-  // Single query: fetch university + all its subjects in one round trip
-  const { data: university } = await supabase
-    .from('universities')
-    .select(`
-      id,
-      name,
-      logo_url,
-      subjects!inner (
+  // ── Parallel: auth + university in one round trip ───────────────────────
+  let userId: string | null = null
+  const [profileResult, { data: university }] = await Promise.all([
+    (async () => { try { const p = await requireAuth(); return p } catch { return null } })(),
+    supabase
+      .from('universities')
+      .select(`
         id,
         name,
-        slug,
-        subject_type,
-        category,
-        access_mode,
-        description
-      )
-    `)
-    .eq('slug' as any, uniSlug)
-    .eq('subjects.is_published' as any, true)
-    .order('name', { referencedTable: 'subjects' })
-    .single() as any
-
+        logo_url,
+        subjects!inner (
+          id,
+          name,
+          slug,
+          subject_type,
+          category,
+          access_mode,
+          description
+        )
+      `)
+      .eq('slug' as any, uniSlug)
+      .eq('subjects.is_published' as any, true)
+      .order('name', { referencedTable: 'subjects' })
+      .single() as any,
+  ])
+  userId = profileResult?.id ?? null
   if (!university) notFound()
+
+
 
   // Fetch pinned subject IDs for this user (parallel, does not block page)
   const pinnedSet = new Set<string>()

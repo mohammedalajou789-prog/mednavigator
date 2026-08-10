@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUserStore } from '@/stores/userStore'
 import LectureContentSearch from '@/components/student/LectureContentSearch'
@@ -212,6 +212,7 @@ export default function LectureSidebarShell({
   const { user } = useUserStore()
   const supabase = createClient()
   const pathname = usePathname()
+  const router   = useRouter()
 
   // Derive active tab from URL pathname
   const activeTab = allTabs.find(tab => pathname.endsWith('/' + tab)) ?? allTabs[0] ?? 'sheet'
@@ -340,7 +341,7 @@ export default function LectureSidebarShell({
               const isActive = activeTab === tabId
               const href     = `/${uniSlug}/${subjectSlug}/${lectureSlug}/${tabId}`
               return (
-                <Link key={tabId} href={href} prefetch={false} title={cfg?.label ?? tabId}
+                <button key={tabId} title={cfg?.label ?? tabId} onClick={() => { localStorage.setItem(`lecture:${lecture.id}:active_tab`, tabId); router.replace(href) }}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', padding: sidebarCollapsed ? '10px' : '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer', background: isActive ? '#EEF3FF' : 'transparent', color: isActive ? '#2563EB' : '#6B7280', transition: 'all 0.15s ease', textDecoration: 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: sidebarCollapsed ? 0 : '10px' }}>
                     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: isActive ? '#DBEAFE' : '#F3F4F6', color: isActive ? '#2563EB' : '#9CA3AF', flexShrink: 0, transition: 'all 0.15s ease' }}>
@@ -353,7 +354,7 @@ export default function LectureSidebarShell({
                       <polyline points="9 18 15 12 9 6"/>
                     </svg>
                   )}
-                </Link>
+                </button>
               )
             })}
           </div>

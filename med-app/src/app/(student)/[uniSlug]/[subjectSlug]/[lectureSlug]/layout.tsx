@@ -2,6 +2,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { checkUserAccess } from '@/lib/services/subscriptions'
 import { redirect } from 'next/navigation'
 import LectureSidebarShell from '@/components/student/LectureSidebarShell'
+import LectureAccessTracker from '@/components/student/LectureAccessTracker'
 
 interface LayoutProps {
   params: Promise<{
@@ -89,6 +90,7 @@ export default async function LectureLayout({ params, children }: LayoutProps) {
         className="flex-1 min-w-0"
         style={{ overflowY: 'auto', height: 'calc(100vh - 72px)', background: '#F5F6FA' }}
       >
+        <LectureAccessTracker lectureId={lecture.id} />
         {children}
       </div>
 

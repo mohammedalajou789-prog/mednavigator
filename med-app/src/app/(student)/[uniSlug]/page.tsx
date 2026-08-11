@@ -60,7 +60,7 @@ export default async function UniversityPage({ params }: PageProps) {
     ])
     ;(pinnedResult.data ?? []).forEach((p: any) => savedIds.push(p.subject_id))
     for (const row of (checklistResult.data ?? [])) {
-      const sid = lectureToSubject[row.lecture_id]
+      const sid = row.lecture_id ? lectureToSubject[row.lecture_id] : undefined
       if (sid && progressMap[sid]) progressMap[sid].stars += row.stars ?? 0
     }
   }

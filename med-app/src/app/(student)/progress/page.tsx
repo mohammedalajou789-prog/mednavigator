@@ -201,12 +201,6 @@ export default async function ProgressPage() {
             <h1 style={{ fontSize:'clamp(22px,5vw,28px)', fontWeight:800, letterSpacing:'-.025em', margin:0 }}>My Progress</h1>
             <p style={{ fontSize:14, color:'#475569', marginTop:4, marginBottom:0 }}>Track your learning across all subjects</p>
           </div>
-          <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, padding:'9px 14px', boxShadow:'0 4px 14px -10px rgba(15,23,42,.2)' }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="3"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/>
-            </svg>
-            <span style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>Last 3 months</span>
-          </div>
         </div>
 
         {/* ── KPI Row ── */}

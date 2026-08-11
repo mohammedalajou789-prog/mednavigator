@@ -81,34 +81,17 @@ export default function UniversityClient({ university, subjectList, sections, sa
                   <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'#2563EB',color:'#fff',fontSize:36,fontWeight:800}}>{university.name.charAt(0)}</div>
                 )}
               </div>
-
               {/* Text */}
               <div style={{flex:1,minWidth:180,position:'relative'}}>
-
                 <div style={{position:'relative',zIndex:1}}>
                   <h1 style={{fontSize:'clamp(22px,5vw,30px)',fontWeight:800,letterSpacing:'-0.02em',color:'#0F172A',margin:0}}>{university.name}</h1>
                   <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:12,fontWeight:700,color:'#2563EB',background:'rgba(37,99,235,0.1)',padding:'3px 10px',borderRadius:99,marginTop:8}}>
                     {subjectList.length} subjects available
                   </span>
                   {university.description&&<p style={{fontSize:13.5,lineHeight:1.6,color:'#94A3B8',marginTop:12,maxWidth:500,marginBottom:0}}>{university.description}</p>}
+                  {university.country&&(<span style={{display:'inline-flex',alignItems:'center',gap:5,fontSize:12,fontWeight:600,color:'#64748B',marginTop:8}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>{university.country}</span>)}
                 </div>
               </div>
-
-              {/* Country badge */}
-              {university.country&&(
-                <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',borderRadius:12,background:'#fff',border:'1px solid rgba(37,99,235,0.15)',boxShadow:'0 4px 12px -4px rgba(15,23,42,.1)',flexShrink:0,alignSelf:'flex-start'}}>
-                  <div style={{width:28,height:28,borderRadius:8,background:'rgba(37,99,235,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                    </svg>
-                  </div>
-                  <div style={{display:'flex',flexDirection:'column',lineHeight:1.25}}>
-                    <span style={{fontSize:12.5,fontWeight:700,color:'#0F172A'}}>{university.country}</span>
-                    <span style={{fontSize:11,fontWeight:600,color:'#64748B'}}>University</span>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 

@@ -30,7 +30,9 @@ export default async function UniversityPage({ params }: PageProps) {
           subject_type,
           category,
           access_mode,
-          description
+          description,
+          lectures ( id ),
+          chapters ( id )
         )
       `)
       .eq('slug' as any, uniSlug)
@@ -41,8 +43,8 @@ export default async function UniversityPage({ params }: PageProps) {
   userId = profileResult?.id ?? null
   if (!university) notFound()
 
-  // ── Fetch pinned subjects ────────────────────────────────────────────────
-  const pinnedIds: string[] = []
+  // ── Fetch pinned/saved subjects ──────────────────────────────────────────
+  const savedIds: string[] = []
   if (userId) {
     const subjectIds = (university.subjects ?? []).map((s: any) => s.id)
     if (subjectIds.length > 0) {
@@ -51,34 +53,37 @@ export default async function UniversityPage({ params }: PageProps) {
         .select('subject_id')
         .eq('user_id', userId)
         .in('subject_id', subjectIds)
-      ;(pinned ?? []).forEach((p: any) => pinnedIds.push(p.subject_id))
+      ;(pinned ?? []).forEach((p: any) => savedIds.push(p.subject_id))
     }
   }
 
-  const subjectList = (university.subjects ?? []) as Array<{
-    id: string
-    name: string
-    slug: string | null
-    subject_type: string
-    category: string | null
-    access_mode: string
-    description: string | null
-  }>
+  // ── Normalise subject list ───────────────────────────────────────────────
+  const subjectList = (university.subjects ?? []).map((s: any) => ({
+    id:            s.id,
+    name:          s.name,
+    slug:          s.slug   ?? null,
+    subject_type:  s.subject_type,
+    category:      s.category ?? null,
+    access_mode:   s.access_mode,
+    description:   s.description ?? null,
+    lecture_count: Array.isArray(s.lectures) ? s.lectures.length : 0,
+    chapter_count: Array.isArray(s.chapters) ? s.chapters.length : 0,
+  }))
 
   // ── Build sections ───────────────────────────────────────────────────────
-  const preclinical   = subjectList.filter(s => s.category === 'preclinical')
-  const clinicalMajor = subjectList.filter(s => s.category === 'clinical_major')
-  const clinicalMinor = subjectList.filter(s => s.category === 'clinical_minor')
+  const preclinical   = subjectList.filter((s: any) => s.category === 'preclinical')
+  const clinicalMajor = subjectList.filter((s: any) => s.category === 'clinical_major')
+  const clinicalMinor = subjectList.filter((s: any) => s.category === 'clinical_minor')
   const other         = subjectList.filter(
-    s => !['preclinical', 'clinical_major', 'clinical_minor'].includes(s.category ?? '')
+    (s: any) => !['preclinical','clinical_major','clinical_minor'].includes(s.category ?? '')
   )
 
   const sections = [
-    { key: 'preclinical',    label: 'PRE-CLINICAL',    tabLabel: 'Pre-Clinical', list: preclinical,   barGradient: 'linear-gradient(180deg,#16A34A,#059669)' },
-    { key: 'clinical_major', label: 'CLINICAL – MAJOR', tabLabel: 'Majors',      list: clinicalMajor, barGradient: 'linear-gradient(180deg,#2563EB,#7C3AED)' },
-    { key: 'clinical_minor', label: 'CLINICAL – MINOR', tabLabel: 'Minors',      list: clinicalMinor, barGradient: 'linear-gradient(180deg,#D97706,#EA580C)' },
+    { key:'preclinical',    label:'PRE-CLINICAL',     tabLabel:'Pre-Clinical', list:preclinical,   barColor:'linear-gradient(180deg,#16A34A,#059669)' },
+    { key:'clinical_major', label:'CLINICAL – MAJOR', tabLabel:'Majors',       list:clinicalMajor, barColor:'linear-gradient(180deg,#2563EB,#7C3AED)' },
+    { key:'clinical_minor', label:'CLINICAL – MINOR', tabLabel:'Minors',       list:clinicalMinor, barColor:'linear-gradient(180deg,#D97706,#EA580C)' },
     ...(other.length > 0
-      ? [{ key: 'other', label: 'GENERAL', tabLabel: 'General', list: other, barGradient: 'linear-gradient(180deg,#9AA3B2,#64748B)' }]
+      ? [{ key:'other', label:'GENERAL', tabLabel:'General', list:other, barColor:'linear-gradient(180deg,#9AA3B2,#64748B)' }]
       : []),
   ].filter(s => s.list.length > 0)
 
@@ -87,13 +92,13 @@ export default async function UniversityPage({ params }: PageProps) {
       university={{
         id:          university.id,
         name:        university.name,
-        logo_url:    university.logo_url   ?? null,
+        logo_url:    university.logo_url    ?? null,
         description: university.description ?? null,
-        country:     university.country    ?? null,
+        country:     university.country     ?? null,
       }}
       subjectList={subjectList}
       sections={sections}
-      pinnedIds={pinnedIds}
+      savedIds={savedIds}
       userId={userId}
       uniSlug={uniSlug}
     />

@@ -210,7 +210,7 @@ export default async function ProgressPage() {
         </div>
 
         {/* ── KPI Row ── */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,270px),1fr))', gap:14, marginBottom:20 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:14, marginBottom:20 }}>
 
           {/* Overall Progress — ring */}
           <div className="prog-card" style={{ background:'#fff', border:'1px solid #E2E8F0', borderRadius:18, padding:20, boxShadow:'0 4px 20px -2px rgba(15,23,42,.05)', display:'flex', alignItems:'center', gap:18, animation:'fadeUp .5s ease .04s backwards' }}>

@@ -1,5 +1,3 @@
-'use client'
-
 // ─────────────────────────────────────────────────────────────────────────────
 // NOTE FOR ENGINEER:
 //   This file replaces: src/app/(student)/[uniSlug]/page.tsx

@@ -74,7 +74,7 @@ export default function ExplorePageClient() {
             <p style={{ fontSize:14.5, lineHeight:1.6, color:'#475569', marginTop:4, marginBottom:0 }}>Browse subjects and content from all universities on the platform.</p>
           </div>
 
-          {/* Search */}
+          {unis.length >= 10 && (
           <div style={{ display:'flex', alignItems:'center', gap:10, width:320, maxWidth:'100%', background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, padding:'10px 14px', boxShadow:'0 4px 14px -10px rgba(15,23,42,.18)' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}>
               <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>
@@ -89,6 +89,7 @@ export default function ExplorePageClient() {
               {loading ? '...' : `${filtered.length} result${filtered.length === 1 ? '' : 's'}`}
             </span>
           </div>
+          )}
         </div>
 
         {/* Loading skeleton */}

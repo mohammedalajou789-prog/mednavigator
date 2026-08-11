@@ -26,6 +26,7 @@ export default async function ProgressPage() {
             name,
             university_id,
             universities ( id, name, slug )
+            lectures ( id )
           )
         )
       `)
@@ -38,25 +39,19 @@ export default async function ProgressPage() {
       .eq('user_id', profile.id),
   ])
 
-  // ── Subject IDs → fetch total lectures ───────────────────────────────────
+  // ── Build totalLecturesBySubject from nested lectures data (no extra query) ─────
+  let totalLecturesBySubject: Record<string, number> = {}
   const subjectIdsSet = new Set<string>()
   checklistData?.forEach(row => {
     const lec = row.lectures as any
-    if (lec?.subject_id) subjectIdsSet.add(lec.subject_id)
+    if (!lec?.subject_id) return
+    subjectIdsSet.add(lec.subject_id)
+    const sub = lec.subjects as any
+    if (sub?.lectures) {
+      totalLecturesBySubject[lec.subject_id] = Array.isArray(sub.lectures) ? sub.lectures.length : 0
+    }
   })
   const subjectIds = Array.from(subjectIdsSet)
-  let totalLecturesBySubject: Record<string, number> = {}
-  if (subjectIds.length > 0) {
-    const { data: lecs } = await supabase
-      .from('lectures')
-      .select('id, subject_id')
-      .in('subject_id', subjectIds)
-      .eq('status', 'published')
-    lecs?.forEach((l: any) => {
-      totalLecturesBySubject[l.subject_id] = (totalLecturesBySubject[l.subject_id] ?? 0) + 1
-    })
-  }
-
   // ── Build subject map ─────────────────────────────────────────────────────
   type LectureEntry = { id: string; title: string; stars: number; lastUpdated: string | null }
   const subjectMap: Record<string, {

@@ -459,9 +459,9 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           DESKTOP SIDEBAR — static, always in layout flow
           Only rendered on >= 1024px
       ════════════════════════════════════════════════════════ */}
-      {isDesktop && sidebarOpen && (
+      {isDesktop && (
         <aside style={{
-          width: `${SIDEBAR_WIDTH_DESKTOP}px`,
+          width: sidebarOpen ? `${SIDEBAR_WIDTH_DESKTOP}px` : '0px',
           flexShrink: 0,
           display: 'flex',
           flexDirection: 'column',
@@ -469,7 +469,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           borderRight: `1px solid ${SIDEBAR_BORDER}`,
           height: '100dvh',
           overflow: 'hidden',
-          transition: 'width 0.2s ease',
+          transition: 'width 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)', overflow: 'hidden', willChange: 'width',
         }}>
           {sidebarContent}
         </aside>

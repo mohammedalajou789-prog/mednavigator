@@ -58,8 +58,8 @@ export default function UniversityClient({ university, subjectList, sections, sa
         .mn-save:hover{transform:scale(1.05)}
       `}</style>
 
-      <div style={{background:'#F8FAFC',color:'#0F172A',minHeight:'100vh'}}>
-        <main style={{padding:'clamp(16px,4vw,28px) clamp(16px,4vw,28px) 64px',maxWidth:1200,margin:'0 auto'}}>
+
+        <main style={{padding:'clamp(16px,4vw,28px) clamp(16px,4vw,28px) 64px'}}>
 
           {/* Breadcrumb */}
           <nav style={{display:'flex',alignItems:'center',gap:8,fontSize:13,color:'#94A3B8',marginBottom:20,animation:'fadeUp .45s ease backwards'}}>
@@ -84,7 +84,7 @@ export default function UniversityClient({ university, subjectList, sections, sa
 
               {/* Text */}
               <div style={{flex:1,minWidth:180,position:'relative'}}>
-                <div style={{position:'absolute',top:-71,right:0,width:220,height:220,borderRadius:'50%',background:'rgba(37,99,235,0.08)',pointerEvents:'none',zIndex:0}}/>
+
                 <div style={{position:'relative',zIndex:1}}>
                   <h1 style={{fontSize:'clamp(22px,5vw,30px)',fontWeight:800,letterSpacing:'-0.02em',color:'#0F172A',margin:0}}>{university.name}</h1>
                   <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:12,fontWeight:700,color:'#2563EB',background:'rgba(37,99,235,0.1)',padding:'3px 10px',borderRadius:99,marginTop:8}}>
@@ -213,7 +213,6 @@ export default function UniversityClient({ university, subjectList, sections, sa
           )}
 
         </main>
-      </div>
     </>
   )
 }

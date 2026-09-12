@@ -433,6 +433,49 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
 
       const result = await res.json()
       if (!res.ok) { showMessage('error', result.error ?? 'Failed to save.'); return }
+      // ── On publish: renumber image slots in content + DB ──────────────────
+      if (isPublish && result.data?.id) {
+        const entityId   = result.data.id
+        const entityType = isSheet ? 'sheet' : 'summary'
+        const imageSlots = isSheet ? sheetImageSlots : summaryImageSlots
+        // Extract slot numbers still present in content (in order)
+        const slotMatches = [...content.matchAll(/\[IMAGE_SLOT:(\d+)\]/g)]
+        const presentSlots = [...new Set(slotMatches.map(m => parseInt(m[1])))].sort((a, b) => a - b)
+        // Build renumber map: old slot number → new sequential number
+        const renumberMap: Record<number, number> = {}
+        presentSlots.forEach((oldNum, idx) => { renumberMap[oldNum] = idx + 1 })
+        // Renumber content text
+        let renumberedContent = content
+        renumberedContent = renumberedContent.replace(/\[IMAGE_SLOT:(\d+)\]/g, (_: string, n: string) => {
+          const newNum = renumberMap[parseInt(n)]
+          return newNum ? `[IMAGE_SLOT:${newNum}]` : `[IMAGE_SLOT:${n}]`
+        })
+        // Save renumbered content back if it changed
+        if (renumberedContent !== content) {
+          if (isSheet) setSheetContent(renumberedContent)
+          else setSummaryContent(renumberedContent)
+          await fetch(isSheet ? '/api/admin/sheets' : '/api/admin/summaries', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: entityId, lecture_id: lectureId, title, content: renumberedContent, status: 'published' }),
+          })
+        }
+        // Sync image slots state with new numbers
+        const newImageSlots: Record<number, string> = {}
+        for (const [oldNum, newNum] of Object.entries(renumberMap)) {
+          const url = imageSlots[parseInt(oldNum)]
+          if (url) newImageSlots[newNum] = url
+        }
+        if (isSheet) setSheetImageSlots(newImageSlots)
+        else setSummaryImageSlots(newImageSlots)
+        // Sync DB image_slots: delete removed, renumber remaining
+        await fetch('/api/admin/images/renumber', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entity_id: entityId, entity_type: entityType, renumber_map: renumberMap, present_slots: presentSlots }),
+        })
+      }
+      // ───────────────────────────────────────────────────────────────────────
       showMessage('success', isPublish ? 'Published successfully!' : 'Draft saved!')
       router.refresh()
     } catch {

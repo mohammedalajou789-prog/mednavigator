@@ -210,6 +210,7 @@ function parseContent(raw: string): Block[] {
 
   while (i < lines.length) {
     const line = lines[i].trim()
+    if (line.startsWith('@@@')) break
 
     if (!line) { blocks.push({ type: 'empty', content: '' }); i++; continue }
     if (line.startsWith('# ')) { blocks.push({ type: 'h1', content: line.slice(2) }); i++; continue }

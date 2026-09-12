@@ -3,7 +3,7 @@ import './globals.css'
 import { Providers } from './providers'
 
 export const metadata: Metadata = {
-  title: 'MedNavigator',
+  title: 'MedUniSource',
   description: 'A centralized medical learning environment for medical students.',
   icons: {
     icon: [
@@ -14,16 +14,16 @@ export const metadata: Metadata = {
     apple: '/apple-touch-icon.png',
   },
   openGraph: {
-    title: 'MedNavigator',
+    title: 'MedUniSource',
     description: 'A centralized medical learning environment for medical students.',
     url: 'https://mednavigator-black.vercel.app',
-    siteName: 'MedNavigator',
+    siteName: 'MedUniSource',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'MedNavigator',
+        alt: 'MedUniSource',
       },
     ],
     type: 'website',

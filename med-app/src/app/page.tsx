@@ -441,7 +441,7 @@ function FooterSection() {
             <path d="M24 6 V24" stroke="#CFE0F5" strokeWidth="2.6" strokeLinecap="round"/>
             <path d="M24 24 V42" stroke="#5AA0FF" strokeWidth="2.6" strokeLinecap="round"/>
           </svg>
-          <span style={{ fontSize: '16px', fontWeight: 800, color: '#fff' }}>Med<span style={{ color: '#60A5FA' }}>Navigator</span></span>
+          <span style={{ fontSize: '16px', fontWeight: 800, color: '#fff' }}>Med<span style={{ color: '#60A5FA' }}>UniSource</span></span>
         </div>
         <p style={{ color: '#94A3B8', fontSize: '13px', margin: 0 }}>Academic resource platform for medical students</p>
         <p style={{ color: '#64748B', fontSize: '12.5px', margin: 0 }}>&#169; 2026 MedNavigator. All rights reserved.</p>

@@ -31,7 +31,7 @@ export default function LandingNavbar({ universities }: LandingNavbarProps) {
             </svg>
           </div>
           <span style={{ fontSize: '19px', fontWeight: 800, letterSpacing: '-0.02em', color: '#0F172A' }}>
-            Med<span style={{ color: '#2563EB' }}>Navigator</span>
+            Med<span style={{ color: '#2563EB' }}>UniSource</span>
           </span>
         </Link>
         <div style={{ flex: 1 }} />

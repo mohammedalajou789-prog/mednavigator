@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 const faqs = [
   { q: 'How do I access premium subjects?', a: 'Premium subjects require a subscription. Contact your university admin or support via WhatsApp to activate access.' },
-  { q: 'Can I use MedNavigator on multiple devices?', a: 'Each account is linked to one device at a time. To switch devices, contact support to reset your device.' },
+  { q: 'Can I use MedUniSource on multiple devices?', a: 'Each account is linked to one device at a time. To switch devices, contact support to reset your device.' },
   { q: 'How do I track my progress?', a: 'Your progress is tracked automatically as you read sheets and complete quizzes. Visit My Progress from the sidebar.' },
   { q: 'What is the difference between Sheet and Summary?', a: 'A Sheet is the full detailed content for a lecture. A Summary is a condensed version of the same content.' },
   { q: 'How do I bookmark a lecture?', a: 'Open any lecture and click the bookmark icon in the top bar. All bookmarks are saved in the Bookmarks page.' },
@@ -24,7 +24,7 @@ export default function HelpPage() {
 
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ margin: '0 0 4px', fontSize: 28, fontWeight: 800, color: 'var(--ink)' }}>Help Center</h1>
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-2)' }}>Guides and support resources for using MedNavigator.</p>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-2)' }}>Guides and support resources for using MedUniSource.</p>
         </div>
 
         <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 18, padding: '22px 24px', marginBottom: 24 }}>

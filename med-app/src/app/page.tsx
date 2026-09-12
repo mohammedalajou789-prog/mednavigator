@@ -169,7 +169,7 @@ function HeroSection() {
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
-                mednavigator.app/hashemite/pediatrics/puberty
+                medunisource.com/hashemite/pediatrics/puberty
               </div>
             </div>
           </div>
@@ -444,7 +444,7 @@ function FooterSection() {
           <span style={{ fontSize: '16px', fontWeight: 800, color: '#fff' }}>Med<span style={{ color: '#60A5FA' }}>UniSource</span></span>
         </div>
         <p style={{ color: '#94A3B8', fontSize: '13px', margin: 0 }}>Academic resource platform for medical students</p>
-        <p style={{ color: '#64748B', fontSize: '12.5px', margin: 0 }}>&#169; 2026 MedNavigator. All rights reserved.</p>
+        <p style={{ color: '#64748B', fontSize: '12.5px', margin: 0 }}>&#169; 2026 MedUniSource. All rights reserved.</p>
       </div>
     </footer>
   )

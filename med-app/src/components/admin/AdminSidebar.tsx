@@ -30,7 +30,7 @@ export default function AdminSidebar({ fullName, role }: Props) {
         {/* Logo */}
         <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between min-w-[224px]">
           <div>
-            <span className="text-lg font-bold text-white">MedNavigator</span>
+            <span className="text-lg font-bold text-white">MedUniSource</span>
             <span className="ml-2 text-xs text-blue-400 font-medium">Admin</span>
           </div>
           <button

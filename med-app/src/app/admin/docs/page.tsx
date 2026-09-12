@@ -5,7 +5,7 @@ export default function AdminDocsPage() {
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Documentation Center</h1>
-        <p className="text-gray-500 mt-1">Complete reference guide for content creation on MedNavigator.</p>
+        <p className="text-gray-500 mt-1">Complete reference guide for content creation on MedUniSource.</p>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
         {[

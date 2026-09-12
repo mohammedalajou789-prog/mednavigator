@@ -24,7 +24,7 @@ export const useUIStore = create<UIStore>()(
       setTheme: (theme) => set({ theme }),
     }),
     {
-      name: 'mednavigator-ui',
+      name: 'medunisource-ui',
       partialize: (state) => ({ theme: state.theme }),
     }
   )

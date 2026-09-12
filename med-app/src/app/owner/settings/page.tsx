@@ -72,7 +72,7 @@ export default function SettingsPage() {
         const { error: insertError } = await supabase
           .from('platform_settings')
           .insert({
-            platform_name: form.platform_name || 'MedNavigator',
+            platform_name: form.platform_name || 'MedUniSource',
             support_email: form.support_email || null,
             whatsapp_url: form.whatsapp_url || null,
             telegram_url: form.telegram_url || null,
@@ -125,7 +125,7 @@ export default function SettingsPage() {
                 name="platform_name"
                 value={form.platform_name}
                 onChange={handleChange}
-                placeholder="MedNavigator"
+                placeholder="MedUniSource"
                 className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2E8F0] text-sm text-[#0F172A] placeholder:text-[#64748B] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               />
             </div>
@@ -136,7 +136,7 @@ export default function SettingsPage() {
                 name="support_email"
                 value={form.support_email}
                 onChange={handleChange}
-                placeholder="support@mednavigator.com"
+                placeholder="support@medunisource.com"
                 className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2E8F0] text-sm text-[#0F172A] placeholder:text-[#64748B] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               />
             </div>
@@ -172,7 +172,7 @@ export default function SettingsPage() {
                 name="telegram_url"
                 value={form.telegram_url}
                 onChange={handleChange}
-                placeholder="e.g. @mednavigator"
+                placeholder="e.g. @medunisource"
                 className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2E8F0] text-sm text-[#0F172A] placeholder:text-[#64748B] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               />
             </div>

@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'MedUniSource',
     description: 'A centralized medical learning environment for medical students.',
-    url: 'https://mednavigator-black.vercel.app',
+    url: 'https://medunisource.com',
     siteName: 'MedUniSource',
     images: [
       {

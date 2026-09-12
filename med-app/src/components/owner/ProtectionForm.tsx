@@ -84,7 +84,7 @@ export default function ProtectionForm({ whatsappUrl, supportEmail }: Props) {
               type="email"
               value={form.support_email}
               onChange={e => setForm(prev => ({ ...prev, support_email: e.target.value }))}
-              placeholder="e.g. support@mednavigator.com"
+              placeholder="e.g. support@medunisource.com"
               className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900
                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />

@@ -104,7 +104,7 @@ const NAV_GROUPS = [
 
 // ── Logo ───────────────────────────────────────────────────────────────────
 
-const MedNavigatorLogo = () => (
+const MedUniSourceLogo = () => (
   <div className="flex items-center gap-2.5">
     {/* pulse icon */}
     <div className="w-8 h-8 rounded-lg bg-[#2563EB] flex items-center justify-center flex-shrink-0">
@@ -138,7 +138,7 @@ export default function StudentSidebar({ fullName, universityName, universities 
       {/* ── Logo ── */}
       <div className="h-16 flex items-center px-5 flex-shrink-0"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <MedNavigatorLogo />
+        <MedUniSourceLogo />
       </div>
 
       {/* ── User card ── */}

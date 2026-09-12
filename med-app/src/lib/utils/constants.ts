@@ -1,4 +1,4 @@
-export const APP_NAME = 'MedNavigator'
+export const APP_NAME = 'MedUniSource'
 
 export const ROUTES = {
   HOME: '/',

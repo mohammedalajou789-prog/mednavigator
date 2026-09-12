@@ -311,7 +311,7 @@ export default function RegisterPage() {
                 Create your account
               </h1>
               <p style={{ fontSize: 15, color: '#64748B', margin: '0 0 28px' }}>
-                Join MedNavigator and get organized
+                Join MedUniSource and get organized
               </p>
 
               {serverError && (
@@ -474,7 +474,7 @@ export default function RegisterPage() {
                     )}
                   </span>
                   <span style={{ fontSize: 12, lineHeight: 1.5, color: '#475569' }}>
-                    I understand the educational content on MedNavigator is protected intellectual property. Redistribution or unauthorized sharing is prohibited.
+                    I understand the educational content on MedUniSource is protected intellectual property. Redistribution or unauthorized sharing is prohibited.
                   </span>
                 </div>
                 {errors.ip_agreement && <p className="mn-err" style={{ marginTop: -14, marginBottom: 14 }}>{errors.ip_agreement.message}</p>}

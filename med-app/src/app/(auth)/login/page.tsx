@@ -298,7 +298,7 @@ export default function LoginPage() {
                 Welcome back
               </h1>
               <p style={{ fontSize: 15, color: '#64748B', margin: '0 0 32px' }}>
-                Sign in to your MedNavigator account
+                Sign in to your MedUniSource account
               </p>
               <form onSubmit={handleSubmit(onSubmit)} noValidate>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 8 }}>

@@ -157,7 +157,7 @@ export async function notifyNewUniversity(params: {
 }) {
   return insertNotification({
     title: `New University Added — ${params.universityName}`,
-    message: `${params.universityName} has been added to MedNavigator. Students from this university can now register and access their subjects.`,
+    message: `${params.universityName} has been added to MedUniSource. Students from this university can now register and access their subjects.`,
     notification_source: `university_added_${Date.now()}`,
     target_type: 'all',
     priority: 'normal',
@@ -173,7 +173,7 @@ export async function notifyNewSubject(params: {
 }) {
   return insertNotification({
     title: `New Subject Available — ${params.subjectName}`,
-    message: `${params.subjectName} has been added for ${params.universityName} students on MedNavigator.`,
+    message: `${params.subjectName} has been added for ${params.universityName} students on MedUniSource.`,
     notification_source: `subject_added_${Date.now()}`,
     target_type: 'university',
     priority: 'normal',
@@ -190,7 +190,7 @@ export async function notifyOwnerUniversityRequest(params: {
 }) {
   return insertNotification({
     title: `University Request — ${params.requestedName}`,
-    message: `${params.studentName} has requested to add "${params.requestedName}" to MedNavigator. Review this request in the University Requests section.`,
+    message: `${params.studentName} has requested to add "${params.requestedName}" to MedUniSource. Review this request in the University Requests section.`,
     notification_source: `uni_request_${Date.now()}`,
     target_type: 'user',
     priority: 'important',

@@ -70,7 +70,7 @@ export async function PUT(request: NextRequest) {
     const { error } = await supabase
       .from('platform_settings')
       .insert({
-        platform_name: platform_name ?? 'MedNavigator',
+        platform_name: platform_name ?? 'MedUniSource',
         support_email: support_email ?? null,
         whatsapp_url: whatsapp_url ?? null,
         telegram_url: telegram_url ?? null,

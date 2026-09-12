@@ -344,7 +344,7 @@ export default function LectureSidebarShell({
               const isActive = activeTab === tabId
               const href     = `/${uniSlug}/${subjectSlug}/${lectureSlug}/${tabId}`
               return (
-                <Link key={tabId} href={href} title={cfg?.label ?? tabId} onClick={() => localStorage.setItem(`lecture:${lecture.id}:active_tab`, tabId)}
+                <Link key={tabId} href={href} prefetch={false} title={cfg?.label ?? tabId} onClick={() => localStorage.setItem(`lecture:${lecture.id}:active_tab`, tabId)}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', padding: sidebarCollapsed ? '10px' : '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer', background: isActive ? '#EEF3FF' : 'transparent', color: isActive ? '#2563EB' : '#6B7280', transition: 'all 0.15s ease', textDecoration: 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: sidebarCollapsed ? 0 : '10px' }}>
                     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: isActive ? '#DBEAFE' : '#F3F4F6', color: isActive ? '#2563EB' : '#9CA3AF', flexShrink: 0, transition: 'all 0.15s ease' }}>

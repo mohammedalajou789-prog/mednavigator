@@ -56,6 +56,7 @@ export default function SheetPage() {
   const lastSavedPct   = useRef<number>(-1)
   const saveTimer      = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollApplied  = useRef(false)
+  const scrollTimer    = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── Single query: meta + access ───────────────────────────────────────────
   const { data: meta } = useQuery({
@@ -159,18 +160,19 @@ export default function SheetPage() {
 
     function tryScroll() {
       const el = document.getElementById('lecture-content-scroll')
-      if (!el) { attempts++; if (attempts < maxAttempts) setTimeout(tryScroll, 100); return }
+      if (!el) { attempts++; if (attempts < maxAttempts) { scrollTimer.current = setTimeout(tryScroll, 100) }; return }
       const maxScroll = el.scrollHeight - el.clientHeight
       if (maxScroll < targetScroll * 0.9 && attempts < maxAttempts) {
         attempts++
-        setTimeout(tryScroll, 100)
+        scrollTimer.current = setTimeout(tryScroll, 100)
         return
       }
       el.scrollTo({ top: targetScroll, behavior: 'smooth' })
     }
 
     // Start trying after a short delay to let React finish rendering
-    setTimeout(tryScroll, 200)
+    scrollTimer.current = setTimeout(tryScroll, 200)
+    return () => { if (scrollTimer.current) clearTimeout(scrollTimer.current) }
   }, [sheetData, meta?.lecture?.id])
 
   // ── Save progress + scroll position ──────────────────────────────────────
@@ -205,18 +207,17 @@ export default function SheetPage() {
     }, 2000)
   }, [user, meta, supabase])
 
-  // ── Save on page unload ───────────────────────────────────────────────────
+  // ── Save on unmount (soft navigation cleanup) ────────────────────────────
   useEffect(() => {
-    if (!meta?.userId || !meta?.lecture?.id) return
-    function handleUnload() {
+    return () => {
+      // Cancel any pending save timer
       if (saveTimer.current) clearTimeout(saveTimer.current)
+      // Save scroll position to localStorage on unmount
       const el  = document.getElementById('lecture-content-scroll')
       const pos = el?.scrollTop ?? 0
       if (meta?.lecture?.id) localStorage.setItem(`Lecture:${meta.lecture.id}:sheet_scroll`, String(pos))
     }
-    window.addEventListener('beforeunload', handleUnload)
-    return () => window.removeEventListener('beforeunload', handleUnload)
-  }, [meta?.userId, meta?.lecture?.id])
+  }, [meta?.lecture?.id])
 
   // ── UI ────────────────────────────────────────────────────────────────────
   const TAB_ICONS: Record<string, React.ReactNode> = {

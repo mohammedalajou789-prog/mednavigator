@@ -158,7 +158,6 @@ function HeroSection() {
           </div>
         </div>
       </div>
-      </div>
 
       {/* Mockup — hidden on mobile via CSS */}
       <div className="mn-mockup" style={{ position: 'relative', height: '530px', animation: '0.9s ease both fadeIn' }}>

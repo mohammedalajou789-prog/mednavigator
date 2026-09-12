@@ -247,7 +247,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
         <Link href="/home" prefetch={false} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
           <LogoIcon />
           <span style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
-            Med<span style={{ color: '#60A5FA' }}>Navigator</span>
+            Med<span style={{ color: '#60A5FA' }}>UniSource</span>
           </span>
         </Link>
         {/* Close button — only visible on phone/tablet drawer */}

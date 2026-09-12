@@ -243,7 +243,7 @@ export default function LoginPage() {
                   </svg>
                 </div>
                 <span style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>
-                  Med<span style={{ color: '#60A5FA' }}>Navigator</span>
+                  Med<span style={{ color: '#60A5FA' }}>UniSource</span>
                 </span>
               </div>
               <h2 style={{ fontSize: 33, lineHeight: 1.15, fontWeight: 800, letterSpacing: '-.03em', color: '#fff', margin: '0 0 16px' }}>

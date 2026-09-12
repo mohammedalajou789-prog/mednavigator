@@ -51,7 +51,7 @@ export default function OwnerSidebar({ fullName }: OwnerSidebarProps) {
       <div className="h-16 flex items-center px-6 border-b border-slate-700 gap-3">
         <span className="text-lg font-bold">
           <span className="text-blue-400">Med</span>
-          <span className="text-white">Navigator</span>
+          <span className="text-white">UniSource</span>
         </span>
         <span className="text-xs bg-amber-500 text-white px-2 py-0.5 rounded-full font-medium">Owner</span>
       </div>

@@ -113,7 +113,7 @@ const MedUniSourceLogo = () => (
       </svg>
     </div>
     <span className="text-[17px] font-bold tracking-tight text-white">
-      Med<span className="text-[#60A5FA]">Navigator</span>
+      Med<span className="text-[#60A5FA]">UniSource</span>
     </span>
   </div>
 )

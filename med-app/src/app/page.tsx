@@ -108,14 +108,6 @@ function HeroSection() {
             <span style={{ fontSize: '13px', color: '#64748B' }}>No account needed — explore as a guest</span>
           </div>
           <div style={{ width: '1px', height: '16px', background: '#E8ECF2' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-            <div style={{ display: 'flex' }}>
-              <span style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid #F6F8FC', background: 'linear-gradient(135deg,#2563EB,#6366F1)', display: 'inline-block' }} />
-              <span style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid #F6F8FC', background: 'linear-gradient(135deg,#0EA5A4,#22D3EE)', display: 'inline-block', marginLeft: '-8px' }} />
-              <span style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid #F6F8FC', background: 'linear-gradient(135deg,#7C3AED,#A855F7)', display: 'inline-block', marginLeft: '-8px' }} />
-            </div>
-            <span style={{ fontSize: '13px', color: '#64748B' }}>2,400+ students</span>
-          </div>
         </div>
       </div>
 

@@ -120,7 +120,7 @@ function HeroSection() {
       </div>
 
       {/* Mobile-only feature highlights */}
-      <div className="mn-mobile-features" style={{ display: 'none', flexDirection: 'column' as const, gap: '10px', marginTop: '24px' }}>
+      <div className="mn-mobile-features" style={{ display: 'none', flexDirection: 'column' as const, gap: '10px', marginTop: '24px', width: '100%', boxSizing: 'border-box' as const }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '13px', background: '#fff', borderRadius: '14px', padding: '14px 16px', border: '1px solid #E8ECF2' }}>
           <div style={{ width: '38px', height: '38px', borderRadius: '11px', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>

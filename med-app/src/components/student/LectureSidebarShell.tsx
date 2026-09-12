@@ -503,10 +503,10 @@ export default function LectureSidebarShell({
       )}
 
       {/* Table of Contents */}
-      {tocSections.length > 0 && (
+      {!sidebarCollapsed && tocSections.length > 0 && (
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '10px 6px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           {sidebarCollapsed ? (
-            <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', scrollbarWidth: 'none' }}>
+            <div style={{ maxHeight: '160px', overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', scrollbarWidth: 'none', position: 'relative' as const }}>
               {tocSections.filter(s => s.level <= 2).map((section) => {
                 const isMain = section.level === 1
                 const label  = isMain ? `${section.h1Num}` : `${section.h1Num}${String.fromCharCode(96 + section.h2Num!)}`

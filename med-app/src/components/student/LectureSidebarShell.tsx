@@ -322,7 +322,7 @@ export default function LectureSidebarShell({
     <aside
       id="lecture-right-sidebar"
       className="hidden md:flex"
-      style={{ width: sidebarCollapsed ? '64px' : '272px', height: 'calc(100vh - 72px)', overflowY: 'auto', borderLeft: '1px solid #EEF0F4', background: '#F7F8FA', flexDirection: 'column', gap: '12px', padding: sidebarCollapsed ? '16px 8px' : '16px 12px', flexShrink: 0, transition: 'width 0.25s ease, padding 0.25s ease' }}
+      style={{ width: sidebarCollapsed ? '64px' : '272px', height: 'calc(100vh - 72px)', overflowY: 'auto', borderLeft: '1px solid #EEF0F4', background: '#F7F8FA', flexDirection: 'column', gap: '12px', padding: sidebarCollapsed ? '16px 8px' : '16px 12px', flexShrink: 0, position: 'relative' as const, zIndex: 10, overflow: 'hidden', transition: 'width 0.25s ease, padding 0.25s ease' }}
     >
       {/* Collapse button */}
       <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)}

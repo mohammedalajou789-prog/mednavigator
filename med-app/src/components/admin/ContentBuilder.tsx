@@ -472,7 +472,7 @@ const [summaryImageSlots, setSummaryImageSlots] = useState<Record<number, string
         await fetch('/api/admin/images/renumber', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ entity_id: entityId, entity_type: entityType, renumber_map: renumberMap, present_slots: presentSlots }),
+          body: JSON.stringify({ entity_id: entityId, entity_type: entityType, renumber_map: renumberMap, present_slots: Object.keys(renumberMap).map(Number) }),
         })
       }
       // ───────────────────────────────────────────────────────────────────────

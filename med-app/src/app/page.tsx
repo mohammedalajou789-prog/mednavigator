@@ -121,20 +121,43 @@ function HeroSection() {
 
       {/* Mobile-only feature highlights */}
       <div className="mn-mobile-features" style={{ display: 'none', flexDirection: 'column' as const, gap: '10px', marginTop: '24px' }}>
-        {([
-          { icon: '📚', title: 'Lectures & Sheets', desc: 'Organized content for every subject' },
-          { icon: '🃏', title: 'Flashcards & Quizzes', desc: 'Study smarter with active recall' },
-          { icon: '📅', title: 'Previous Years Bank', desc: 'Past papers sorted by year and type' },
-          { icon: '📈', title: 'Progress Tracking', desc: 'Track your learning with star ratings' },
-        ] as { icon: string; title: string; desc: string }[]).map((f) => (
-          <div key={f.title} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#fff', border: '1px solid #E8ECF2', borderRadius: '14px', padding: '14px 16px' }}>
-            <span style={{ fontSize: '22px', flexShrink: 0 }}>{f.icon}</span>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>{f.title}</div>
-              <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>{f.desc}</div>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '13px', background: '#fff', borderRadius: '14px', padding: '14px 16px', border: '1px solid #E8ECF2' }}>
+          <div style={{ width: '38px', height: '38px', borderRadius: '11px', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
           </div>
-        ))}
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A', marginBottom: '2px' }}>Lectures &amp; Sheets</div>
+            <div style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.4 }}>Organized content for every subject</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '13px', background: '#fff', borderRadius: '14px', padding: '14px 16px', border: '1px solid #E8ECF2' }}>
+          <div style={{ width: '38px', height: '38px', borderRadius: '11px', background: '#FDF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9333EA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M7 2h14v14"/></svg>
+          </div>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A', marginBottom: '2px' }}>Flashcards &amp; Quizzes</div>
+            <div style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.4 }}>Study smarter with active recall</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '13px', background: '#fff', borderRadius: '14px', padding: '14px 16px', border: '1px solid #E8ECF2' }}>
+          <div style={{ width: '38px', height: '38px', borderRadius: '11px', background: '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          </div>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A', marginBottom: '2px' }}>Previous Years Bank</div>
+            <div style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.4 }}>Past papers sorted by year and type</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '13px', background: '#fff', borderRadius: '14px', padding: '14px 16px', border: '1px solid #E8ECF2' }}>
+          <div style={{ width: '38px', height: '38px', borderRadius: '11px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A', marginBottom: '2px' }}>Progress Tracking</div>
+            <div style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.4 }}>Track your learning with star ratings</div>
+          </div>
+        </div>
+      </div>
       </div>
 
       {/* Mockup — hidden on mobile via CSS */}

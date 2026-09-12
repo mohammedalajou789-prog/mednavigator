@@ -17,6 +17,11 @@ export async function proxy(request: NextRequest) {
 
   
 
+  if (authUser && pathname === '/') {
+    const role = await getUserRole(request, authUser.id)
+    return NextResponse.redirect(new URL(getRoleRedirect(role), request.url))
+  }
+
   if (authUser && AUTH_ONLY_ROUTES.some(r => pathname.startsWith(r))) {
     const role = await getUserRole(request, authUser.id)
     console.log('[proxy] authUser:', authUser.id, 'role:', role, 'pathname:', pathname)

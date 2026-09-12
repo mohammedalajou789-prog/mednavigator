@@ -494,7 +494,7 @@ export default function LectureSidebarShell({
       )}
 
       {/* Content Search */}
-      {!sidebarCollapsed && (activeTab === 'sheet' || activeTab === 'summary') && (
+      {!sidebarCollapsed && (activeTab === 'sheet' || activeTab === 'summary') && false && (
         <LectureContentSearch
           sheetContent={activeTab === 'sheet' ? sheetContent : ''}
           summaryContent={activeTab === 'summary' ? summaryContent : ''}

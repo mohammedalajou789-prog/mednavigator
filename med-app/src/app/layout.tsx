@@ -13,6 +13,21 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-touch-icon.png',
   },
+  openGraph: {
+    title: 'MedNavigator',
+    description: 'A centralized medical learning environment for medical students.',
+    url: 'https://mednavigator-black.vercel.app',
+    siteName: 'MedNavigator',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'MedNavigator',
+      },
+    ],
+    type: 'website',
+  },
 }
 
 export default function RootLayout({

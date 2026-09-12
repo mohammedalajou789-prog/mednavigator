@@ -85,7 +85,6 @@ export default function LandingNavbar({ universities }: LandingNavbarProps) {
       <style>{`
         @media (max-width: 600px) {
           .mn-nav-uni-btn { display: none !important; }
-          .mn-nav-register { display: none !important; }
           .mn-nav-login { padding: 7px 14px !important; font-size: 13px !important; }
         }
       `}</style>

@@ -361,29 +361,37 @@ function extractTable(lines: string[], start: number): { rows: string[][]; end: 
   return { rows, end: i }
 }
 
-function renderBold(text: string, keyPrefix: string): React.ReactNode {
-  const parts = text.split(/(\*\*.+?\*\*)/g)
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={keyPrefix + i}>{part.slice(2, -2)}</strong>
-    }
-    return <span key={keyPrefix + i}>{part}</span>
-  })
-}
-
 function renderInline(text: string): React.ReactNode {
-  const parts = text.split(/(==.+?==)/g)
-  return parts.map((part, i) => {
+  // Split by combined patterns: **==text==**, ==**text**==, ==text==, **text**
+  const regex = /(\*\*==.+?==\*\*|==\*\*.+?\*\*==|==.+?==|\*\*.+?\*\*)/g
+  const parts = text.split(regex)
+  return (<>{parts.map((part, i) => {
+    // Bold + Highlight: **==text==** or ==**text**==
+    if ((part.startsWith('**==') && part.endsWith('==**')) ||
+        (part.startsWith('==**') && part.endsWith('**=='))) {
+      const inner = part.replace(/^(\*\*==|==\*\*)/, '').replace(/(==\*\*|\*\*==$)/, '')
+      return (
+        <mark key={i} className="bg-yellow-200 px-0.5 rounded not-italic text-gray-900">
+          <strong>{inner}</strong>
+        </mark>
+      )
+    }
+    // Highlight only: ==text==
     if (part.startsWith('==') && part.endsWith('==')) {
       const inner = part.slice(2, -2)
       return (
         <mark key={i} className="bg-yellow-200 px-0.5 rounded not-italic text-gray-900">
-          {renderBold(inner, 'h' + i)}
+          {inner}
         </mark>
       )
     }
-    return <span key={i}>{renderBold(part, 'p' + i)}</span>
-  })
+    // Bold only: **text**
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>
+    }
+    // Plain text
+    return <span key={i}>{part}</span>
+  })}</>)
 }
 
 // FIX 4: render multi-line content — split by \n and render each line

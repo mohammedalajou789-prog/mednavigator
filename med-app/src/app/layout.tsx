@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     siteName: 'MedUniSource',
     images: [
       {
-        url: 'https://medunisource.com/og-image.png',
+        url: 'https://medunisource.com/og-image-v2.png',
         width: 1200,
         height: 630,
         alt: 'MedUniSource',

@@ -3,6 +3,7 @@ import { checkUserAccess } from '@/lib/services/subscriptions'
 import { redirect } from 'next/navigation'
 import LectureSidebarShell from '@/components/student/LectureSidebarShell'
 import LectureAccessTracker from '@/components/student/LectureAccessTracker'
+import { LectureDataProvider } from '@/components/student/LectureDataProvider'
 
 interface LayoutProps {
   params: Promise<{
@@ -18,7 +19,7 @@ export default async function LectureLayout({ params, children }: LayoutProps) {
 
   const supabase = await createServerClient()
 
-  // ── STEP 1: Resolve slugs + auth in ONE parallel round trip ──────────────
+  // ── STEP 1: Resolve slugs + auth in ONE parallel round trip ────────────────
   const [
     { data: uniRow },
     { data: lecture },
@@ -37,7 +38,7 @@ export default async function LectureLayout({ params, children }: LayoutProps) {
   if (!lecture)                     redirect(`/${uniSlug}/${subjectSlug}`)
   if (!subject)                     redirect(`/${uniSlug}`)
 
-  // ── STEP 2: Profile + tab metadata in ONE parallel round trip ─────────────
+  // ── STEP 2: Profile + tab metadata in ONE parallel round trip ──────────────
   const [
     profileResult,
     sheetMetaResult,
@@ -66,10 +67,10 @@ export default async function LectureLayout({ params, children }: LayoutProps) {
   const quizCount       = (quizCountResult as any).count       ?? 0
   const pyqCount        = (pyqCountResult as any).count        ?? 0
 
-  // ── STEP 3: Access check (needs userId, runs after profile) ───────────────
+  // ── STEP 3: Access check (needs userId, runs after profile) ────────────────
   const accessAllowed = (await checkUserAccess(subject.id, userId)).allowed
 
-  // ── Build tab list ─────────────────────────────────────────────────────────
+  // ── Build tab list ──────────────────────────────────────────────────────────
   const allTabs = [
     hasSheet            && 'sheet',
     hasSummary          && 'summary',
@@ -88,10 +89,20 @@ export default async function LectureLayout({ params, children }: LayoutProps) {
       <div
         id="lecture-content-scroll"
         className="flex-1 min-w-0"
-        style={{ overflowY: 'auto', height: 'calc(100vh - 72px)', background: '#F5F6FA' }}
-      >
+        style={{ overflowY: 'auto', height: 'calc(100vh - 72px)', background: '#F5F6FA' }}      >
         <LectureAccessTracker lectureId={lecture.id} />
-        {children}
+        <LectureDataProvider
+          value={{
+            lecture,
+            subject,
+            userId,
+            userName,
+            accessAllowed,
+            availableTabs,
+          }}
+        >
+          {children}
+        </LectureDataProvider>
       </div>
 
       {/* ── RIGHT SIDEBAR ── */}

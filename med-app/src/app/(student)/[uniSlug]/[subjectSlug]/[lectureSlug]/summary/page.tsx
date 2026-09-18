@@ -7,6 +7,8 @@ import { useUserStore } from '@/stores/userStore'
 import { useQuery } from '@tanstack/react-query'
 import SheetReader from '@/components/student/SheetReader'
 import LockedContentCard from '@/components/student/LockedContentCard'
+import { useLectureData } from '@/components/student/LectureDataProvider'
+import LectureMobileTabs from '@/components/student/LectureMobileTabs'
 
 interface TocSection {
   id: string; level: number; label: string; h1Num: number; h2Num: number | null
@@ -47,57 +49,33 @@ function emitSidebar(type: string, data: unknown) {
   window.dispatchEvent(new CustomEvent('lecture-sidebar-update', { detail: { type, data } }))
 }
 
+function getScrollKey(lectureId: string) {
+  return `lecture:${lectureId}:summary_scroll`
+}
+
 export default function SummaryPage() {
   const params      = useParams()
   const uniSlug     = params.uniSlug     as string
   const subjectSlug = params.subjectSlug as string
-  const lectureSlug = params.lectureSlug as string
 
+  const { lecture, subject, userId, accessAllowed } = useLectureData()
   const { user } = useUserStore()
   const supabase = useMemo(() => createClient(), [])
 
   const lastSavedPct  = useRef<number>(-1)
   const saveTimer     = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollApplied = useRef(false)
-
-  const { data: meta } = useQuery({
-    queryKey: ['summary-meta', lectureSlug, subjectSlug],
-    queryFn: async () => {
-      const [{ data: lecture }, { data: subject }, { data: { user: authUser } }] = await Promise.all([
-        supabase.from('lectures').select('id, title').eq('slug' as any, lectureSlug).single(),
-        supabase.from('subjects').select('id, name, access_mode, is_free').eq('slug' as any, subjectSlug).single(),
-        supabase.auth.getUser(),
-      ])
-      let userId: string | null = null
-      let accessAllowed = subject?.access_mode === 'free' || subject?.is_free === true
-      if (authUser) {
-        const { data: profile } = await supabase.from('users').select('id').eq('auth_user_id', authUser.id).single()
-        userId = profile?.id ?? null
-        if (!accessAllowed && userId) {
-          const now = new Date().toISOString()
-          const { data: sub } = await supabase.from('subject_subscriptions')
-            .select('id').eq('user_id', userId).eq('subject_id', subject?.id ?? '').eq('status', 'active').gt('end_date', now).maybeSingle()
-          accessAllowed = !!sub
-        }
-      }
-      return { lecture, subject, userId, accessAllowed }
-    },
-    staleTime: 1000 * 60 * 10,
-    refetchOnWindowFocus: false,
-  })
+  const scrollTimer   = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { data: summaryData, isLoading: summaryLoading } = useQuery({
-    queryKey: ['summary-full', meta?.lecture?.id, meta?.userId],
+    queryKey: ['summary-full', lecture.id, userId],
     queryFn: async () => {
-      const lectureId = meta!.lecture!.id
-      const userId    = meta!.userId
-
       const [summaryResult, progressResult] = await Promise.all([
-        supabase.from('summaries').select('id, content, status').eq('lecture_id', lectureId).maybeSingle(),
+        supabase.from('summaries').select('id, content, status').eq('lecture_id', lecture.id).maybeSingle(),
         userId
           ? supabase.from('user_progress')
               .select('progress_percentage, completed, last_position')
-              .eq('user_id', userId).eq('lecture_id', lectureId).eq('content_type', 'summary')
+              .eq('user_id', userId).eq('lecture_id', lecture.id).eq('content_type', 'summary')
               .maybeSingle()
           : Promise.resolve({ data: null }),
       ])
@@ -124,7 +102,6 @@ export default function SummaryPage() {
         completed:     progress?.completed           ?? false,
       }
     },
-    enabled: !!meta?.lecture?.id,
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: false,
   })
@@ -142,8 +119,7 @@ export default function SummaryPage() {
     if (scrollApplied.current) return
     if (!summaryData) return
 
-    const localKey = meta?.lecture?.id ? `Lecture:${meta.lecture.id}:summary_scroll` : null
-    const localVal = localKey ? localStorage.getItem(localKey) : null
+    const localVal = localStorage.getItem(getScrollKey(lecture.id))
     const targetScroll = localVal ? parseInt(localVal, 10) : (summaryData.savedPosition ?? 0)
 
     if (targetScroll <= 0) { scrollApplied.current = true; return }
@@ -154,29 +130,28 @@ export default function SummaryPage() {
 
     function tryScroll() {
       const el = document.getElementById('lecture-content-scroll')
-      if (!el) { attempts++; if (attempts < maxAttempts) setTimeout(tryScroll, 100); return }
+      if (!el) { attempts++; if (attempts < maxAttempts) { scrollTimer.current = setTimeout(tryScroll, 100) }; return }
       const maxScroll = el.scrollHeight - el.clientHeight
       if (maxScroll < targetScroll * 0.9 && attempts < maxAttempts) {
         attempts++
-        setTimeout(tryScroll, 100)
+        scrollTimer.current = setTimeout(tryScroll, 100)
         return
       }
       el.scrollTo({ top: targetScroll, behavior: 'smooth' })
     }
 
-    setTimeout(tryScroll, 200)
-  }, [summaryData, meta?.lecture?.id])
+    scrollTimer.current = setTimeout(tryScroll, 200)
+    return () => { if (scrollTimer.current) clearTimeout(scrollTimer.current) }
+  }, [summaryData, lecture.id])
 
   const handleProgressUpdate = useCallback((pct: number) => {
     emitSidebar('progress', { percent: pct, completed: pct >= 100 })
 
     const scrollEl  = document.getElementById('lecture-content-scroll')
     const scrollPos = scrollEl?.scrollTop ?? 0
-    if (meta?.lecture?.id) {
-      localStorage.setItem(`Lecture:${meta.lecture.id}:summary_scroll`, String(scrollPos))
-    }
+    localStorage.setItem(getScrollKey(lecture.id), String(scrollPos))
 
-    if (!user || !meta?.lecture?.id || !meta?.userId) return
+    if (!user || !userId) return
     if (Math.abs(pct - lastSavedPct.current) < 2) return
 
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -185,8 +160,8 @@ export default function SummaryPage() {
       const el  = document.getElementById('lecture-content-scroll')
       const pos = el?.scrollTop ?? 0
       supabase.from('user_progress').upsert({
-        user_id:             meta.userId!,
-        lecture_id:          meta.lecture!.id,
+        user_id:             userId,
+        lecture_id:          lecture.id,
         content_type:        'summary',
         progress_percentage: pct,
         completed:           pct >= 100,
@@ -195,33 +170,22 @@ export default function SummaryPage() {
         updated_at:          new Date().toISOString(),
       }, { onConflict: 'user_id,lecture_id,content_type' })
     }, 2000)
-  }, [user, meta, supabase])
+  }, [user, userId, lecture.id, supabase])
 
   useEffect(() => {
-    if (!meta?.userId || !meta?.lecture?.id) return
     function handleUnload() {
       if (saveTimer.current) clearTimeout(saveTimer.current)
       const el  = document.getElementById('lecture-content-scroll')
       const pos = el?.scrollTop ?? 0
-      if (meta?.lecture?.id) localStorage.setItem(`Lecture:${meta.lecture.id}:summary_scroll`, String(pos))
+      localStorage.setItem(getScrollKey(lecture.id), String(pos))
     }
     window.addEventListener('beforeunload', handleUnload)
     return () => window.removeEventListener('beforeunload', handleUnload)
-  }, [meta?.userId, meta?.lecture?.id])
+  }, [lecture.id])
 
-  const TAB_ICONS: Record<string, React.ReactNode> = {
-    sheet: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>,
-    summary: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="11" y2="17"/></svg>,
-    flashcards: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>,
-    quiz: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
-    'previous-years': <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  }
-  const TAB_LABELS: Record<string, string> = { sheet: 'Sheet', summary: 'Summary', flashcards: 'Flashcards', quiz: 'Quiz', 'previous-years': 'Previous Years' }
-
-  const subject     = meta?.subject
   const summary     = summaryData?.summary
   const imageSlots  = summaryData?.imageSlots ?? {}
-  const locked      = !meta?.accessAllowed
+  const locked      = !accessAllowed
   const displayName = user?.full_name ?? ''
 
   const ContentSkeleton = () => (
@@ -235,26 +199,16 @@ export default function SummaryPage() {
 
   return (
     <>
-      <div className="lg:hidden flex gap-1 px-4 pt-3 pb-2 bg-white border-b border-slate-100 overflow-x-auto" style={{ flexShrink: 0 }}>
-        {['sheet','summary','flashcards','quiz','previous-years'].map((tabId) => {
-          const isActive = tabId === 'summary'
-          return (
-            <a key={tabId} href={`/${uniSlug}/${subjectSlug}/${lectureSlug}/${tabId}`}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: isActive ? 600 : 500, background: isActive ? '#EEF3FF' : '#F3F4F6', color: isActive ? '#2563EB' : '#6B7280', whiteSpace: 'nowrap', flexShrink: 0, textDecoration: 'none' }}>
-              {TAB_ICONS[tabId]}{TAB_LABELS[tabId]}
-            </a>
-          )
-        })}
-      </div>
+      <LectureMobileTabs activeTab="summary" />
 
       <div style={{ padding: 'clamp(8px,2vw,14px) clamp(12px,3vw,26px) 0', background: '#F5F6FA' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#7A8499', fontWeight: 500, marginBottom: '18px' }}>
           <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           <a href={`/${uniSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>Subjects</a>
           <span style={{ color: '#C5CBD6' }}>/</span>
-          <a href={`/${uniSlug}/${subjectSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{subject?.name ?? ''}</a>
+          <a href={`/${uniSlug}/${subjectSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{subject.name}</a>
           <span style={{ color: '#C5CBD6' }}>/</span>
-          <span style={{ color: '#1B2335', fontWeight: 700 }}>{meta?.lecture?.title ?? ''}</span>
+          <span style={{ color: '#1B2335', fontWeight: 700 }}>{lecture.title}</span>
         </div>
         <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '20px', padding: '22px 26px', marginBottom: '16px', background: 'linear-gradient(120deg,rgb(237,243,255) 0%,rgb(243,247,255) 52%,rgb(252,253,255) 100%)', border: '1px solid rgb(226,234,251)', boxShadow: 'rgba(16,24,40,0.04) 0px 1px 2px,rgba(40,90,200,0.4) 0px 20px 42px -30px' }}>
           <div style={{ position: 'absolute', top: '-40px', right: '70px', width: '230px', height: '130px', background: 'radial-gradient(rgba(147,197,253,0.34) 0%,rgba(196,181,253,0.13) 55%,transparent 75%)', filter: 'blur(28px)', pointerEvents: 'none' }} />
@@ -263,10 +217,10 @@ export default function SummaryPage() {
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="11" y2="17"/></svg>
             </span>
             <div style={{ paddingTop: '2px', minWidth: 0 }}>
-              <h1 style={{ margin: 0, fontSize: 'clamp(22px,3vw,30px)', lineHeight: 1.12, fontWeight: 800, letterSpacing: '-0.025em', color: 'rgb(21,32,58)' }}>{meta?.lecture?.title ?? ''}</h1>
+              <h1 style={{ margin: 0, fontSize: 'clamp(22px,3vw,30px)', lineHeight: 1.12, fontWeight: 800, letterSpacing: '-0.025em', color: 'rgb(21,32,58)' }}>{lecture.title}</h1>
               <div style={{ marginTop: '7px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'rgb(47,107,255)' }}>
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'rgb(47,107,255)', flexShrink: 0 }} />
-                {subject?.name ?? ''} — Summary
+                {subject.name} — Summary
               </div>
             </div>
           </div>
@@ -274,8 +228,7 @@ export default function SummaryPage() {
       </div>
 
       <div style={{ padding: '0 clamp(12px,3vw,26px) 24px' }}>
-        {!meta ? <ContentSkeleton />
-        : locked ? <LockedContentCard subjectName={subject?.name ?? ''} />
+        {locked ? <LockedContentCard subjectName={subject.name} />
         : summaryLoading ? <ContentSkeleton />
         : !summary ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
@@ -284,7 +237,7 @@ export default function SummaryPage() {
         ) : (
           <SheetReader
             content={summary.content ?? ''}
-            title={meta.lecture?.title ?? ''}
+            title={lecture.title}
             isSummary
             onProgressUpdate={handleProgressUpdate}
             userName={displayName}

@@ -7,6 +7,8 @@ import { useUserStore } from '@/stores/userStore'
 import { useQuery } from '@tanstack/react-query'
 import FlashcardsViewer from '@/components/student/FlashcardsViewer'
 import LockedContentCard from '@/components/student/LockedContentCard'
+import { useLectureData } from '@/components/student/LectureDataProvider'
+import LectureMobileTabs from '@/components/student/LectureMobileTabs'
 
 function emitSidebar(type: string, data: unknown) {
   window.dispatchEvent(new CustomEvent('lecture-sidebar-update', { detail: { type, data } }))
@@ -22,64 +24,30 @@ export default function FlashcardsPage() {
   const subjectSlug = params.subjectSlug as string
   const lectureSlug = params.lectureSlug as string
 
+  const { lecture, subject, accessAllowed } = useLectureData()
   const { user } = useUserStore()
   const supabase = useMemo(() => createClient(), [])
   const dbSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentIndexRef = useRef<number>(0)
 
-  // Track whether we have applied the resume index
   const [resolvedIndex, setResolvedIndex] = useState<number | null>(null)
 
-  const { data: meta } = useQuery({
-    queryKey: ['flashcards-meta', lectureSlug, subjectSlug],
-    queryFn: async () => {
-      const [
-        { data: lecture },
-        { data: subject },
-        { data: { user: authUser } },
-      ] = await Promise.all([
-        supabase.from('lectures').select('id, title').eq('slug' as any, lectureSlug).single(),
-        supabase.from('subjects').select('id, name, access_mode, is_free').eq('slug' as any, subjectSlug).single(),
-        supabase.auth.getUser(),
-      ])
-      let userId: string | null = null
-      let accessAllowed = subject?.access_mode === 'free' || subject?.is_free === true
-      if (authUser) {
-        const { data: profile } = await supabase.from('users').select('id').eq('auth_user_id', authUser.id).single()
-        userId = profile?.id ?? null
-        if (!accessAllowed && userId) {
-          const now = new Date().toISOString()
-          const { data: sub } = await supabase.from('subject_subscriptions')
-            .select('id').eq('user_id', userId).eq('subject_id', subject?.id ?? '').eq('status', 'active').gt('end_date', now).maybeSingle()
-          accessAllowed = !!sub
-        }
-      }
-      return { lecture, subject, userId, accessAllowed }
-    },
-    staleTime: 1000 * 60 * 10,
-    refetchOnWindowFocus: false,
-  })
-
   const { data: flashcardsData, isLoading: flashcardsLoading } = useQuery({
-    queryKey: ['flashcards-content', meta?.lecture?.id],
+    queryKey: ['flashcards-content', lecture.id],
     queryFn: async () => {
       const { data } = await supabase.from('flashcards')
         .select('id, front_text, back_text, tags')
-        .eq('lecture_id', meta!.lecture!.id)
+        .eq('lecture_id', lecture.id)
       return data ?? []
     },
-    enabled: !!meta?.lecture?.id,
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: false,
   })
 
-  // Resolve resume index: localStorage first, then DB
   useEffect(() => {
-    if (!meta?.lecture?.id) return
     if (resolvedIndex !== null) return
 
-    // Step 1: check localStorage immediately
-    const localKey = getLocalKey(meta.lecture.id)
+    const localKey = getLocalKey(lecture.id)
     const local = localStorage.getItem(localKey)
     if (local !== null) {
       const idx = parseInt(local, 10)
@@ -90,14 +58,13 @@ export default function FlashcardsPage() {
       }
     }
 
-    // Step 2: if no local value, check DB
     if (!user?.id) { setResolvedIndex(0); return }
 
     ;(supabase as any)
       .from('lecture_resume_state')
       .select('flashcard_index')
       .eq('user_id', user.id)
-      .eq('lecture_id', meta.lecture.id)
+      .eq('lecture_id', lecture.id)
       .maybeSingle()
       .then(({ data }: { data: { flashcard_index: number } | null }) => {
         const idx = data?.flashcard_index ?? 0
@@ -105,23 +72,18 @@ export default function FlashcardsPage() {
         currentIndexRef.current = idx
         if (idx > 0) localStorage.setItem(localKey, String(idx))
       })
-  }, [meta?.lecture?.id, user?.id])
+  }, [lecture.id, user?.id])
 
-  // Save to localStorage immediately + DB debounced
   const saveIndex = useCallback((index: number) => {
-    if (!meta?.lecture?.id) return
     currentIndexRef.current = index
+    localStorage.setItem(getLocalKey(lecture.id), String(index))
 
-    // Save to localStorage immediately
-    localStorage.setItem(getLocalKey(meta.lecture.id), String(index))
-
-    // Save to DB debounced (2 seconds)
     if (!user?.id) return
     if (dbSaveTimer.current) clearTimeout(dbSaveTimer.current)
     dbSaveTimer.current = setTimeout(async () => {
       await (supabase as any).rpc('save_resume_state', {
         p_user_id:         user.id,
-        p_lecture_id:      meta.lecture!.id,
+        p_lecture_id:      lecture.id,
         p_active_tab:      'flashcards',
         p_sheet_scroll:    null,
         p_summary_scroll:  null,
@@ -130,16 +92,15 @@ export default function FlashcardsPage() {
         p_pyq_index:       null,
       })
     }, 2000)
-  }, [meta?.lecture?.id, user?.id, supabase])
+  }, [lecture.id, user?.id, supabase])
 
-  // Save immediately on page unload
   useEffect(() => {
-    if (!meta?.lecture?.id || !user?.id) return
+    if (!user?.id) return
     function handleUnload() {
       if (dbSaveTimer.current) clearTimeout(dbSaveTimer.current)
       const body = JSON.stringify({
         p_user_id:         user!.id,
-        p_lecture_id:      meta!.lecture!.id,
+        p_lecture_id:      lecture.id,
         p_active_tab:      'flashcards',
         p_flashcard_index: currentIndexRef.current,
       })
@@ -147,7 +108,7 @@ export default function FlashcardsPage() {
     }
     window.addEventListener('beforeunload', handleUnload)
     return () => window.removeEventListener('beforeunload', handleUnload)
-  }, [meta?.lecture?.id, user?.id])
+  }, [lecture.id, user?.id])
 
   const handleIndexChange = useCallback((index: number) => {
     saveIndex(index)
@@ -157,18 +118,8 @@ export default function FlashcardsPage() {
     emitSidebar('flashcardStats', stats)
   }, [])
 
-  const TAB_ICONS: Record<string, React.ReactNode> = {
-    sheet: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>,
-    summary: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="11" y2="17"/></svg>,
-    flashcards: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>,
-    quiz: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
-    'previous-years': <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  }
-  const TAB_LABELS: Record<string, string> = { sheet: 'Sheet', summary: 'Summary', flashcards: 'Flashcards', quiz: 'Quiz', 'previous-years': 'Previous Years' }
-
-  const subject     = meta?.subject
   const flashcards  = flashcardsData ?? []
-  const locked      = !meta?.accessAllowed
+  const locked      = !accessAllowed
   const displayName = user?.full_name ?? ''
 
   const ContentSkeleton = () => (
@@ -180,23 +131,9 @@ export default function FlashcardsPage() {
     </div>
   )
 
-  // Wait until resolvedIndex is known before rendering viewer
-  const viewerReady = resolvedIndex !== null && flashcards.length > 0 && !flashcardsLoading
-
   return (
     <>
-      <div className="lg:hidden flex gap-1 px-4 pt-3 pb-2 bg-white border-b border-slate-100 overflow-x-auto" style={{ flexShrink: 0 }}>
-        {['sheet', 'summary', 'flashcards', 'quiz', 'previous-years'].map((tabId) => {
-          const isActive = tabId === 'flashcards'
-          return (
-            <a key={tabId} href={`/${uniSlug}/${subjectSlug}/${lectureSlug}/${tabId}`}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: isActive ? 600 : 500, background: isActive ? '#EEF3FF' : '#F3F4F6', color: isActive ? '#2563EB' : '#6B7280', whiteSpace: 'nowrap', flexShrink: 0, textDecoration: 'none' }}>
-              {TAB_ICONS[tabId]}
-              {TAB_LABELS[tabId]}
-            </a>
-          )
-        })}
-      </div>
+      <LectureMobileTabs activeTab="flashcards" />
 
       <div style={{ padding: 'clamp(8px, 2vw, 14px) clamp(12px, 3vw, 26px) 0', background: '#F5F6FA' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#7A8499', fontWeight: 500, marginBottom: '18px' }}>
@@ -206,9 +143,9 @@ export default function FlashcardsPage() {
           </svg>
           <a href={`/${uniSlug}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>Subjects</a>
           <span style={{ color: '#C5CBD6' }}>/</span>
-          <a href={`/${uniSlug}/${subjectSlug}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>{subject?.name ?? ''}</a>
+          <a href={`/${uniSlug}/${subjectSlug}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>{subject.name}</a>
           <span style={{ color: '#C5CBD6' }}>/</span>
-          <span style={{ color: '#1B2335', fontWeight: 700 }}>{meta?.lecture?.title ?? ''}</span>
+          <span style={{ color: '#1B2335', fontWeight: 700 }}>{lecture.title}</span>
         </div>
         <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '20px', padding: '22px 26px', marginBottom: '16px', background: 'linear-gradient(120deg,rgb(237,243,255) 0%,rgb(243,247,255) 52%,rgb(252,253,255) 100%)', border: '1px solid rgb(226,234,251)', boxShadow: 'rgba(16,24,40,0.04) 0px 1px 2px,rgba(40,90,200,0.4) 0px 20px 42px -30px' }}>
           <div style={{ position: 'absolute', top: '-40px', right: '70px', width: '230px', height: '130px', background: 'radial-gradient(rgba(147,197,253,0.34) 0%,rgba(196,181,253,0.13) 55%,transparent 75%)', filter: 'blur(28px)', pointerEvents: 'none' }} />
@@ -217,10 +154,10 @@ export default function FlashcardsPage() {
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
             </span>
             <div style={{ paddingTop: '2px', minWidth: 0 }}>
-              <h1 style={{ margin: 0, fontSize: 'clamp(22px, 3vw, 30px)', lineHeight: 1.12, fontWeight: 800, letterSpacing: '-0.025em', color: 'rgb(21,32,58)' }}>{meta?.lecture?.title ?? ''}</h1>
+              <h1 style={{ margin: 0, fontSize: 'clamp(22px, 3vw, 30px)', lineHeight: 1.12, fontWeight: 800, letterSpacing: '-0.025em', color: 'rgb(21,32,58)' }}>{lecture.title}</h1>
               <div style={{ marginTop: '7px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'rgb(47,107,255)' }}>
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'rgb(47,107,255)', flexShrink: 0 }} />
-                {subject?.name ?? ''} — Flashcards
+                {subject.name} — Flashcards
               </div>
             </div>
           </div>
@@ -228,10 +165,8 @@ export default function FlashcardsPage() {
       </div>
 
       <div style={{ padding: '0 clamp(12px, 3vw, 26px) 24px' }}>
-        {!meta ? (
-          <ContentSkeleton />
-        ) : locked ? (
-          <LockedContentCard subjectName={subject?.name ?? ''} />
+        {locked ? (
+          <LockedContentCard subjectName={subject.name} />
         ) : flashcardsLoading || resolvedIndex === null ? (
           <ContentSkeleton />
         ) : flashcards.length === 0 ? (

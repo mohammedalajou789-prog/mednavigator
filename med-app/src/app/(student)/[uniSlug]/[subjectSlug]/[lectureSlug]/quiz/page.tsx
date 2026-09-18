@@ -7,6 +7,8 @@ import { useUserStore } from '@/stores/userStore'
 import { useQuery } from '@tanstack/react-query'
 import QuizViewer from '@/components/student/QuizViewer'
 import LockedContentCard from '@/components/student/LockedContentCard'
+import { useLectureData } from '@/components/student/LectureDataProvider'
+import LectureMobileTabs from '@/components/student/LectureMobileTabs'
 
 function emitSidebar(type: string, data: unknown) {
   window.dispatchEvent(new CustomEvent('lecture-sidebar-update', { detail: { type, data } }))
@@ -16,63 +18,34 @@ export default function QuizPage() {
   const params      = useParams()
   const uniSlug     = params.uniSlug     as string
   const subjectSlug = params.subjectSlug as string
-  const lectureSlug = params.lectureSlug as string
 
+  const { lecture, subject, userId, accessAllowed } = useLectureData()
   const { user } = useUserStore()
   const supabase = useMemo(() => createClient(), [])
 
-  const [resolvedIndex, setResolvedIndex]   = useState<number | null>(null)
-  const [savedAnswers, setSavedAnswers]     = useState<Record<string, string> | null>(null)
+  const [resolvedIndex, setResolvedIndex] = useState<number | null>(null)
+  const [savedAnswers, setSavedAnswers]   = useState<Record<string, string> | null>(null)
 
-  const indexSaveTimer                      = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const indexSaveTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const currentIndexRef = useRef<number>(0)
+  const isReadyRef      = useRef(false)
 
-  // ── Meta + access ─────────────────────────────────────────────────────────
-  const { data: meta } = useQuery({
-    queryKey: ['quiz-meta', lectureSlug, subjectSlug],
-    queryFn: async () => {
-      const [{ data: lecture }, { data: subject }, { data: { user: authUser } }] = await Promise.all([
-        supabase.from('lectures').select('id, title').eq('slug' as any, lectureSlug).single(),
-        supabase.from('subjects').select('id, name, access_mode, is_free').eq('slug' as any, subjectSlug).single(),
-        supabase.auth.getUser(),
-      ])
-      let userId: string | null = null
-      let accessAllowed = subject?.access_mode === 'free' || subject?.is_free === true
-      if (authUser) {
-        const { data: profile } = await supabase.from('users').select('id').eq('auth_user_id', authUser.id).single()
-        userId = profile?.id ?? null
-        if (!accessAllowed && userId) {
-          const now = new Date().toISOString()
-          const { data: sub } = await supabase.from('subject_subscriptions')
-            .select('id').eq('user_id', userId).eq('subject_id', subject?.id ?? '').eq('status', 'active').gt('end_date', now).maybeSingle()
-          accessAllowed = !!sub
-        }
-      }
-      return { lecture, subject, userId, accessAllowed }
-    },
-    staleTime: 1000 * 60 * 10,
-    refetchOnWindowFocus: false,
-  })
-
-  // ── Questions ─────────────────────────────────────────────────────────────
   const { data: quizData, isLoading: quizLoading } = useQuery({
-    queryKey: ['quiz-content', meta?.lecture?.id],
+    queryKey: ['quiz-content', lecture.id],
     queryFn: async () => {
       const { data } = await supabase.from('quiz_questions')
         .select('id, question, option_a, option_b, option_c, option_d, option_e, correct_answer, explanation, tags')
-        .eq('lecture_id', meta!.lecture!.id)
+        .eq('lecture_id', lecture.id)
       return data ?? []
     },
-    enabled: !!meta?.lecture?.id,
     staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: false,
   })
 
-  // ── Load saved position + answers ─────────────────────────────────────────
   useEffect(() => {
-    if (!meta?.lecture?.id) return
     if (resolvedIndex !== null) return
 
-    if (!meta?.userId) {
+    if (!userId) {
       setResolvedIndex(0)
       setSavedAnswers({})
       return
@@ -82,73 +55,102 @@ export default function QuizPage() {
       const [progressResult, attemptsResult] = await Promise.all([
         supabase.from('user_progress')
           .select('last_position')
-          .eq('user_id', meta!.userId!)
-          .eq('lecture_id', meta!.lecture!.id)
+          .eq('user_id', userId!)
+          .eq('lecture_id', lecture.id)
           .eq('content_type', 'quiz')
           .maybeSingle(),
         supabase.from('lecture_question_attempts' as any)
           .select('question_id, selected_answer')
-          .eq('user_id', meta!.userId!)
-          .eq('lecture_id', meta!.lecture!.id)
+          .eq('user_id', userId!)
+          .eq('lecture_id', lecture.id)
           .eq('question_type', 'quiz'),
       ])
 
       const savedPosition = (progressResult.data as any)?.last_position ?? 0
-      const attempts = (attemptsResult.data ?? []) as { question_id: string; selected_answer: string }[]
+      const attempts = (attemptsResult.data ?? []) as unknown as { question_id: string; selected_answer: string }[]
       const answersMap: Record<string, string> = {}
       for (const a of attempts) answersMap[a.question_id] = a.selected_answer
 
       setResolvedIndex(savedPosition)
+      currentIndexRef.current = savedPosition
       setSavedAnswers(answersMap)
     }
 
     loadSavedState()
-  }, [meta?.lecture?.id, meta?.userId])
+  }, [lecture.id, userId])
 
-  // ── Save index (immediate) ────────────────────────────────────────────────
-  const saveIndex = useCallback(async (index: number) => {
-    console.log('[Quiz] saveIndex:', index, 'userId:', meta?.userId, 'lectureId:', meta?.lecture?.id)
-    if (!meta?.userId || !meta?.lecture?.id) return
-    const { error } = await supabase.from('user_progress').upsert({
-      user_id:             meta.userId!,
-      lecture_id:          meta.lecture!.id,
-      content_type:        'quiz',
-      progress_percentage: 0,
-      completed:           false,
-      last_position:       index,
-      last_accessed_at:    new Date().toISOString(),
-      updated_at:          new Date().toISOString(),
-    }, { onConflict: 'user_id,lecture_id,content_type' })
-    if (error) console.error('[Quiz] saveIndex error:', error)
-    else console.log('[Quiz] saveIndex success for index:', index)
-  }, [meta?.userId, meta?.lecture?.id, supabase])
+  // Guard against re-saving the index we just loaded, right after mount
+  useEffect(() => {
+    if (resolvedIndex === null) return
+    const t = setTimeout(() => { isReadyRef.current = true }, 2000)
+    return () => clearTimeout(t)
+  }, [resolvedIndex])
 
-  // ── Save answer immediately ───────────────────────────────────────────────
+  // Debounced position save — was firing on every navigation before, now batches like Sheet/Summary do
+  const saveIndex = useCallback((index: number) => {
+    currentIndexRef.current = index
+    if (!userId) return
+
+    if (indexSaveTimer.current) clearTimeout(indexSaveTimer.current)
+    indexSaveTimer.current = setTimeout(() => {
+      supabase.from('user_progress').upsert({
+        user_id:             userId,
+        lecture_id:          lecture.id,
+        content_type:        'quiz',
+        progress_percentage: 0,
+        completed:           false,
+        last_position:       index,
+        last_accessed_at:    new Date().toISOString(),
+        updated_at:          new Date().toISOString(),
+      }, { onConflict: 'user_id,lecture_id,content_type' })
+    }, 1500)
+  }, [userId, lecture.id, supabase])
+
+  // Best-effort flush on tab close / hard refresh
+  useEffect(() => {
+    function handleUnload() {
+      if (!userId) return
+      if (indexSaveTimer.current) clearTimeout(indexSaveTimer.current)
+      supabase.from('user_progress').upsert({
+        user_id:             userId,
+        lecture_id:          lecture.id,
+        content_type:        'quiz',
+        progress_percentage: 0,
+        completed:           false,
+        last_position:       currentIndexRef.current,
+        last_accessed_at:    new Date().toISOString(),
+        updated_at:          new Date().toISOString(),
+      }, { onConflict: 'user_id,lecture_id,content_type' })
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    return () => window.removeEventListener('beforeunload', handleUnload)
+  }, [userId, lecture.id, supabase])
+
   const saveAnswer = useCallback(async (questionId: string, selectedAnswer: string, isCorrect: boolean) => {
-    if (!meta?.userId || !meta?.lecture?.id) return
+    if (!userId) return
     await supabase.from('lecture_question_attempts' as any).upsert({
-      user_id:         meta.userId,
-      lecture_id:      meta.lecture.id,
+      user_id:         userId,
+      lecture_id:      lecture.id,
       question_id:     questionId,
       question_type:   'quiz',
       selected_answer: selectedAnswer,
       is_correct:      isCorrect,
       updated_at:      new Date().toISOString(),
     }, { onConflict: 'user_id,lecture_id,question_id,question_type' })
-  }, [meta?.userId, meta?.lecture?.id, supabase])
+  }, [userId, lecture.id, supabase])
 
-  // ── Reset all answers ─────────────────────────────────────────────────────
   const resetAnswers = useCallback(async () => {
-    if (!meta?.userId || !meta?.lecture?.id) return
+    if (!userId) return
+    if (indexSaveTimer.current) clearTimeout(indexSaveTimer.current)
     await Promise.all([
       supabase.from('lecture_question_attempts' as any)
         .delete()
-        .eq('user_id', meta.userId)
-        .eq('lecture_id', meta.lecture.id)
+        .eq('user_id', userId)
+        .eq('lecture_id', lecture.id)
         .eq('question_type', 'quiz'),
       supabase.from('user_progress').upsert({
-        user_id:             meta.userId,
-        lecture_id:          meta.lecture.id,
+        user_id:             userId,
+        lecture_id:          lecture.id,
         content_type:        'quiz',
         progress_percentage: 0,
         completed:           false,
@@ -158,10 +160,11 @@ export default function QuizPage() {
     ])
     setSavedAnswers({})
     setResolvedIndex(0)
-  }, [meta?.userId, meta?.lecture?.id, supabase])
+    currentIndexRef.current = 0
+  }, [userId, lecture.id, supabase])
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleIndexChange = useCallback((index: number) => {
+    if (!isReadyRef.current) return
     saveIndex(index)
   }, [saveIndex])
 
@@ -169,21 +172,8 @@ export default function QuizPage() {
     emitSidebar('quizStats', stats)
   }, [])
 
-
-
-  // ── UI ────────────────────────────────────────────────────────────────────
-  const TAB_ICONS: Record<string, React.ReactNode> = {
-    sheet: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>,
-    summary: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="11" y2="17"/></svg>,
-    flashcards: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>,
-    quiz: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
-    'previous-years': <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  }
-  const TAB_LABELS: Record<string, string> = { sheet: 'Sheet', summary: 'Summary', flashcards: 'Flashcards', quiz: 'Quiz', 'previous-years': 'Previous Years' }
-
-  const subject     = meta?.subject
   const questions   = quizData ?? []
-  const locked      = !meta?.accessAllowed
+  const locked      = !accessAllowed
   const displayName = user?.full_name ?? ''
 
   const ContentSkeleton = () => (
@@ -199,26 +189,16 @@ export default function QuizPage() {
 
   return (
     <>
-      <div className="lg:hidden flex gap-1 px-4 pt-3 pb-2 bg-white border-b border-slate-100 overflow-x-auto" style={{ flexShrink: 0 }}>
-        {['sheet','summary','flashcards','quiz','previous-years'].map((tabId) => {
-          const isActive = tabId === 'quiz'
-          return (
-            <a key={tabId} href={`/${uniSlug}/${subjectSlug}/${lectureSlug}/${tabId}`}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: isActive ? 600 : 500, background: isActive ? '#EEF3FF' : '#F3F4F6', color: isActive ? '#2563EB' : '#6B7280', whiteSpace: 'nowrap', flexShrink: 0, textDecoration: 'none' }}>
-              {TAB_ICONS[tabId]}{TAB_LABELS[tabId]}
-            </a>
-          )
-        })}
-      </div>
+      <LectureMobileTabs activeTab="quiz" />
 
       <div style={{ padding: 'clamp(8px,2vw,14px) clamp(12px,3vw,26px) 0', background: '#F5F6FA' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#7A8499', fontWeight: 500, marginBottom: '18px' }}>
           <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           <a href={`/${uniSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>Subjects</a>
           <span style={{ color: '#C5CBD6' }}>/</span>
-          <a href={`/${uniSlug}/${subjectSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{subject?.name ?? ''}</a>
+          <a href={`/${uniSlug}/${subjectSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{subject.name}</a>
           <span style={{ color: '#C5CBD6' }}>/</span>
-          <span style={{ color: '#1B2335', fontWeight: 700 }}>{meta?.lecture?.title ?? ''}</span>
+          <span style={{ color: '#1B2335', fontWeight: 700 }}>{lecture.title}</span>
         </div>
         <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '20px', padding: '22px 26px', marginBottom: '16px', background: 'linear-gradient(120deg,rgb(237,243,255) 0%,rgb(243,247,255) 52%,rgb(252,253,255) 100%)', border: '1px solid rgb(226,234,251)', boxShadow: 'rgba(16,24,40,0.04) 0px 1px 2px,rgba(40,90,200,0.4) 0px 20px 42px -30px' }}>
           <div style={{ position: 'absolute', top: '-40px', right: '70px', width: '230px', height: '130px', background: 'radial-gradient(rgba(147,197,253,0.34) 0%,rgba(196,181,253,0.13) 55%,transparent 75%)', filter: 'blur(28px)', pointerEvents: 'none' }} />
@@ -228,14 +208,14 @@ export default function QuizPage() {
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               </span>
               <div style={{ paddingTop: '2px', minWidth: 0 }}>
-                <h1 style={{ margin: 0, fontSize: 'clamp(22px,3vw,30px)', lineHeight: 1.12, fontWeight: 800, letterSpacing: '-0.025em', color: 'rgb(21,32,58)' }}>{meta?.lecture?.title ?? ''}</h1>
+                <h1 style={{ margin: 0, fontSize: 'clamp(22px,3vw,30px)', lineHeight: 1.12, fontWeight: 800, letterSpacing: '-0.025em', color: 'rgb(21,32,58)' }}>{lecture.title}</h1>
                 <div style={{ marginTop: '7px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'rgb(47,107,255)' }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'rgb(47,107,255)', flexShrink: 0 }} />
-                  {subject?.name ?? ''} — Quiz
+                  {subject.name} — Quiz
                 </div>
               </div>
             </div>
-            {meta?.userId && Object.keys(savedAnswers ?? {}).length > 0 && (
+            {userId && Object.keys(savedAnswers ?? {}).length > 0 && (
               <button onClick={resetAnswers}
                 style={{ flexShrink: 0, padding: '8px 14px', borderRadius: '10px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
                 Start Over
@@ -246,8 +226,7 @@ export default function QuizPage() {
       </div>
 
       <div style={{ padding: '0 clamp(12px,3vw,26px) 24px' }}>
-        {!meta ? <ContentSkeleton />
-        : locked ? <LockedContentCard subjectName={subject?.name ?? ''} />
+        {locked ? <LockedContentCard subjectName={subject.name} />
         : quizLoading || !answersReady ? <ContentSkeleton />
         : questions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
@@ -257,7 +236,7 @@ export default function QuizPage() {
           <QuizViewer
             key={`quiz-${resolvedIndex}-${Object.keys(savedAnswers ?? {}).length}`}
             questions={questions as any}
-            lectureId={meta.lecture?.id ?? ''}
+            lectureId={lecture.id}
             userName={displayName}
             initialIndex={resolvedIndex!}
             initialAnswers={savedAnswers!}

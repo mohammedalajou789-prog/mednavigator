@@ -27,6 +27,21 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
     return `block-${type}-${occurrenceCounters[type]}`
   }
 
+  // Heading ids are derived from their TEXT (e.g. "Definition" ->
+  // "section-definition") so links/bookmarks stay stable across edits.
+  // When the same heading text repeats in one sheet (common: "Definition",
+  // "Etiology"...), every occurrence after the first gets a numeric
+  // suffix so ids stay unique. Order must match extractToc() in
+  // sheet/page.tsx and summary/page.tsx exactly (same document order),
+  // so the sidebar TOC keeps scrolling to the right section.
+  const headingIdCounts: Record<string, number> = {}
+  function makeHeadingId(rawText: string): string {
+    const base = `section-${rawText.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+    headingIdCounts[base] = (headingIdCounts[base] ?? 0) + 1
+    const n = headingIdCounts[base]
+    return n === 1 ? base : `${base}-${n}`
+  }
+
   return (
     <div className="relative font-sans mn-renderer">
       {showWatermark && userName && (
@@ -45,12 +60,12 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
           if (section.type === 'pre') {
             return section.blocks.map((block, bIdx) => {
               if (block.type === 'h1') { h1Counter++; h2Counter = 0 }
-              return renderBlock(block, sIdx * 1000 + bIdx, undefined, imageSlots, nextOccurrenceId)
+              return renderBlock(block, sIdx * 1000 + bIdx, undefined, imageSlots, nextOccurrenceId, makeHeadingId)
             })
           }
 
           h2Counter = 0
-          const h1Id = `section-${section.heading.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+          const h1Id = makeHeadingId(section.heading.content)
 
           const subSections: { heading: Block | null; blocks: Block[] }[] = []
           let currentSub: { heading: Block | null; blocks: Block[] } = { heading: null, blocks: [] }
@@ -99,7 +114,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
                   return (
                     <div key={`pre-${subIdx}`} style={{ background: '#fff', border: '1px solid #ECEEF3', borderRadius: '18px', padding: '24px 26px', marginBottom: '14px', boxShadow: '0 1px 2px rgba(16,24,40,.03),0 14px 30px -24px rgba(16,24,40,.18)' }}>
                       {sub.blocks.map((block, bIdx) =>
-                        renderBlock(block, sIdx * 1000 + subIdx * 100 + bIdx, undefined, imageSlots, nextOccurrenceId)
+                        renderBlock(block, sIdx * 1000 + subIdx * 100 + bIdx, undefined, imageSlots, nextOccurrenceId, makeHeadingId)
                       )}
                     </div>
                   )
@@ -107,7 +122,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
 
                 h2Counter++
                 const currentNum = h2Counter
-                const sectionId = `section-${sub.heading.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+                const sectionId = makeHeadingId(sub.heading.content)
 
                 return (
                   <div key={`sub-${subIdx}`} style={{ marginBottom: '14px' }}>
@@ -121,7 +136,7 @@ export default function MNRenderer({ content, userName, showWatermark = false, i
                         </span>
                       </div>
                       {sub.blocks.map((block, bIdx) =>
-                        renderBlock(block, sIdx * 1000 + subIdx * 100 + bIdx, undefined, imageSlots, nextOccurrenceId)
+                        renderBlock(block, sIdx * 1000 + subIdx * 100 + bIdx, undefined, imageSlots, nextOccurrenceId, makeHeadingId)
                       )}
                     </div>
                   </div>
@@ -466,7 +481,8 @@ function renderBlock(
   key: number,
   _h2Number?: number,
   imageSlots: Record<number, string> = {},
-  nextOccurrenceId?: (type: string) => string
+  nextOccurrenceId?: (type: string) => string,
+  makeHeadingId?: (rawText: string) => string
 ) {
   switch (block.type) {
 
@@ -594,7 +610,7 @@ function renderBlock(
     }
 
     case 'h1': {
-      const h1Id = `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+      const h1Id = makeHeadingId?.(block.content) ?? `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
       return (
         <h1 key={key} id={h1Id} data-sync-type="heading" style={{ scrollMarginTop: '96px', fontSize: '1.9rem', fontWeight: 900, color: '#15203A', marginTop: '32px', marginBottom: '20px', letterSpacing: '-0.022em', lineHeight: 1.2 }}>
           {block.content}
@@ -603,7 +619,7 @@ function renderBlock(
     }
 
     case 'h2': {
-      const sectionId = `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+      const sectionId = makeHeadingId?.(block.content) ?? `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
       return (
         <div key={key} id={sectionId} data-sync-type="heading" style={{ scrollMarginTop: '96px', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(180deg,#3B79FF,#2F6BFF)', color: '#fff', fontSize: '14px', fontWeight: 700, flexShrink: 0 }}>?</span>
@@ -614,7 +630,7 @@ function renderBlock(
 
     case 'h3':
       return (
-        <h3 key={key} id={`section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`} data-sync-type="heading" style={{ scrollMarginTop: '96px' }} className="text-[1.05rem] font-bold text-slate-800 dark:text-slate-200 mt-8 mb-3 flex items-center gap-2">
+        <h3 key={key} id={makeHeadingId?.(block.content) ?? `section-${block.content.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`} data-sync-type="heading" style={{ scrollMarginTop: '96px' }} className="text-[1.05rem] font-bold text-slate-800 dark:text-slate-200 mt-8 mb-3 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
           {block.content}
         </h3>

@@ -503,7 +503,7 @@ export default function LectureSidebarShell({
       )}
 
       {/* Table of Contents */}
-      {!sidebarCollapsed && tocSections.length > 0 && (
+      {tocSections.length > 0 && (
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '10px 6px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           {sidebarCollapsed ? (
             <div style={{ maxHeight: '160px', overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', scrollbarWidth: 'none', position: 'relative' as const }}>

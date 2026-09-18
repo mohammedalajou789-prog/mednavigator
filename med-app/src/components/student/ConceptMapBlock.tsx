@@ -1,19 +1,13 @@
 'use client'
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 
-/* ══════════════════════════════════════════════════════════════
-   TYPES
-══════════════════════════════════════════════════════════════ */
 interface Props    { content: string }
 interface MNNode  { id: string; label: string; cat: string; row: number; isTreat: boolean }
 interface MNEdge  { from: string; to: string; label?: string }
-interface MapData { title: string; nodes: MNNode[]; edges: MNEdge[]; topology: string; hasFeedback: boolean }
+interface MapData { title: string; nodes: MNNode[]; edges: MNEdge[]; topology: string; hasFeedback: boolean; pureTreatment: boolean }
 interface REdge   { d: string; len: number; lx: number; ly: number; label?: string; color: string; fromId: string; toId: string }
 type Rect = { l: number; r: number; t: number; b: number; cx: number; cy: number }
 
-/* ══════════════════════════════════════════════════════════════
-   STYLE TABLES
-══════════════════════════════════════════════════════════════ */
 const TREAT_CATS = new Set(['treatment', 'inhibitor'])
 
 const NODE_S: Record<string, { bg: string; border: string; accent: string; text: string }> = {
@@ -40,40 +34,6 @@ const VERB_CLR: Record<string, string> = {
   controls:   '#1d4ed8',
 }
 
-/* ══════════════════════════════════════════════════════════════
-   PARSER
-   ─────────────────────────────────────────────────────────────
-   FIX (Change 1 of 2): DFS-based back-edge detection for cycle
-   breaking.
-
-   ROOT CAUSE OF THE BUG:
-   When a pathway has a feedback edge from a regular (non-treatment)
-   node back to the entry node (e.g. Estradiol → GnRH in the HPG
-   axis), it creates a complete cycle in the main-node graph.
-   Every node in the cycle gets in-degree ≥ 1 → Kahn's BFS queue
-   starts EMPTY → rowOf[n] = undefined for all → every node lands
-   in row 0 → the entire map collapses into a single flat row.
-
-   THE FIX:
-   Run an iterative DFS before Kahn's BFS.  Any edge that points
-   back to a node still on the DFS stack is a "back edge" — the
-   precise edge that creates the cycle.  Excluding that edge from
-   the in-degree count converts the cyclic graph into a DAG, so
-   Kahn's BFS assigns correct multi-row positions.
-
-   The back edge is still rendered in the SVG (with special
-   left-margin routing — see buildEdge Change 2); it just does
-   not influence the layout grid.
-
-   ZERO RISK to other map types:
-   • Maps with no cycles: DFS finds no back edges → identical
-     behaviour as before.
-   • Maps with treatment/inhibitor feedback (e.g. Hypothyroidism):
-     those edges are already excluded from main-to-main processing
-     → no change.
-   • Only maps whose feedback uses a regular node category are
-     affected — and only to correct their previously broken layout.
-══════════════════════════════════════════════════════════════ */
 function parseMap(raw: string): MapData {
   const lines  = raw.split('\n').map(s => s.trim()).filter(Boolean)
   let title    = ''
@@ -114,14 +74,13 @@ function parseMap(raw: string): MapData {
     else if (m2) edges.push({ from: m2[1], to: m2[2] })
   }
 
-  /* ── Topological row assignment ──────────────────────────────── */
-  const main    = nodes.filter(n => !n.isTreat)
+  const realMain = nodes.filter(n => !n.isTreat)
+  const pureTreatment = realMain.length === 0 && nodes.some(n => n.isTreat)
+  const main    = pureTreatment ? nodes : realMain
   const mainSet = new Set(main.map(n => n.id))
 
-  // Only edges between two main (non-treatment) nodes
   const mainEdges = edges.filter(e => mainSet.has(e.from) && mainSet.has(e.to))
 
-  /* ── Step 1: iterative DFS to identify back edges ────────────── */
   const backEdgeKeys = new Set<string>()
   {
     const vis = new Set<string>()
@@ -142,12 +101,10 @@ function parseMap(raw: string): MapData {
         const ch = mainEdges.filter(e => e.from === f.id)
 
         if (f.idx >= ch.length) {
-          // All children explored — pop this node off the DFS stack
           inStk.delete(f.id); stk.pop()
         } else {
           const cid = ch[f.idx++].to
           if (inStk.has(cid)) {
-            // cid is an ancestor on the current path → BACK EDGE
             backEdgeKeys.add(`${f.id}||${cid}`)
           } else if (!vis.has(cid)) {
             push(cid)
@@ -159,13 +116,12 @@ function parseMap(raw: string): MapData {
     for (const n of main) if (!vis.has(n.id)) dfsFrom(n.id)
   }
 
-  /* ── Step 2: Kahn's BFS with back edges excluded ─────────────── */
   const inDeg: Record<string, number>   = {}
   const adj:   Record<string, string[]> = {}
   for (const n of main) { inDeg[n.id] = 0; adj[n.id] = [] }
 
   for (const e of mainEdges) {
-    if (backEdgeKeys.has(`${e.from}||${e.to}`)) continue  // skip back-edges
+    if (backEdgeKeys.has(`${e.from}||${e.to}`)) continue
     inDeg[e.to] = (inDeg[e.to] ?? 0) + 1
     adj[e.from].push(e.to)
   }
@@ -184,13 +140,13 @@ function parseMap(raw: string): MapData {
 
   for (const n of main) n.row = rowOf[n.id] ?? 0
 
-  /* Treatment nodes: same row as their primary target */
-  for (const n of nodes.filter(n => n.isTreat)) {
-    const te = edges.find(e => e.from === n.id)
-    n.row = (te ? main.find(m => m.id === te.to) : undefined)?.row ?? 0
+  if (!pureTreatment) {
+    for (const n of nodes.filter(n => n.isTreat)) {
+      const te = edges.find(e => e.from === n.id)
+      n.row = (te ? main.find(m => m.id === te.to) : undefined)?.row ?? 0
+    }
   }
 
-  /* ── Topology detection (for caption) ────────────────────────── */
   const hasFeedback = backEdgeKeys.size > 0
   const fwdEdges = mainEdges.filter(e => !backEdgeKeys.has(`${e.from}||${e.to}`))
   const outDegTopo: Record<string, number> = {}
@@ -209,12 +165,9 @@ function parseMap(raw: string): MapData {
   else                                topology = 'linear: sequential cascade through the pathway'
   if (hasFeedback) topology += ' with feedback'
 
-  return { title, nodes, edges, topology, hasFeedback }
+  return { title, nodes, edges, topology, hasFeedback, pureTreatment }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   GEOMETRY HELPERS
-══════════════════════════════════════════════════════════════ */
 function getRect(el: HTMLElement, wrap: HTMLElement): Rect {
   const e = el.getBoundingClientRect()
   const w = wrap.getBoundingClientRect()
@@ -237,34 +190,12 @@ function arcLen(x1: number, y1: number, cx1: number, cy1: number, cx2: number, c
   return len
 }
 
-/* ══════════════════════════════════════════════════════════════
-   EDGE ROUTING
-   ─────────────────────────────────────────────────────────────
-   FIX (Change 2 of 2): upward vertical edges (feedback arcs)
-   are routed as a C-curve sweeping left of the node column.
-
-   After Change 1 fixes the row layout, feedback back-edges
-   become upward vertical edges (source is lower on screen,
-   destination is higher).  The old code drew these as a nearly
-   straight vertical line passing through all intermediate nodes,
-   causing labels to overlap.
-
-   New routing for dy < 0 (upward):
-   • Exits the LEFT wall of the source node horizontally.
-   • Curves left to a "sideX" position outside the node column.
-   • Travels vertically up alongside the column.
-   • Enters the LEFT wall of the destination horizontally.
-   The label sits at the arc's leftmost inflection point — in the
-   open left-margin — completely clear of all nodes.
-
-   This is the standard visual convention for negative-feedback
-   arcs in biological pathway diagrams.
-══════════════════════════════════════════════════════════════ */
 function buildEdge(
   src: Rect, dst: Rect,
   isTreat: boolean,
   fromId: string, toId: string,
   label?: string,
+  forceMain?: boolean,
 ): REdge {
   const dx = dst.cx - src.cx
   const dy = dst.cy - src.cy
@@ -273,8 +204,7 @@ function buildEdge(
   let cx1: number, cy1: number, cx2: number, cy2: number
   let lx: number, ly: number
 
-  /* ── A: Treatment → main ──────────────────────────────────────── */
-  if (isTreat) {
+  if (isTreat && !forceMain) {
     x1 = src.l;  y1 = src.cy
     x2 = dst.r;  y2 = dst.cy
     const hs = Math.abs(x1 - x2)
@@ -291,42 +221,33 @@ function buildEdge(
     lx = bz(0.5, x1, cx1, cx2, x2)
     ly = bz(0.5, y1, cy1, cy2, y2) - 24
 
-  /* ── B / C: Main → main ───────────────────────────────────────── */
   } else {
     const isV = Math.abs(dy) > 35 || (Math.abs(dx) > 1 && Math.abs(dy) / Math.abs(dx) > 0.65)
 
     if (isV) {
       if (dy >= 0) {
-        /* ── Downward (forward edge) ────────────────────────────── */
         x1 = src.cx; y1 = src.b; x2 = dst.cx; y2 = dst.t
         const c = Math.max(30, Math.abs(dy) * 0.4)
         cx1 = x1; cy1 = y1 + c; cx2 = x2; cy2 = y2 - c
         lx = bz(0.5, x1, cx1, cx2, x2)
         ly = bz(0.5, y1, cy1, cy2, y2)
       } else {
-        /* ── Upward (feedback back-edge) — C-arc in left margin ── */
-        // Exit the LEFT wall of the source, sweep left to sideX,
-        // travel up, then enter the LEFT wall of the destination.
-        // The arrowhead (at dst.l, dst.cy) points rightward into
-        // the node — correct for an arc arriving from the left.
-        x1 = src.l; y1 = src.cy          // exit: left wall of source
-        x2 = dst.l; y2 = dst.cy          // enter: left wall of dest
+        x1 = src.l; y1 = src.cy
+        x2 = dst.l; y2 = dst.cy
         const spread = Math.max(60, Math.abs(dy) * 0.28)
         const sideX  = Math.min(src.l, dst.l) - spread
-        cx1 = sideX; cy1 = y1            // pull hard left at source height
-        cx2 = sideX; cy2 = y2            // pull hard left at dest height
-        lx  = sideX                      // label at arc's leftmost point
-        ly  = (y1 + y2) / 2             // vertically centred on the arc
+        cx1 = sideX; cy1 = y1
+        cx2 = sideX; cy2 = y2
+        lx  = sideX
+        ly  = (y1 + y2) / 2
       }
     } else if (dx >= 0) {
-      /* ── Horizontal right ─────────────────────────────────────── */
       x1 = src.r; y1 = src.cy; x2 = dst.l; y2 = dst.cy
       const c = Math.max(20, dx * 0.35)
       cx1 = x1 + c; cy1 = y1; cx2 = x2 - c; cy2 = y2
       lx = bz(0.5, x1, cx1, cx2, x2)
       ly = bz(0.5, y1, cy1, cy2, y2) - 14
     } else {
-      /* ── Horizontal left ──────────────────────────────────────── */
       x1 = src.l; y1 = src.cy; x2 = dst.r; y2 = dst.cy
       const c = Math.max(20, -dx * 0.35)
       cx1 = x1 - c; cy1 = y1; cx2 = x2 + c; cy2 = y2
@@ -342,11 +263,35 @@ function buildEdge(
   }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   MAIN COMPONENT
-══════════════════════════════════════════════════════════════ */
 export default function ConceptMapBlock({ content }: Props) {
-  const { title, nodes, edges, topology } = parseMap(content)
+  /* FIX (Change 4): stabilize parseMap() output + nMap with useMemo.
+
+     ROOT CAUSE OF THE "Maximum update depth exceeded" BUG:
+     parseMap(content) ran on every render, returning a brand-new
+     `nodes`/`edges` array each time (new object references, even
+     though the actual data was identical). `nMap` was then rebuilt
+     from `nodes` on every render too — also a brand-new object each
+     time. Because `compute` (useCallback) depends on `nMap`, React
+     saw a "changed" dependency on every render and recreated
+     `compute`. Since `compute` is itself a dependency of the
+     `useEffect` below, that effect re-ran, called setSvgH/setRe
+     (state updates), which triggered a re-render, which rebuilt
+     `nodes`/`nMap` again — an infinite loop.
+
+     THE FIX:
+     Wrap parseMap(content) in useMemo keyed on `content` (a stable
+     primitive string), and wrap nMap in useMemo keyed on the now-
+     stable `nodes` reference. Both now only recompute when the
+     underlying MN Syntax content actually changes, not on every
+     render — breaking the loop.
+
+     ZERO RISK: this changes WHEN the same calculations run, not
+     WHAT they calculate. Same parseMap() logic, same nMap shape,
+     same output — just memoized instead of recomputed every render. */
+  const { title, nodes, edges, topology, pureTreatment } = useMemo(
+    () => parseMap(content),
+    [content]
+  )
 
   const wrapRef  = useRef<HTMLDivElement>(null)
   const nRefs    = useRef<Record<string, HTMLDivElement | null>>({})
@@ -356,22 +301,23 @@ export default function ConceptMapBlock({ content }: Props) {
   const [hov, setHov]     = useState<string | null>(null)
   const [drawn, setDrawn] = useState(false)
 
-  const nMap = Object.fromEntries(nodes.map(n => [n.id, n]))
+  const nMap = useMemo(
+    () => Object.fromEntries(nodes.map(n => [n.id, n])),
+    [nodes]
+  )
 
-  /* Group nodes by row → { main, treat } */
   const rowMap: Record<number, { main: MNNode[]; treat: MNNode[] }> = {}
   for (const n of nodes) {
     if (!rowMap[n.row]) rowMap[n.row] = { main: [], treat: [] }
-    n.isTreat ? rowMap[n.row].treat.push(n) : rowMap[n.row].main.push(n)
+    const goesInTreatColumn = n.isTreat && !pureTreatment
+    goesInTreatColumn ? rowMap[n.row].treat.push(n) : rowMap[n.row].main.push(n)
   }
   const rows = Object.keys(rowMap).sort((a, b) => +a - +b).map(k => rowMap[+k])
 
-  /* Hover: connected node IDs */
   const connSet = hov
     ? new Set(edges.flatMap(e => (e.from === hov || e.to === hov) ? [e.from, e.to] : []))
     : null
 
-  /* Compute edge paths from live DOM measurements */
   const compute = useCallback(() => {
     const w = wrapRef.current
     if (!w) return
@@ -381,14 +327,14 @@ export default function ConceptMapBlock({ content }: Props) {
       const fe = nRefs.current[e.from]
       const te = nRefs.current[e.to]
       if (!fe || !te) continue
-      res.push(buildEdge(getRect(fe, w), getRect(te, w), nMap[e.from]?.isTreat ?? false, e.from, e.to, e.label))
+      res.push(buildEdge(getRect(fe, w), getRect(te, w), nMap[e.from]?.isTreat ?? false, e.from, e.to, e.label, pureTreatment))
     }
     setRe(res)
     if (!initDone.current) {
       initDone.current = true
       setTimeout(() => setDrawn(true), 60)
     }
-  }, [edges, nMap])
+  }, [edges, nMap, pureTreatment])
 
   useEffect(() => {
     compute()
@@ -406,8 +352,6 @@ export default function ConceptMapBlock({ content }: Props) {
 
   return (
     <div style={{ marginBottom: 20, fontFamily: 'system-ui,-apple-system,sans-serif' }}>
-
-      {/* ── Canvas ──────────────────────────────────────────────── */}
       <div
         ref={wrapRef}
         style={{
@@ -415,11 +359,10 @@ export default function ConceptMapBlock({ content }: Props) {
           background: '#FAFCFF',
           border: '1px solid #E8F0FE',
           borderRadius: 14,
-          padding: '28px 20px 28px 80px',   // extra left padding for feedback arcs
+          padding: '28px 20px 28px 80px',
           boxShadow: 'inset 0 1px 3px rgba(59,130,246,0.04)',
         }}
       >
-        {/* Subtle dot-grid background */}
         <div style={{
           position: 'absolute', inset: 0, borderRadius: 14,
           zIndex: 0, overflow: 'hidden', pointerEvents: 'none',
@@ -427,7 +370,6 @@ export default function ConceptMapBlock({ content }: Props) {
           backgroundSize: '24px 24px', opacity: 0.3,
         }}/>
 
-        {/* ── SVG edge layer ─────────────────────────────────────── */}
         <svg style={{
           position: 'absolute', top: 0, left: 0,
           width: '100%', height: svgH || '100%',
@@ -485,12 +427,10 @@ export default function ConceptMapBlock({ content }: Props) {
           })}
         </svg>
 
-        {/* ── Node rows ──────────────────────────────────────────── */}
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', gap: 36 }}>
           {rows.map(({ main, treat }, ri) => (
             <div key={ri} style={{ display: 'flex', alignItems: 'center' }}>
 
-              {/* Main pathway — centred, wraps if needed */}
               <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                 {main.map(n => (
                   <NodeCard
@@ -504,7 +444,6 @@ export default function ConceptMapBlock({ content }: Props) {
                 ))}
               </div>
 
-              {/* Separator + right treatment column */}
               {treat.length > 0 && (
                 <>
                   <div style={{
@@ -531,7 +470,6 @@ export default function ConceptMapBlock({ content }: Props) {
         </div>
       </div>
 
-      {/* ── Caption ─────────────────────────────────────────────── */}
       <p style={{
         margin: '7px 0 0 0',
         fontSize: 12,
@@ -547,9 +485,6 @@ export default function ConceptMapBlock({ content }: Props) {
   )
 }
 
-/* ══════════════════════════════════════════════════════════════
-   NODE CARD
-══════════════════════════════════════════════════════════════ */
 interface NCProps {
   node:      MNNode
   dim:       boolean
@@ -572,7 +507,9 @@ function NodeCard({ node, dim, highlight, setRef, onEnter, onLeave }: NCProps) {
         minWidth:   node.isTreat ? 118 : 128,
         maxWidth:   node.isTreat ? 172 : 210,
         background: s.bg,
-        border:     `1.5px solid ${highlight ? s.accent : s.border}`,
+        borderTop:    `1.5px solid ${highlight ? s.accent : s.border}`,
+        borderRight:  `1.5px solid ${highlight ? s.accent : s.border}`,
+        borderBottom: `1.5px solid ${highlight ? s.accent : s.border}`,
         borderLeft: `4px solid ${s.accent}`,
         borderRadius: node.isTreat ? 24 : 10,
         padding:    node.isTreat ? '8px 14px' : '9px 13px',
@@ -584,7 +521,6 @@ function NodeCard({ node, dim, highlight, setRef, onEnter, onLeave }: NCProps) {
         transition: 'opacity .2s, box-shadow .2s, border-color .2s',
       }}
     >
-      {/* Rx badge — treatment nodes only */}
       {node.isTreat && (
         <span style={{
           position:   'absolute',

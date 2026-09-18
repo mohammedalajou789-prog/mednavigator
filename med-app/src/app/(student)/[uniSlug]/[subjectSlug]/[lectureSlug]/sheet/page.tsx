@@ -18,21 +18,28 @@ function extractToc(content: string): TocSection[] {
   const lines = content.split('\n')
   const toc: TocSection[] = []
   let h1Counter = 0; let h2Counter = 0
+  const headingIdCounts: Record<string, number> = {}
+  function makeHeadingId(rawText: string): string {
+    const base = `section-${rawText.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`
+    headingIdCounts[base] = (headingIdCounts[base] ?? 0) + 1
+    const n = headingIdCounts[base]
+    return n === 1 ? base : `${base}-${n}`
+  }
   lines.forEach((line) => {
     const h1 = line.match(/^#\s+(.+)/); const h2 = line.match(/^##\s+(.+)/); const h3 = line.match(/^###\s+(.+)/)
     if (h1) {
       h1Counter++; h2Counter = 0
       const label = h1[1].trim()
-      toc.push({ id: `section-${label.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')}`, level: 1, label, h1Num: h1Counter, h2Num: null })
+      toc.push({ id: makeHeadingId(label), level: 1, label, h1Num: h1Counter, h2Num: null })
     } else if (h2) {
       h2Counter++
       const label = h2[1].trim()
-      const id = `section-${label.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')}`
+      const id = makeHeadingId(label)
       if (h1Counter === 0) { h1Counter++; h2Counter = 0; toc.push({ id, level: 1, label, h1Num: h1Counter, h2Num: null }) }
       else { toc.push({ id, level: 2, label, h1Num: h1Counter, h2Num: h2Counter }) }
     } else if (h3) {
       const label = h3[1].trim()
-      toc.push({ id: `section-${label.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')}`, level: 3, label, h1Num: h1Counter, h2Num: h2Counter })
+      toc.push({ id: makeHeadingId(label), level: 3, label, h1Num: h1Counter, h2Num: h2Counter })
     }
   })
   return toc

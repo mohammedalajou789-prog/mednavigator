@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useMemo, useCallback } from 'react'
 import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useUserStore } from '@/stores/userStore'
 import { useQuery } from '@tanstack/react-query'
@@ -215,9 +216,9 @@ export default function SheetPage() {
       <div style={{ padding: 'clamp(8px,2vw,14px) clamp(12px,3vw,26px) 0', background: '#F5F6FA' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#7A8499', fontWeight: 500, marginBottom: '18px' }}>
           <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-          <a href={`/${uniSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>Subjects</a>
+          <Link href={`/${uniSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>Subjects</Link>
           <span style={{ color: '#C5CBD6' }}>/</span>
-          <a href={`/${uniSlug}/${subjectSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{subject.name}</a>
+          <Link href={`/${uniSlug}/${subjectSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{subject.name}</Link>
           <span style={{ color: '#C5CBD6' }}>/</span>
           <span style={{ color: '#1B2335', fontWeight: 700 }}>{lecture.title}</span>
         </div>

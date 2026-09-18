@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useLectureData } from './LectureDataProvider'
 import { LECTURE_TAB_ICONS, LECTURE_TAB_LABELS } from './lectureTabConfig'
@@ -16,9 +17,10 @@ export default function LectureMobileTabs({ activeTab }: { activeTab: string }) 
       {availableTabs.map((tabId) => {
         const isActive = tabId === activeTab
         return (
-          <a
+          <Link
             key={tabId}
             href={`/${uniSlug}/${subjectSlug}/${lectureSlug}/${tabId}`}
+            prefetch={false}
             style={{
               display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px',
               borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '13px',
@@ -30,7 +32,7 @@ export default function LectureMobileTabs({ activeTab }: { activeTab: string }) 
           >
             {LECTURE_TAB_ICONS[tabId]}
             {LECTURE_TAB_LABELS[tabId]}
-          </a>
+          </Link>
         )
       })}
     </div>

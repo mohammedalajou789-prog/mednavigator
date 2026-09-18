@@ -1,13 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUserStore } from '@/stores/userStore'
 import LectureContentSearch from '@/components/student/LectureContentSearch'
-
-// ── Types ──────────────────────────────────────────────────────────────────
 
 interface Lecture {
   id: string
@@ -66,8 +64,6 @@ interface LectureSidebarShellProps {
   accessAllowed: boolean
 }
 
-// ── Tab Config ─────────────────────────────────────────────────────────────
-
 const TAB_CONFIG: Record<string, { label: string; icon: React.ReactNode }> = {
   sheet: {
     label: 'Sheet',
@@ -121,8 +117,6 @@ const TAB_CONFIG: Record<string, { label: string; icon: React.ReactNode }> = {
   },
 }
 
-// ── Stat Pill ──────────────────────────────────────────────────────────────
-
 function StatPill({ label, value, color }: { label: string; value: number; color: 'blue' | 'green' | 'amber' | 'slate' }) {
   const bg   = color === 'blue' ? '#EFF6FF' : color === 'green' ? '#F0FDF4' : color === 'amber' ? '#FFFBEB' : '#F8FAFC'
   const text = color === 'blue' ? '#2563EB' : color === 'green' ? '#16A34A' : color === 'amber' ? '#D97706' : '#64748B'
@@ -135,11 +129,9 @@ function StatPill({ label, value, color }: { label: string; value: number; color
   )
 }
 
-// ── Notes Panel ────────────────────────────────────────────────────────────
-
 function NotesPanel({ lectureId }: { lectureId: string }) {
   const { user }   = useUserStore()
-  const supabase   = createClient()
+  const supabase   = useMemo(() => createClient(), [])
   const [note, setNote]       = useState('')
   const [saved, setSaved]     = useState(false)
   const [loading, setLoading] = useState(true)
@@ -196,8 +188,6 @@ function NotesPanel({ lectureId }: { lectureId: string }) {
   )
 }
 
-// ── Main Sidebar Shell ─────────────────────────────────────────────────────
-
 export default function LectureSidebarShell({
   allTabs,
   uniSlug,
@@ -210,15 +200,13 @@ export default function LectureSidebarShell({
   accessAllowed,
 }: LectureSidebarShellProps) {
   const { user } = useUserStore()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const pathname = usePathname()
   const router   = useRouter()
 
-  // Derive active tab from URL pathname
   const activeTab = allTabs.find(tab => pathname.endsWith('/' + tab)) ?? allTabs[0] ?? 'sheet'
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-
 
   useEffect(() => {
     setSidebarCollapsed(window.innerWidth < 1280)
@@ -236,7 +224,6 @@ export default function LectureSidebarShell({
 
   const prevSectionId = useRef<string>('')
 
-  // ── Listen for events from child pages ────────────────────────────────────
   useEffect(() => {
     function handleSidebarEvent(e: CustomEvent) {
       const { type, data } = e.detail
@@ -252,7 +239,6 @@ export default function LectureSidebarShell({
     return () => window.removeEventListener('lecture-sidebar-update', handleSidebarEvent as EventListener)
   }, [])
 
-  // ── Reset dynamic widgets when tab changes ────────────────────────────────
   useEffect(() => {
     setTocSections([])
     setActiveSectionId('')
@@ -261,7 +247,6 @@ export default function LectureSidebarShell({
     prevSectionId.current = ''
   }, [activeTab])
 
-  // ── TOC scroll tracking ───────────────────────────────────────────────────
   useEffect(() => {
     if (tocSections.length === 0) return
     const scrollContainer = document.getElementById('lecture-content-scroll')
@@ -298,7 +283,6 @@ export default function LectureSidebarShell({
     scrollContainer.scrollTo({ top: offset, behavior: 'smooth' })
   }
 
-  // ── Bookmark ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return
     supabase.from('bookmarks').select('id')
@@ -324,7 +308,6 @@ export default function LectureSidebarShell({
       className="hidden lg:flex"
       style={{ width: sidebarCollapsed ? '64px' : '272px', height: 'calc(100vh - 72px)', overflowY: 'auto', borderLeft: '1px solid #EEF0F4', background: '#F7F8FA', flexDirection: 'column', gap: '12px', padding: sidebarCollapsed ? '16px 8px' : '16px 12px', flexShrink: 0, position: 'relative' as const, zIndex: 10, overflowX: 'hidden' as const, transition: 'width 0.25s ease, padding 0.25s ease' }}
     >
-      {/* Collapse button */}
       <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 36, borderRadius: 10, border: '1px solid #EAEDF2', background: '#fff', cursor: 'pointer', color: '#6B7280', flexShrink: 0 }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -332,7 +315,6 @@ export default function LectureSidebarShell({
         </svg>
       </button>
 
-      {/* Content Tabs — now Link-based navigation */}
       <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
         <div style={{ padding: sidebarCollapsed ? '8px' : '14px 16px 10px' }}>
           {!sidebarCollapsed && (
@@ -344,7 +326,7 @@ export default function LectureSidebarShell({
               const isActive = activeTab === tabId
               const href     = `/${uniSlug}/${subjectSlug}/${lectureSlug}/${tabId}`
               return (
-                <button key={tabId} title={cfg?.label ?? tabId} onClick={() => { localStorage.setItem(`lecture:${lecture.id}:active_tab`, tabId); window.location.replace(href) }}
+                <Link key={tabId} href={href} prefetch={false} title={cfg?.label ?? tabId} onClick={() => { localStorage.setItem(`lecture:${lecture.id}:active_tab`, tabId) }}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', padding: sidebarCollapsed ? '10px' : '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer', background: isActive ? '#EEF3FF' : 'transparent', color: isActive ? '#2563EB' : '#6B7280', transition: 'all 0.15s ease', textDecoration: 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: sidebarCollapsed ? 0 : '10px' }}>
                     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: isActive ? '#DBEAFE' : '#F3F4F6', color: isActive ? '#2563EB' : '#9CA3AF', flexShrink: 0, transition: 'all 0.15s ease' }}>
@@ -357,14 +339,13 @@ export default function LectureSidebarShell({
                       <polyline points="9 18 15 12 9 6"/>
                     </svg>
                   )}
-                </button>
+                </Link>
               )
             })}
           </div>
         </div>
       </div>
 
-      {/* Reading Progress — sheet and summary only */}
       {!!user && (activeTab === 'sheet' || activeTab === 'summary') && (
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           {sidebarCollapsed ? (
@@ -406,7 +387,6 @@ export default function LectureSidebarShell({
         </div>
       )}
 
-      {/* Flashcard Stats */}
       {activeTab === 'flashcards' && (
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           {sidebarCollapsed ? (
@@ -434,7 +414,6 @@ export default function LectureSidebarShell({
         </div>
       )}
 
-      {/* Quiz Stats */}
       {activeTab === 'quiz' && (
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           {sidebarCollapsed ? (
@@ -464,7 +443,6 @@ export default function LectureSidebarShell({
         </div>
       )}
 
-      {/* PYQ Stats */}
       {activeTab === 'previous-years' && (
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '12px 8px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           {sidebarCollapsed ? (
@@ -493,7 +471,6 @@ export default function LectureSidebarShell({
         </div>
       )}
 
-      {/* Content Search */}
       {!sidebarCollapsed && (activeTab === 'sheet' || activeTab === 'summary') && false && (
         <LectureContentSearch
           sheetContent={activeTab === 'sheet' ? sheetContent : ''}
@@ -502,7 +479,6 @@ export default function LectureSidebarShell({
         />
       )}
 
-      {/* Table of Contents */}
       {tocSections.length > 0 && (
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: sidebarCollapsed ? '10px 6px' : '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           {sidebarCollapsed ? (
@@ -549,10 +525,8 @@ export default function LectureSidebarShell({
         </div>
       )}
 
-      {/* Notes */}
       {!sidebarCollapsed && <NotesPanel lectureId={lecture.id} />}
 
-      {/* Actions */}
       {!sidebarCollapsed && !!user && (
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #EAEDF2', padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#A0A8B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Actions</p>

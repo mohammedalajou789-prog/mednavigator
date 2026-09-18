@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useUserStore } from '@/stores/userStore'
 
@@ -10,7 +10,7 @@ interface Props {
 
 export default function LectureAccessTracker({ lectureId }: Props) {
   const { user } = useUserStore()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     if (!user || !lectureId) return

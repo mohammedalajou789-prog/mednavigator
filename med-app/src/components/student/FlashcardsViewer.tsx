@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { Flashcard } from '@/types/database'
 import MNRenderer from '@/components/student/MNRenderer'
@@ -23,7 +23,7 @@ interface FlashcardsViewerProps {
 
 export default function FlashcardsViewer({ flashcards, userName, initialIndex, onIndexChange, onStatsChange }: FlashcardsViewerProps) {
   const { user } = useUserStore()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [currentIndex, setCurrentIndex] = useState(initialIndex ?? 0)
   const [flipped, setFlipped] = useState(false)
   const [cards, setCards] = useState(flashcards)

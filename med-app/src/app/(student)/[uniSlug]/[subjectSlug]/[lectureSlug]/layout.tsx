@@ -1,5 +1,4 @@
 import { createServerClient } from '@/lib/supabase/server'
-import { checkUserAccess } from '@/lib/services/subscriptions'
 import { redirect } from 'next/navigation'
 import LectureSidebarShell from '@/components/student/LectureSidebarShell'
 import LectureAccessTracker from '@/components/student/LectureAccessTracker'
@@ -14,63 +13,61 @@ interface LayoutProps {
   children: React.ReactNode
 }
 
+interface LectureBundle {
+  error?: string
+  lecture?: {
+    id: string
+    title: string
+    description: string | null
+    status: string
+  }
+  subject?: {
+    id: string
+    name: string
+    access_mode: string | null
+    is_free: boolean | null
+  }
+  user_id?: string | null
+  user_name?: string | null
+  has_sheet?: boolean
+  has_summary?: boolean
+  flashcards_count?: number
+  quiz_count?: number
+  pyq_count?: number
+  access_allowed?: boolean
+}
+
 export default async function LectureLayout({ params, children }: LayoutProps) {
   const { uniSlug, subjectSlug, lectureSlug } = await params
 
   const supabase = await createServerClient()
 
-  // ── STEP 1: Resolve slugs + auth in ONE parallel round trip ────────────────
-  const [
-    { data: uniRow },
-    { data: lecture },
-    { data: subject },
-    { data: { user } },
-  ] = await Promise.all([
-    supabase.from('universities').select('id').eq('slug' as any, uniSlug).single(),
-    supabase.from('lectures').select('id, title, description, status')
-      .eq('slug' as any, lectureSlug).eq('status', 'published').single(),
-    supabase.from('subjects').select('id, name, access_mode, is_free')
-      .eq('slug' as any, subjectSlug).single(),
-    supabase.auth.getUser(),
-  ])
+  // ── SINGLE round trip: one RPC returns everything ──────────────────────────
+  const { data, error } = await supabase.rpc('get_lecture_layout_bundle' as any, {
+    p_uni_slug: uniSlug,
+    p_subject_slug: subjectSlug,
+    p_lecture_slug: lectureSlug,
+  })
 
-  if (!uniRow?.id || !subject?.id) redirect('/')
-  if (!lecture)                     redirect(`/${uniSlug}/${subjectSlug}`)
-  if (!subject)                     redirect(`/${uniSlug}`)
+  const bundle = (data as unknown as LectureBundle) ?? {}
 
-  // ── STEP 2: Profile + tab metadata in ONE parallel round trip ──────────────
-  const [
-    profileResult,
-    sheetMetaResult,
-    summaryMetaResult,
-    flashcardsCountResult,
-    quizCountResult,
-    pyqCountResult,
-  ] = await Promise.all([
-    user
-      ? supabase.from('users').select('id, full_name').eq('auth_user_id', user.id).single()
-      : Promise.resolve({ data: null }),
-    supabase.from('sheets').select('id').eq('lecture_id', lecture.id).maybeSingle(),
-    supabase.from('summaries').select('id').eq('lecture_id', lecture.id).maybeSingle(),
-    supabase.from('flashcards').select('id', { count: 'exact', head: true }).eq('lecture_id', lecture.id),
-    supabase.from('quiz_questions').select('id', { count: 'exact', head: true }).eq('lecture_id', lecture.id),
-    supabase.from('previous_year_questions').select('id', { count: 'exact', head: true }).eq('lecture_id', lecture.id),
-  ])
+  if (error || bundle.error === 'university_not_found') redirect('/')
+  if (bundle.error === 'subject_not_found')             redirect(`/${uniSlug}`)
+  if (bundle.error === 'lecture_not_found')             redirect(`/${uniSlug}/${subjectSlug}`)
+  if (!bundle.lecture || !bundle.subject)               redirect('/')
 
-  const profile  = (profileResult as any).data
-  const userId   = profile?.id        ?? null
-  const userName = profile?.full_name ?? null
+  const lecture       = bundle.lecture
+  const subject       = bundle.subject
+  const userId        = bundle.user_id ?? null
+  const userName      = bundle.user_name ?? null
+  const accessAllowed = bundle.access_allowed ?? false
 
-  const hasSheet        = !!sheetMetaResult.data
-  const hasSummary      = !!summaryMetaResult.data
-  const flashcardsCount = (flashcardsCountResult as any).count ?? 0
-  const quizCount       = (quizCountResult as any).count       ?? 0
-  const pyqCount        = (pyqCountResult as any).count        ?? 0
+  const hasSheet        = bundle.has_sheet ?? false
+  const hasSummary      = bundle.has_summary ?? false
+  const flashcardsCount = bundle.flashcards_count ?? 0
+  const quizCount       = bundle.quiz_count ?? 0
+  const pyqCount        = bundle.pyq_count ?? 0
 
-  // ── STEP 3: Access check (needs userId, runs after profile) ────────────────
-  const accessAllowed = (await checkUserAccess(subject.id, userId)).allowed
-
-  // ── Build tab list ──────────────────────────────────────────────────────────
   const allTabs = [
     hasSheet            && 'sheet',
     hasSummary          && 'summary',
@@ -89,7 +86,8 @@ export default async function LectureLayout({ params, children }: LayoutProps) {
       <div
         id="lecture-content-scroll"
         className="flex-1 min-w-0"
-        style={{ overflowY: 'auto', height: 'calc(100vh - 72px)', background: '#F5F6FA' }}      >
+        style={{ overflowY: 'auto', height: 'calc(100vh - 72px)', background: '#F5F6FA' }}
+      >
         <LectureAccessTracker lectureId={lecture.id} />
         <LectureDataProvider
           value={{

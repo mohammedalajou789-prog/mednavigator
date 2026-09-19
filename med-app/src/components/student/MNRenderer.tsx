@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { cn } from '@/lib/utils/cn'
 import ImageLightbox from '@/components/student/ImageLightbox'
 import ConceptMapBlock from '@/components/student/ConceptMapBlock'

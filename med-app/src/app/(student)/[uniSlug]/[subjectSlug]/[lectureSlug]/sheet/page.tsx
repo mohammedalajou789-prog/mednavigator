@@ -71,36 +71,29 @@ export default function SheetPage() {
   const { data: sheetData, isLoading: sheetLoading } = useQuery({
     queryKey: ['sheet-full', lecture.id, userId],
     queryFn: async () => {
-      const [sheetResult, progressResult] = await Promise.all([
-        supabase.from('sheets').select('id, content, status').eq('lecture_id', lecture.id).maybeSingle(),
-        userId
-          ? supabase.from('user_progress')
-              .select('progress_percentage, completed, last_position')
-              .eq('user_id', userId).eq('lecture_id', lecture.id).eq('content_type', 'sheet')
-              .maybeSingle()
-          : Promise.resolve({ data: null }),
-      ])
+      const { data, error } = await supabase.rpc('get_sheet_bundle' as any, {
+        p_lecture_id: lecture.id,
+        p_user_id: userId,
+      })
+      if (error) throw error
 
-      const sheetId = sheetResult.data?.id ?? ''
-      const slotsResult = sheetId
-        ? await supabase.from('image_slots')
-            .select('slot_number, media_library(file_url)')
-            .eq('entity_id', sheetId).eq('entity_type', 'sheet')
-        : { data: [] }
-
-      const imageSlots: Record<number, string> = {}
-      for (const slot of (slotsResult.data ?? []) as any[]) {
-        const url = (slot as any).media_library?.file_url
-        if (url) imageSlots[slot.slot_number] = url
+      const bundle = data as unknown as {
+        sheet: { id: string; content: string; status: string } | null
+        image_slots: { slot_number: number; file_url: string }[]
+        progress: { progress_percentage: number; completed: boolean; last_position: number } | null
       }
 
-      const progress = (progressResult as any).data
+      const imageSlots: Record<number, string> = {}
+      for (const slot of bundle.image_slots) {
+        imageSlots[slot.slot_number] = slot.file_url
+      }
+
       return {
-        sheet: sheetResult.data,
+        sheet: bundle.sheet,
         imageSlots,
-        savedPct:      progress?.progress_percentage ?? 0,
-        savedPosition: progress?.last_position       ?? 0,
-        completed:     progress?.completed           ?? false,
+        savedPct:      bundle.progress?.progress_percentage ?? 0,
+        savedPosition: bundle.progress?.last_position       ?? 0,
+        completed:     bundle.progress?.completed            ?? false,
       }
     },
     staleTime: 1000 * 60 * 30,
@@ -126,23 +119,47 @@ export default function SheetPage() {
     if (targetScroll <= 0) { scrollApplied.current = true; return }
     scrollApplied.current = true
 
-    let attempts = 0
-    const maxAttempts = 50
+    let cancelled = false
+    let observer: ResizeObserver | null = null
+    let safetyTimer: ReturnType<typeof setTimeout> | null = null
 
-    function tryScroll() {
-      const el = document.getElementById('lecture-content-scroll')
-      if (!el) { attempts++; if (attempts < maxAttempts) { scrollTimer.current = setTimeout(tryScroll, 100) }; return }
-      const maxScroll = el.scrollHeight - el.clientHeight
-      if (maxScroll < targetScroll * 0.9 && attempts < maxAttempts) {
-        attempts++
-        scrollTimer.current = setTimeout(tryScroll, 100)
-        return
-      }
+    function settle(el: HTMLElement) {
+      if (cancelled) return
+      cancelled = true
+      observer?.disconnect()
+      if (safetyTimer) clearTimeout(safetyTimer)
       el.scrollTo({ top: targetScroll, behavior: 'smooth' })
     }
 
-    scrollTimer.current = setTimeout(tryScroll, 200)
-    return () => { if (scrollTimer.current) clearTimeout(scrollTimer.current) }
+    function watch(el: HTMLElement) {
+      const trySettle = () => {
+        const maxScroll = el.scrollHeight - el.clientHeight
+        if (maxScroll >= targetScroll * 0.9) settle(el)
+      }
+
+      const growthTarget = (el.firstElementChild as HTMLElement) ?? el
+      observer = new ResizeObserver(trySettle)
+      observer.observe(growthTarget)
+      if (growthTarget !== el) observer.observe(el)
+
+      safetyTimer = setTimeout(() => settle(el), 3000)
+      trySettle()
+    }
+
+    function waitForElement(frames = 0) {
+      if (cancelled) return
+      const el = document.getElementById('lecture-content-scroll')
+      if (el) { watch(el); return }
+      if (frames < 30) requestAnimationFrame(() => waitForElement(frames + 1))
+    }
+
+    waitForElement()
+
+    return () => {
+      cancelled = true
+      observer?.disconnect()
+      if (safetyTimer) clearTimeout(safetyTimer)
+    }
   }, [sheetData, lecture.id])
 
   const handleProgressUpdate = useCallback((pct: number) => {

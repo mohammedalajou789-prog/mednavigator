@@ -252,12 +252,16 @@ export default function LectureSidebarShell({
     const scrollContainer = document.getElementById('lecture-content-scroll')
     if (!scrollContainer) return
 
-    function handleScroll() {
+    let ticking = false
+
+    function computeActiveSection() {
+      ticking = false
+      const containerTop = scrollContainer!.getBoundingClientRect().top
       let current = tocSections[0]?.id ?? ''
       for (const section of tocSections) {
         const el = document.getElementById(section.id)
         if (!el) continue
-        const top = el.getBoundingClientRect().top - scrollContainer!.getBoundingClientRect().top
+        const top = el.getBoundingClientRect().top - containerTop
         if (top <= 140) current = section.id
       }
       setActiveSectionId(current)
@@ -268,8 +272,14 @@ export default function LectureSidebarShell({
       }
     }
 
+    function handleScroll() {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(computeActiveSection)
+    }
+
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
-    handleScroll()
+    computeActiveSection()
     return () => scrollContainer.removeEventListener('scroll', handleScroll)
   }, [tocSections])
 

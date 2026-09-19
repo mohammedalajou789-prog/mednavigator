@@ -13,6 +13,9 @@ interface SheetReaderProps {
   tocSections?: { id: string; level: number; label: string }[]
 }
 
+const SCROLL_THROTTLE_MS = 200
+const MIN_PCT_DELTA = 1
+
 export default function SheetReader({
   content,
   title = '',
@@ -22,35 +25,41 @@ export default function SheetReader({
   onProgressUpdate,
 }: SheetReaderProps) {
 
-  const lastSavedPct = useRef<number>(-1)
+  const lastEmittedPct = useRef<number>(-1)
   const throttleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingPct = useRef<number | null>(null)
 
   useEffect(() => {
     const scrollContainer = document.getElementById('lecture-content-scroll')
     if (!scrollContainer || !onProgressUpdate) return
 
+    function computePct(el: HTMLElement): number | null {
+      const scrollTop = el.scrollTop
+      const scrollHeight = el.scrollHeight - el.clientHeight
+      if (scrollHeight <= 0) return null
+      const rawPct = (scrollTop / scrollHeight) * 100
+      return Math.min(100, Math.round(rawPct))
+    }
+
+    function flush() {
+      throttleTimer.current = null
+      if (pendingPct.current === null) return
+      const pct = pendingPct.current
+      pendingPct.current = null
+      const changedEnough = Math.abs(pct - lastEmittedPct.current) >= MIN_PCT_DELTA
+      if (!changedEnough && pct < 100) return
+      lastEmittedPct.current = pct
+      onProgressUpdate!(pct)
+    }
+
     function handleScroll() {
       const el = document.getElementById('lecture-content-scroll')
       if (!el) return
-
-      const scrollTop = el.scrollTop
-      const scrollHeight = el.scrollHeight - el.clientHeight
-      if (scrollHeight <= 0) return
-
-      const rawPct = (scrollTop / scrollHeight) * 100
-      const pct = Math.min(100, Math.round(rawPct))
-
-      // Update display immediately (no throttle on UI)
-      onProgressUpdate!(pct)
-
-      // Save to DB only if changed by 3% or more (throttled at 1.5s)
-      if (Math.abs(pct - lastSavedPct.current) < 3) return
+      const pct = computePct(el)
+      if (pct === null) return
+      pendingPct.current = pct
       if (throttleTimer.current) return
-
-      throttleTimer.current = setTimeout(() => {
-        throttleTimer.current = null
-        lastSavedPct.current = pct
-      }, 1500)
+      throttleTimer.current = setTimeout(flush, SCROLL_THROTTLE_MS)
     }
 
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true })

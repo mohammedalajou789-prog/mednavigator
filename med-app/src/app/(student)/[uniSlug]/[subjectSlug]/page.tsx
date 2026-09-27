@@ -12,6 +12,11 @@ interface PageProps {
   params: Promise<{ uniSlug: string; subjectSlug: string }>
 }
 
+const STAR_POINTS = '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'
+const STAR_COLOR  = ['#CBD5E1', '#EF4444', '#E5A700', '#17A66B']
+const STAR_LABEL  = ['Not rated', 'Need review', 'Almost there', 'Mastered']
+const pad = (n: number) => String(n).padStart(2, '0')
+
 export default async function SubjectPage({ params }: PageProps) {
   const { uniSlug, subjectSlug } = await params
   const supabase = await createServerClient()
@@ -80,14 +85,22 @@ export default async function SubjectPage({ params }: PageProps) {
 
   const starsByLecture  = checklist
   const totalStars      = Object.values(starsByLecture).reduce((s: number, n: any) => s + n, 0)
-  const progressPercent = totalLectures > 0 ? Math.round((totalStars / (totalLectures * 3)) * 100) : 0
+  const progressPercent = totalLectures > 0 ? Math.min(100, Math.round((totalStars / (totalLectures * 3)) * 100)) : 0
+  const masteredCount   = lectures.filter((l: any) => (starsByLecture[l.id] ?? 0) === 3).length
 
   const lastAccessedLecture = lastLectureId
     ? lectures.find((l: any) => l.id === lastLectureId) ?? null
     : null
 
-  const lastLecStars = lastLectureId ? (starsByLecture[lastLectureId] ?? 0) : 0
-  const lastLecLabel = lastLecStars === 3 ? 'Mastered' : lastLecStars === 2 ? 'Almost there' : lastLecStars === 1 ? 'Need review' : 'Not rated'
+  // Where the last lecture lives: "<Chapter> · Lecture 03"
+  let lastLecWhere = 'Pick up where you left off'
+  if (lastLectureId) {
+    const g = groupItems.find(gr => gr.lectures.some(l => l.id === lastLectureId))
+    if (g) lastLecWhere = `${g.title} · Lecture ${pad(g.lectures.findIndex(l => l.id === lastLectureId) + 1)}`
+  }
+
+  const lastLecStars = lastLectureId ? Math.max(0, Math.min(3, starsByLecture[lastLectureId] ?? 0)) : 0
+  const lastLecLabel = STAR_LABEL[lastLecStars]
 
   const typeBadge  = subRow.subject_type === 'system' ? 'System' : subRow.subject_type === 'standard' ? 'Standard' : 'Clinical'
   const accBadge   = subRow.access_mode  === 'free'   ? 'Free'   : subRow.access_mode  === 'mixed'    ? 'Mixed'    : 'Premium'
@@ -97,59 +110,127 @@ export default async function SubjectPage({ params }: PageProps) {
     <div style={{ minHeight:'100vh', background:'#F5F7FC', color:'#3C4661', fontFamily:'"Plus Jakarta Sans",system-ui,sans-serif' }}>
       <BfCacheReloader />
       <style>{`
-        @keyframes fadeUp    { from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)} }
-        @keyframes slideIn   { from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)} }
-        @keyframes barIn     { from{transform:scaleX(0)}to{transform:scaleX(1)} }
-        @keyframes shimmer   { 0%{background-position:-160% 0}55%,100%{background-position:260% 0} }
-        @keyframes glowDrift { 0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-26px,14px) scale(1.12)} }
-        @keyframes pulseRing { 0%{transform:scale(1);opacity:.5}70%,100%{transform:scale(1.9);opacity:0} }
-        @keyframes countUp   { from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)} }
-        @keyframes floaty    { 0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)} }
+        @keyframes spFadeUp  { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes spSlideIn { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes spBarIn   { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+        @keyframes spShimmer { 0%{background-position:-160% 0} 55%,100%{background-position:260% 0} }
+        @keyframes spGlow    { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-26px,14px) scale(1.12)} }
+        @keyframes spPulse   { 0%{transform:scale(1);opacity:.5} 70%,100%{transform:scale(1.9);opacity:0} }
+        @keyframes spCount   { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
 
-        .shimmer-blue {
+        /* Shared progress fills (also used by SubjectChaptersClient) */
+        .sp-shimmer {
           background:linear-gradient(100deg,#3B79FF 0%,#3B79FF 38%,#A9C4FF 50%,#2456D6 62%,#2456D6 100%);
-          background-size:260% 100%;
-          transform-origin:left;
-          animation:barIn 1s cubic-bezier(.4,0,.2,1) .5s backwards, shimmer 3.6s ease-in-out 1.6s infinite;
+          background-size:260% 100%; transform-origin:left;
+          animation:spBarIn 1s cubic-bezier(.4,0,.2,1) .5s backwards, spShimmer 3.6s ease-in-out 1.6s infinite;
         }
-        .shimmer-green {
+        .sp-shimmer-green {
           background:linear-gradient(100deg,#17A66B 0%,#17A66B 38%,#7EE2B3 50%,#108051 62%,#108051 100%);
-          background-size:260% 100%;
-          transform-origin:left;
-          animation:barIn 1s cubic-bezier(.4,0,.2,1) .5s backwards, shimmer 3.6s ease-in-out 1.8s infinite;
+          background-size:260% 100%; transform-origin:left;
+          animation:spBarIn 1s cubic-bezier(.4,0,.2,1) .5s backwards, spShimmer 3.6s ease-in-out 1.8s infinite;
         }
-        .cont-card { transition:transform .22s ease,box-shadow .22s ease; }
-        .cont-card:hover { transform:translateY(-3px); box-shadow:0 22px 38px -22px rgba(37,99,235,.5) !important; }
-        .resume-btn { transition:transform .2s ease,box-shadow .2s ease,background .2s ease; }
-        .resume-btn:hover { transform:translateX(3px); background:#1D4ED8 !important; box-shadow:0 12px 22px -12px rgba(37,99,235,.9) !important; }
-        .stat-pill { transition:transform .2s ease,box-shadow .2s ease; }
-        .stat-pill:hover { transform:translateY(-2px); box-shadow:0 12px 22px -16px rgba(40,90,200,.6) !important; }
 
-        /* Responsive */
-        .s-main  { padding:clamp(18px,3vw,30px) clamp(16px,3vw,34px) 80px; }
-        .hero-inner { flex-direction:column; gap:20px; }
-        .hero-ring  { display:none !important; }
-        .hero-pbar  { display:block !important; }
-        .hero-title { font-size:clamp(26px,6vw,42px); }
-        .cont-inner { flex-wrap:wrap; gap:14px; padding:16px; }
-        .cont-stars { display:none; }
-        .cont-resume { width:100%; justify-content:center; }
-        @media(min-width:640px){
-          .cont-inner  { flex-wrap:nowrap; padding:18px 20px; }
-          .cont-stars  { display:block; }
-          .cont-resume { width:auto; }
+        .sp-main { max-width:1320px; margin:0 auto; padding:8px 16px 64px; }
+
+        /* Breadcrumb: back link on phone, full trail from tablet up */
+        .sp-back  { display:flex; align-items:center; gap:2px; margin:0 0 8px -10px; animation:spSlideIn .45s ease backwards; }
+        .sp-back a { width:44px; height:44px; display:flex; align-items:center; justify-content:center; color:#15203A; border-radius:12px; }
+        .sp-crumbs { display:none; }
+
+        /* Hero — same blue as the original */
+        .sp-hero { position:relative; overflow:hidden; border-radius:22px; padding:20px; margin-bottom:16px;
+          background:linear-gradient(120deg,#EDF3FF 0%,#F3F7FF 52%,#FCFDFF 100%); border:1px solid #E2EAFB;
+          box-shadow:rgba(16,24,40,0.04) 0px 1px 2px, rgba(40,90,200,0.5) 0px 24px 50px -34px; animation:spFadeUp .55s ease .04s backwards; }
+        .sp-glow-a { position:absolute; top:-90px; right:-40px; width:300px; height:220px; pointer-events:none; filter:blur(34px);
+          background:radial-gradient(rgba(147,197,253,.4) 0%,rgba(196,181,253,.16) 55%,transparent 75%); animation:spGlow 11s ease-in-out infinite; }
+        .sp-glow-b { position:absolute; bottom:-120px; left:-60px; width:300px; height:240px; pointer-events:none; filter:blur(40px);
+          background:radial-gradient(rgba(129,224,193,.28) 0%,transparent 70%); animation:spGlow 14s ease-in-out 2s infinite; }
+        .sp-hero-grid { position:relative; display:grid; grid-template-columns:minmax(0,1fr); gap:16px; }
+        .sp-hero-text { display:flex; flex-direction:column; gap:12px; min-width:0; }
+        .sp-badges { display:flex; gap:8px; flex-wrap:wrap; }
+        .sp-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:999px; font-size:11.5px; font-weight:700; }
+        .sp-title { margin:0; font-size:clamp(26px,6.4vw,46px); line-height:1.08; font-weight:800; letter-spacing:-.03em; color:#15203A; }
+        .sp-desc  { margin:0; max-width:580px; font-size:14px; line-height:1.6; color:#55617D; }
+        .sp-ring  { display:none; }
+        .sp-pbar  { display:block; }
+        .sp-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+        .sp-actions .sp-more-btn { grid-column:1 / -1; }
+        .sp-pill { display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.75); border:1px solid #E2EAFB; border-radius:14px;
+          padding:10px 12px; transition:transform .2s ease,box-shadow .2s ease; }
+        .sp-pill-icon { width:32px; height:32px; border-radius:9px; background:#fff; border:1px solid #E2EAFB; color:#2F6BFF;
+          display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .sp-pill-num { font-size:16px; font-weight:800; line-height:1; color:#15203A; }
+        .sp-pill-lbl { font-size:11.5px; font-weight:600; color:#6B7690; margin-top:3px; }
+
+        /* Continue learning — phone: 2 rows · tablet+: 1 row */
+        .sp-cont { border-radius:18px; overflow:hidden; margin-bottom:24px; background:linear-gradient(120deg,rgba(37,99,235,.07),#fff 62%);
+          border:1px solid #E2E8F0; box-shadow:rgba(15,23,42,0.04) 0px 1px 3px, rgba(15,23,42,0.22) 0px 12px 26px -18px;
+          transition:transform .22s ease,box-shadow .22s ease; animation:spFadeUp .55s ease .3s backwards; }
+        .sp-cont-in { display:grid; grid-template-columns:44px minmax(0,1fr) auto; grid-template-areas:"icon text text" "stars stars btn";
+          gap:14px 12px; align-items:center; padding:16px; }
+        .sp-cont-icon { grid-area:icon; position:relative; width:44px; height:44px; }
+        .sp-cont-text { grid-area:text; min-width:0; }
+        .sp-cont-title { font-size:15.5px; font-weight:700; line-height:1.3; letter-spacing:-.01em; color:#15203A; }
+        .sp-cont-stars { grid-area:stars; display:flex; align-items:center; gap:8px; }
+        .sp-resume { grid-area:btn; display:inline-flex; align-items:center; justify-content:center; gap:8px; height:44px; padding:0 18px;
+          border-radius:12px; background:#2563EB; color:#fff; font-size:14px; font-weight:700; text-decoration:none;
+          transition:transform .2s ease,box-shadow .2s ease,background .2s ease; }
+        .sp-resume:focus-visible, .sp-back a:focus-visible, .sp-crumbs a:focus-visible { outline:2px solid #2F6BFF; outline-offset:2px; }
+
+        @media (min-width:640px) {
+          .sp-main  { padding:clamp(20px,3vw,32px) clamp(20px,3vw,40px) 72px; }
+          .sp-back  { display:none; }
+          .sp-crumbs { display:flex; align-items:center; gap:9px; flex-wrap:wrap; font-size:13px; font-weight:600; margin-bottom:18px;
+            animation:spSlideIn .45s ease backwards; }
+          .sp-hero { padding:28px; border-radius:24px; margin-bottom:20px; }
+          .sp-hero-grid { grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"text ring" "actions actions"; column-gap:28px; row-gap:20px; }
+          .sp-hero-grid.is-guest { grid-template-columns:minmax(0,1fr); grid-template-areas:"text" "actions"; }
+          .sp-hero-text { grid-area:text; }
+          .sp-ring { grid-area:ring; display:flex; flex-direction:column; align-items:center; gap:8px; }
+          .sp-pbar { display:none; }
+          .sp-actions { grid-area:actions; grid-template-columns:auto auto minmax(0,1fr); gap:10px; }
+          .sp-actions .sp-more-btn { grid-column:auto; }
+          .sp-pill { padding:10px 16px 10px 12px; }
+          .sp-pill-icon { width:34px; height:34px; border-radius:10px; }
+          .sp-pill-num { font-size:17px; }
+          .sp-pill-lbl { font-size:12px; }
+          .sp-badge { padding:5px 12px; font-size:12px; }
+          .sp-desc { font-size:14.5px; }
+          .sp-cont-in { grid-template-columns:46px minmax(0,1fr) auto auto; grid-template-areas:"icon text stars btn"; gap:16px; padding:18px 20px; }
+          .sp-cont-icon { width:46px; height:46px; }
+          .sp-cont-title { font-size:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .sp-cont-stars { flex-direction:column; align-items:flex-end; gap:4px; }
+          .sp-resume { height:46px; padding:0 20px; }
         }
-        @media(min-width:900px){
-          .hero-inner { flex-direction:row; gap:clamp(20px,4vw,36px); align-items:center; }
-          .hero-ring  { display:flex !important; }
-          .hero-pbar  { display:none !important; }
+        @media (min-width:1024px) {
+          .sp-hero { padding:34px 44px 34px 40px; }
+          .sp-hero-grid { grid-template-areas:"text ring" "actions ring"; column-gap:48px; row-gap:22px; align-items:center; }
+          .sp-actions { display:flex; flex-wrap:wrap; gap:12px; }
+          .sp-desc { font-size:15px; }
+        }
+
+        @media (hover:hover) {
+          .sp-pill:hover { transform:translateY(-2px); box-shadow:0 12px 22px -16px rgba(40,90,200,.6); }
+          .sp-cont:hover { transform:translateY(-3px); box-shadow:0 22px 38px -22px rgba(37,99,235,.5); }
+          .sp-resume:hover { transform:translateX(3px); background:#1D4ED8; box-shadow:0 12px 22px -12px rgba(37,99,235,.9); }
+          .sp-crumbs a:hover { color:#2563EB !important; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sp-hero, .sp-cont, .sp-crumbs, .sp-back, .sp-glow-a, .sp-glow-b, .sp-shimmer, .sp-shimmer-green { animation:none !important; }
+          .sp-pill, .sp-cont, .sp-resume { transition:none; }
         }
       `}</style>
 
-      <main className="s-main">
+      <main className="sp-main">
 
         {/* ── Breadcrumb ── */}
-        <nav style={{ display:'flex', alignItems:'center', gap:9, fontSize:13, fontWeight:600, marginBottom:18, flexWrap:'wrap', animation:'slideIn .45s ease backwards' }}>
+        <nav className="sp-back" aria-label="Back">
+          <Link prefetch={false} href={`/${uniSlug}`} aria-label={`Back to ${uniRow.name}`}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </Link>
+          <span style={{ fontSize:13, fontWeight:600, color:'#6B7690' }}>{uniRow.name}</span>
+        </nav>
+        <nav className="sp-crumbs" aria-label="Breadcrumb">
           <Link prefetch={false} href="/home" style={{ color:'#6B7690', textDecoration:'none' }}>Home</Link>
           <span style={{ color:'#C2CADB' }}>/</span>
           <Link prefetch={false} href={`/${uniSlug}`} style={{ color:'#6B7690', textDecoration:'none' }}>{uniRow.name}</Link>
@@ -158,149 +239,145 @@ export default async function SubjectPage({ params }: PageProps) {
         </nav>
 
         {/* ── Hero ── */}
-        <section style={{ position:'relative', overflow:'hidden', borderRadius:24, marginBottom:20, padding:'clamp(20px,3vw,32px)', background:'linear-gradient(120deg,#EDF3FF 0%,#F3F7FF 52%,#FCFDFF 100%)', border:'1px solid #E2EAFB', boxShadow:'rgba(16,24,40,0.04) 0px 1px 2px,rgba(40,90,200,0.5) 0px 24px 50px -34px', animation:'fadeUp .55s ease .04s backwards' }}>
-          {/* Glow blobs */}
-          <div style={{ position:'absolute', top:-90, right:180, width:340, height:230, background:'radial-gradient(rgba(147,197,253,.4) 0%,rgba(196,181,253,.16) 55%,transparent 75%)', filter:'blur(34px)', pointerEvents:'none', animation:'glowDrift 11s ease-in-out infinite' }}/>
-          <div style={{ position:'absolute', bottom:-120, left:-60, width:300, height:240, background:'radial-gradient(rgba(129,224,193,.28) 0%,transparent 70%)', filter:'blur(40px)', pointerEvents:'none', animation:'glowDrift 14s ease-in-out 2s infinite' }}/>
+        <section className="sp-hero">
+          <div className="sp-glow-a" aria-hidden="true"/>
+          <div className="sp-glow-b" aria-hidden="true"/>
 
-          <div className="hero-inner" style={{ display:'flex', position:'relative' }}>
-            {/* Left text */}
-            <div style={{ flex:1, minWidth:'min(100%,300px)' }}>
-              {/* Badges */}
-              <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap' }}>
-                <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 12px', borderRadius:20, background:'#E7F7EF', border:'1px solid #C7EBD8', color:'#138A5A', fontSize:12, fontWeight:700, animation:'fadeUp .5s ease .12s backwards' }}>
+          <div className={`sp-hero-grid${userId ? '' : ' is-guest'}`}>
+            <div className="sp-hero-text">
+              <div className="sp-badges">
+                <span className="sp-badge" style={{ background:'#E7F7EF', border:'1px solid #C7EBD8', color:'#138A5A' }}>
                   <span style={{ width:6, height:6, borderRadius:'50%', background:'#17A66B' }}/>
                   {typeBadge}
                 </span>
-                <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 12px', borderRadius:20, background:'#FFF6E0', border:'1px solid #F3E1AE', color:'#A1730A', fontSize:12, fontWeight:700, animation:'fadeUp .5s ease .18s backwards' }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#E5A700" stroke="#E5A700" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span className="sp-badge" style={{ background:'#FFF6E0', border:'1px solid #F3E1AE', color:'#A1730A' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#E5A700" stroke="#E5A700" strokeWidth="1"><polygon points={STAR_POINTS}/></svg>
                   {accBadge}
                 </span>
               </div>
-
-              <h1 className="hero-title" style={{ margin:0, lineHeight:1.06, fontWeight:800, letterSpacing:'-.03em', color:'#15203A', animation:'fadeUp .55s ease .1s backwards' }}>{subRow.name}</h1>
-
-              {subRow.description && (
-                <p style={{ marginTop:12, fontSize:14.5, lineHeight:1.6, color:'#55617D', maxWidth:560, animation:'fadeUp .55s ease .16s backwards' }}>{subRow.description}</p>
-              )}
-
-              {/* Stat pills */}
-              <div style={{ display:'flex', gap:14, marginTop:20, flexWrap:'wrap' }}>
-                <div className="stat-pill" style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,.75)', border:'1px solid #E2EAFB', borderRadius:14, padding:'10px 14px', animation:'fadeUp .5s ease .22s backwards' }}>
-                  <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:32, height:32, borderRadius:9, background:'#fff', border:'1px solid #E2EAFB', color:'#2F6BFF' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                  </span>
-                  <div>
-                    <div style={{ fontSize:17, fontWeight:800, color:'#15203A', lineHeight:1 }}>{totalLectures}</div>
-                    <div style={{ fontSize:12, fontWeight:600, color:'#8892A8', marginTop:2 }}>Lectures</div>
-                  </div>
-                </div>
-                <div className="stat-pill" style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,.75)', border:'1px solid #E2EAFB', borderRadius:14, padding:'10px 14px', animation:'fadeUp .5s ease .26s backwards' }}>
-                  <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:32, height:32, borderRadius:9, background:'#fff', border:'1px solid #E2EAFB', color:'#2F6BFF' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg>
-                  </span>
-                  <div>
-                    <div style={{ fontSize:17, fontWeight:800, color:'#15203A', lineHeight:1 }}>{groupItems.length}</div>
-                    <div style={{ fontSize:12, fontWeight:600, color:'#8892A8', marginTop:2 }}>{groupLabel}s</div>
-                  </div>
-                </div>
-                <MoreInSubjectButton
-                  uniSlug={uniSlug}
-                  subjectSlug={subjectSlug}
-                  subjectName={subRow.name}
-                  pyqCount={totalPyq}
-                  quizCount={totalQuiz}
-                  flashCount={totalFlash}
-                  videos={(videos ?? []).map((v: any) => ({ id: v.id as string, title: v.title as string }))}
-                  clinicalModules={(clinicalModules ?? []).map((m: any) => ({ id: m.id as string, module_type: m.module_type as string }))}
-                />
-              </div>
+              <h1 className="sp-title">{subRow.name}</h1>
+              {subRow.description && <p className="sp-desc">{subRow.description}</p>}
             </div>
 
-            {/* Progress ring — desktop */}
+            {/* Progress ring — tablet & desktop */}
             {userId && (
-              <div className="hero-ring" style={{ flexShrink:0, flexDirection:'column', alignItems:'center', width:140, height:140, position:'relative', animation:'floaty 6s ease-in-out 1.4s infinite' }}>
-                <svg width="140" height="140" viewBox="0 0 140 140">
-                  <defs>
-                    <linearGradient id="pgGrad3" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0" stopColor="#3B79FF"/><stop offset="1" stopColor="#2456D6"/>
-                    </linearGradient>
-                  </defs>
-                  <circle cx="70" cy="70" r="55" fill="none" stroke="#E1E9FA" strokeWidth="13" pathLength="100" strokeDasharray="2.3 2.7" transform="rotate(-90 70 70)"/>
-                  <circle cx="70" cy="70" r="55" fill="none" stroke="url(#pgGrad3)" strokeWidth="17" pathLength="100"
-                    strokeDasharray={`${progressPercent} ${100-progressPercent}`}
-                    transform="rotate(-90 70 70)"
-                    style={{ transition:'stroke-dasharray 1.4s cubic-bezier(.4,0,.2,1) .4s' }}/>
-                </svg>
-                <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', animation:'countUp .6s ease .8s backwards' }}>
-                  <div style={{ fontSize:24, fontWeight:800, color:'#2456D6', letterSpacing:'-.03em', lineHeight:1 }}>
-                    {progressPercent}<span style={{ fontSize:13, color:'#8DA5DC' }}>%</span>
-                  </div>
-                  <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'#9AA6BE', marginTop:4 }}>
-                    {Math.floor(totalStars/3)} of {totalLectures}
+              <div className="sp-ring">
+                <div style={{ position:'relative', width:140, height:140 }}>
+                  <svg width="140" height="140" viewBox="0 0 140 140" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="spPgGrad" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stopColor="#3B79FF"/><stop offset="1" stopColor="#2456D6"/>
+                      </linearGradient>
+                    </defs>
+                    <circle cx="70" cy="70" r="55" fill="none" stroke="#E1E9FA" strokeWidth="13" pathLength="100" strokeDasharray="2.3 2.7" transform="rotate(-90 70 70)"/>
+                    <circle cx="70" cy="70" r="55" fill="none" stroke="url(#spPgGrad)" strokeWidth="17" pathLength="100"
+                      strokeDasharray={`${progressPercent} ${100 - progressPercent}`}
+                      transform="rotate(-90 70 70)"
+                      style={{ transition:'stroke-dasharray 1.4s cubic-bezier(.4,0,.2,1) .4s' }}/>
+                  </svg>
+                  <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', animation:'spCount .6s ease .8s backwards' }}>
+                    <div style={{ fontSize:26, fontWeight:800, color:'#2456D6', letterSpacing:'-.03em', lineHeight:1 }}>
+                      {progressPercent}<span style={{ fontSize:13, color:'#8DA5DC' }}>%</span>
+                    </div>
+                    <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'#6B7690', marginTop:4 }}>Overall</div>
                   </div>
                 </div>
+                <span style={{ fontSize:12.5, fontWeight:700, color:'#55617D' }}>{masteredCount} of {totalLectures} mastered</span>
               </div>
             )}
 
-            {/* Progress bar — mobile */}
+            {/* Progress bar — phone */}
             {userId && (
-              <div className="hero-pbar" style={{ marginTop:16, width:'100%' }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-                  <span style={{ fontSize:13, fontWeight:600, color:'#8892A8' }}>Overall Progress</span>
+              <div className="sp-pbar">
+                <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:8 }}>
+                  <span style={{ fontSize:13, fontWeight:600, color:'#55617D' }}>Overall progress</span>
                   <span style={{ fontSize:20, fontWeight:800, color:'#2456D6', letterSpacing:'-.02em' }}>{progressPercent}%</span>
                 </div>
                 <div style={{ height:8, borderRadius:999, background:'#E1E9FA', overflow:'hidden' }}>
-                  <div className="shimmer-blue" style={{ height:'100%', width:`${progressPercent}%`, borderRadius:999 }}/>
+                  <div className="sp-shimmer" style={{ height:'100%', width:`${progressPercent}%`, borderRadius:999 }}/>
                 </div>
-                <div style={{ fontSize:12, fontWeight:600, color:'#8892A8', marginTop:6 }}>{Math.floor(totalStars/3)} of {totalLectures} lectures mastered</div>
+                <div style={{ fontSize:12, fontWeight:600, color:'#55617D', marginTop:6 }}>{masteredCount} of {totalLectures} lectures mastered</div>
               </div>
             )}
+
+            {/* Stats + More */}
+            <div className="sp-actions">
+              <div className="sp-pill">
+                <span className="sp-pill-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                </span>
+                <div>
+                  <div className="sp-pill-num">{totalLectures}</div>
+                  <div className="sp-pill-lbl">Lectures</div>
+                </div>
+              </div>
+              <div className="sp-pill">
+                <span className="sp-pill-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg>
+                </span>
+                <div>
+                  <div className="sp-pill-num">{groupItems.length}</div>
+                  <div className="sp-pill-lbl">{groupLabel}s</div>
+                </div>
+              </div>
+              <MoreInSubjectButton
+                uniSlug={uniSlug}
+                subjectSlug={subjectSlug}
+                subjectName={subRow.name}
+                pyqCount={totalPyq}
+                quizCount={totalQuiz}
+                flashCount={totalFlash}
+                videos={(videos ?? []).map((v: any) => ({ id: v.id as string, title: v.title as string, isPreview: !!v.is_preview }))}
+                clinicalModules={(clinicalModules ?? []).map((m: any) => ({ id: m.id as string, module_type: m.module_type as string }))}
+              />
+            </div>
           </div>
         </section>
 
         {/* ── Continue Learning ── */}
         {userId && lastAccessedLecture && (
-          <div className="cont-card" style={{ background:'linear-gradient(120deg,rgba(37,99,235,.07),#fff 62%)', border:'1px solid #E2E8F0', borderRadius:18, overflow:'hidden', marginBottom:26, boxShadow:'rgba(15,23,42,0.04) 0px 1px 3px,rgba(15,23,42,0.22) 0px 12px 26px -18px', animation:'fadeUp .55s ease .3s backwards' }}>
-            <div className="cont-inner" style={{ display:'flex', alignItems:'center', gap:16 }}>
-              <div style={{ position:'relative', width:46, height:46, flexShrink:0 }}>
-                <span style={{ position:'absolute', inset:0, borderRadius:14, background:'rgba(37,99,235,.45)', animation:'pulseRing 2.6s ease-out 1.4s infinite' }}/>
-                <div style={{ position:'relative', width:46, height:46, borderRadius:14, background:'#2563EB', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 6px 16px rgba(37,99,235,.4)' }}>
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="#fff"><polygon points="7 4 20 12 7 20 7 4"/></svg>
+          <section className="sp-cont" aria-label="Continue learning">
+            <div className="sp-cont-in">
+              <div className="sp-cont-icon">
+                <span style={{ position:'absolute', inset:0, borderRadius:14, background:'rgba(37,99,235,.45)', animation:'spPulse 2.6s ease-out 1.4s infinite' }}/>
+                <div style={{ position:'relative', width:'100%', height:'100%', borderRadius:14, background:'#2563EB', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 6px 16px rgba(37,99,235,.4)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="7 4 20 12 7 20 7 4"/></svg>
                 </div>
               </div>
-              <div style={{ flex:1, minWidth:0 }}>
+
+              <div className="sp-cont-text">
                 <div style={{ fontSize:11, fontWeight:800, letterSpacing:'.08em', color:'#2563EB', marginBottom:3 }}>CONTINUE LEARNING</div>
-                <div style={{ fontSize:17, fontWeight:700, letterSpacing:'-.01em', color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{(lastAccessedLecture as any).title}</div>
-                <div style={{ fontSize:12, color:'#64748B', marginTop:2 }}>Pick up where you left off</div>
+                <div className="sp-cont-title">{(lastAccessedLecture as any).title}</div>
+                <div style={{ fontSize:12.5, fontWeight:600, color:'#6B7690', marginTop:3 }}>{lastLecWhere}</div>
               </div>
-              <div className="cont-stars" style={{ textAlign:'right', flexShrink:0 }}>
-                <div style={{ display:'flex', gap:3 }}>
-                  {[1,2,3].map(i => (
+
+              <div className="sp-cont-stars">
+                <div style={{ display:'flex', gap:3 }} aria-label={`${lastLecStars} of 3 stars`}>
+                  {[1, 2, 3].map(i => (
                     <svg key={i} width="16" height="16" viewBox="0 0 24 24"
-                      fill={i<=lastLecStars?(i===1?'#EF4444':i===2?'#F59E0B':'#22C55E'):'none'}
-                      stroke={i<=lastLecStars?(i===1?'#EF4444':i===2?'#F59E0B':'#22C55E'):'#CBD5E1'}
-                      strokeWidth="1.5">
-                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                      fill={i <= lastLecStars ? STAR_COLOR[lastLecStars] : 'none'}
+                      stroke={i <= lastLecStars ? STAR_COLOR[lastLecStars] : '#CBD5E1'}
+                      strokeWidth="1.6" strokeLinejoin="round" aria-hidden="true">
+                      <polygon points={STAR_POINTS}/>
                     </svg>
                   ))}
                 </div>
-                <div style={{ fontSize:11, color:'#94A3B8', fontWeight:600, marginTop:4 }}>{lastLecLabel}</div>
+                <div style={{ fontSize:11.5, color:'#6B7690', fontWeight:700 }}>{lastLecLabel}</div>
               </div>
-              <Link prefetch={false} className="cont-resume resume-btn"
-                href={`/${uniSlug}/${subjectSlug}/${(lastAccessedLecture as any).slug ?? (lastAccessedLecture as any).id}`}
-                style={{ flexShrink:0, display:'inline-flex', alignItems:'center', gap:8, height:44, padding:'0 20px', borderRadius:12, background:'#2563EB', color:'#fff', fontSize:14, fontWeight:700, textDecoration:'none' }}>
+
+              <Link prefetch={false} className="sp-resume"
+                href={`/${uniSlug}/${subjectSlug}/${(lastAccessedLecture as any).slug ?? (lastAccessedLecture as any).id}`}>
                 <span>Resume</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
               </Link>
             </div>
             <div style={{ height:4, background:'rgba(37,99,235,.12)' }}>
-              <div className="shimmer-blue" style={{ height:'100%', width:`${progressPercent}%` }}/>
+              <div className="sp-shimmer" style={{ height:'100%', width:`${progressPercent}%` }}/>
             </div>
-          </div>
+          </section>
         )}
 
-        {/* ── Chapters / Sub-Subjects (full width) ── */}
+        {/* ── Chapters / Sub-Subjects (title cards → popup with lectures) ── */}
         <SubjectChaptersClient
           uniSlug={uniSlug}
           subjectSlug={subjectSlug}

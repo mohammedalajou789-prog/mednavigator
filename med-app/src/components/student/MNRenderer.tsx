@@ -13,11 +13,12 @@ interface MNRendererProps {
 }
 
 export default function MNRenderer({ content, userName, showWatermark = false, imageSlots = {} }: MNRendererProps) {
-  const blocks = parseContent(content)
+  const sections = useMemo(() => {
+    const blocks = parseContent(content)
+    return groupBlocksIntoSections(blocks)
+  }, [content])
   let h1Counter = 0
   let h2Counter = 0
-
-  const sections = groupBlocksIntoSections(blocks)
 
   // Occurrence counters shared across the ENTIRE render pass, so that
   // "1st Important box", "2nd Important box", etc. are numbered globally

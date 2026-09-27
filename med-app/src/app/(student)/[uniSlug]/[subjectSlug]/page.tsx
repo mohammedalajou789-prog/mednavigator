@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import BfCacheReloader from '@/components/student/BfCacheReloader'
 import SubjectChaptersClient, { type SubjectGroupItem, type SubjectLectureItem } from '@/components/student/SubjectChaptersClient'
-import StudyToolsCard from '@/components/student/StudyToolsCard'
+import MoreInSubjectButton from '@/components/student/MoreInSubjectButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -93,10 +93,6 @@ export default async function SubjectPage({ params }: PageProps) {
   const accBadge   = subRow.access_mode  === 'free'   ? 'Free'   : subRow.access_mode  === 'mixed'    ? 'Mixed'    : 'Premium'
   const groupLabel = isSystem ? 'Sub-Subject' : 'Chapter'
 
-  const moduleLabels: Record<string, string> = {
-    osce: 'OSCE Stations', mini_osce: 'Mini-OSCE', oral_exam: 'Oral Exam',
-  }
-
   return (
     <div style={{ minHeight:'100vh', background:'#F5F7FC', color:'#3C4661', fontFamily:'"Plus Jakarta Sans",system-ui,sans-serif' }}>
       <BfCacheReloader />
@@ -122,8 +118,6 @@ export default async function SubjectPage({ params }: PageProps) {
           transform-origin:left;
           animation:barIn 1s cubic-bezier(.4,0,.2,1) .5s backwards, shimmer 3.6s ease-in-out 1.8s infinite;
         }
-        .sb-link { transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease; }
-        .sb-link:hover { transform:translateX(4px); border-color:#C2D4FF !important; box-shadow:0 16px 30px -22px rgba(40,90,200,.9) !important; }
         .cont-card { transition:transform .22s ease,box-shadow .22s ease; }
         .cont-card:hover { transform:translateY(-3px); box-shadow:0 22px 38px -22px rgba(37,99,235,.5) !important; }
         .resume-btn { transition:transform .2s ease,box-shadow .2s ease,background .2s ease; }
@@ -140,7 +134,6 @@ export default async function SubjectPage({ params }: PageProps) {
         .cont-inner { flex-wrap:wrap; gap:14px; padding:16px; }
         .cont-stars { display:none; }
         .cont-resume { width:100%; justify-content:center; }
-        .subj-grid  { grid-template-columns:1fr; gap:20px; }
         @media(min-width:640px){
           .cont-inner  { flex-wrap:nowrap; padding:18px 20px; }
           .cont-stars  { display:block; }
@@ -150,7 +143,6 @@ export default async function SubjectPage({ params }: PageProps) {
           .hero-inner { flex-direction:row; gap:clamp(20px,4vw,36px); align-items:center; }
           .hero-ring  { display:flex !important; }
           .hero-pbar  { display:none !important; }
-          .subj-grid  { grid-template-columns:1fr 348px; gap:clamp(18px,3vw,34px); }
         }
       `}</style>
 
@@ -212,6 +204,16 @@ export default async function SubjectPage({ params }: PageProps) {
                     <div style={{ fontSize:12, fontWeight:600, color:'#8892A8', marginTop:2 }}>{groupLabel}s</div>
                   </div>
                 </div>
+                <MoreInSubjectButton
+                  uniSlug={uniSlug}
+                  subjectSlug={subjectSlug}
+                  subjectName={subRow.name}
+                  pyqCount={totalPyq}
+                  quizCount={totalQuiz}
+                  flashCount={totalFlash}
+                  videos={(videos ?? []).map((v: any) => ({ id: v.id as string, title: v.title as string }))}
+                  clinicalModules={(clinicalModules ?? []).map((m: any) => ({ id: m.id as string, module_type: m.module_type as string }))}
+                />
               </div>
             </div>
 
@@ -298,84 +300,16 @@ export default async function SubjectPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* ── Grid ── */}
-        <div className="subj-grid" style={{ display:'grid', alignItems:'start' }}>
-
-          {/* LEFT — Chapters / Sub-Subjects (card → popup, chevron → inline list) */}
-          <div style={{ minWidth:0 }}>
-            <SubjectChaptersClient
-              uniSlug={uniSlug}
-              subjectSlug={subjectSlug}
-              groupLabel={groupLabel}
-              groups={groupItems}
-              initialStarsByLecture={starsByLecture}
-              lastLectureId={lastLectureId}
-              userId={userId}
-            />
-          </div>
-
-          {/* RIGHT — Sidebar */}
-          <aside>
-            <h2 style={{ margin:'0 0 12px', fontSize:12, fontWeight:800, letterSpacing:'.09em', textTransform:'uppercase', color:'#8892A8', animation:'fadeUp .5s ease .4s backwards' }}>More in this subject</h2>
-
-            {/* Video Lectures */}
-            {videos && videos.length > 0 && (
-              <div className="sb-link" style={{ borderRadius:16, border:'1px solid #E7ECF6', background:'#fff', padding:16, marginBottom:12, animation:'fadeUp .5s ease .44s backwards' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                  <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:11, background:'#EEF3FF', color:'#2F6BFF', flexShrink:0 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-                  </span>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:14, fontWeight:700, color:'#15203A' }}>Video Lectures</div>
-                    <div style={{ fontSize:12, fontWeight:600, color:'#8892A8', marginTop:1 }}>{videos[0]?.title}{videos.length>1?` · +${videos.length-1} more`:''}</div>
-                  </div>
-                  <span style={{ fontSize:13, fontWeight:800, color:'#2F6BFF' }}>{videos.length}</span>
-                </div>
-                <div style={{ display:'flex', gap:6, marginTop:14 }}>
-                  {Array.from({length:Math.min(videos.length,6)}).map((_,i) => (
-                    <div key={i} style={{ flex:1, height:5, borderRadius:99, background:i<Math.ceil(videos.length/2)?'#2F6BFF':'#DCE6FB' }}/>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Study Tools — Previous Years, Quiz Bank, Flashcards Bank (popup) */}
-            <StudyToolsCard
-              uniSlug={uniSlug}
-              subjectSlug={subjectSlug}
-              subjectName={subRow.name}
-              pyqCount={totalPyq}
-              quizCount={totalQuiz}
-              flashCount={totalFlash}
-            />
-
-            {/* Clinical Modules */}
-            {clinicalModules && clinicalModules.length > 0 && (
-              <div style={{ borderRadius:14, border:'1px solid #E7ECF6', background:'#fff', marginBottom:10, overflow:'hidden', animation:'fadeUp .5s ease .60s backwards' }}>
-                <div style={{ padding:'14px 16px', display:'flex', alignItems:'center', gap:12 }}>
-                  <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background:'#E7F7EF', color:'#17A66B', flexShrink:0 }}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2a.3.3 0 0 0-.2.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><path d="M16 11V3"/><path d="M8 2v3a4 4 0 0 0 8 0V2"/></svg>
-                  </span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:14, fontWeight:700, color:'#15203A' }}>OSCE & Oral</div>
-                    <div style={{ fontSize:12, fontWeight:600, color:'#8892A8', marginTop:1 }}>Clinical examination</div>
-                  </div>
-                  <span style={{ fontSize:13, fontWeight:800, color:'#17A66B' }}>{clinicalModules.length}</span>
-                </div>
-                {clinicalModules.map((mod: any) => (
-                  <div key={mod.id}>
-                    <div style={{ height:1, background:'#E7ECF6', margin:'0 16px' }}/>
-                    <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/clinical/${mod.id}`} style={{ padding:'11px 16px', display:'flex', alignItems:'center', gap:9, textDecoration:'none', color:'inherit' }}>
-                      <span style={{ width:6, height:6, borderRadius:'50%', background:'#17A66B' }}/>
-                      <span style={{ flex:1, fontSize:13, fontWeight:600, color:'#55617D' }}>{moduleLabels[mod.module_type] ?? mod.module_type}</span>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            )}
-          </aside>
-        </div>
+        {/* ── Chapters / Sub-Subjects (full width) ── */}
+        <SubjectChaptersClient
+          uniSlug={uniSlug}
+          subjectSlug={subjectSlug}
+          groupLabel={groupLabel}
+          groups={groupItems}
+          initialStarsByLecture={starsByLecture}
+          lastLectureId={lastLectureId}
+          userId={userId}
+        />
       </main>
     </div>
   )

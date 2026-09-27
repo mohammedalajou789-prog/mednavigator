@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUserStore } from '@/stores/userStore'
 import LectureContentSearch from '@/components/student/LectureContentSearch'
+import { exitLecture } from '@/lib/utils/lecture-nav'
 
 interface Lecture {
   id: string
@@ -336,7 +337,7 @@ export default function LectureSidebarShell({
               const isActive = activeTab === tabId
               const href     = `/${uniSlug}/${subjectSlug}/${lectureSlug}/${tabId}`
               return (
-                <Link key={tabId} href={href} prefetch={false} title={cfg?.label ?? tabId} onClick={() => { localStorage.setItem(`lecture:${lecture.id}:active_tab`, tabId) }}
+                <Link key={tabId} href={href} replace prefetch={false} title={cfg?.label ?? tabId} onClick={() => { localStorage.setItem(`lecture:${lecture.id}:active_tab`, tabId) }}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', padding: sidebarCollapsed ? '10px' : '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer', background: isActive ? '#EEF3FF' : 'transparent', color: isActive ? '#2563EB' : '#6B7280', transition: 'all 0.15s ease', textDecoration: 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: sidebarCollapsed ? 0 : '10px' }}>
                     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: isActive ? '#DBEAFE' : '#F3F4F6', color: isActive ? '#2563EB' : '#9CA3AF', flexShrink: 0, transition: 'all 0.15s ease' }}>
@@ -548,7 +549,7 @@ export default function LectureSidebarShell({
               </svg>
               {isBookmarked ? 'Bookmarked' : 'Bookmark'}
             </button>
-            <Link href={`/${uniSlug}/${subjectSlug}`} prefetch={false}
+            <Link href={`/${uniSlug}/${subjectSlug}`} prefetch={false} onClick={(e) => { e.preventDefault(); exitLecture(router, pathname) }}
               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', border: '1px solid #EAEDF2', fontSize: '13px', fontWeight: 500, color: '#6B7280', background: '#fff', textDecoration: 'none', transition: 'all 0.15s ease' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
               Back to Subject

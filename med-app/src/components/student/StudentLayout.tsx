@@ -7,6 +7,7 @@ import { useUserStore } from '@/stores/userStore'
 import { useUser } from '@/hooks/useUser'
 import { useUIStore } from '@/stores/uiStore'
 import { createClient } from '@/lib/supabase/client'
+import { isLecturePath, recordLectureEntry, exitLecture } from '@/lib/utils/lecture-nav'
 
 interface University {
   id: string
@@ -129,12 +130,33 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
   const [exploreOpen, setExploreOpen] = useState(false)
   const [guestToast,  setGuestToast]  = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [fsSupported,  setFsSupported]  = useState(false)
+
+  // Previous route — used to know where the student entered a lecture from
+  const prevPathRef = useRef<string | null>(null)
+  const onLecturePage = isLecturePath(pathname)
 
   // ── Touch swipe state ──────────────────────────────────────────────────
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
 
   const isGuest = !isLoading && !user
+
+  // Remember lecture entry point (for the Exit button)
+  useEffect(() => {
+    recordLectureEntry(prevPathRef.current, pathname)
+    prevPathRef.current = pathname
+  }, [pathname])
+
+  // Fullscreen (same as F11) — track state so the icon stays correct
+  useEffect(() => {
+    setFsSupported(!!document.fullscreenEnabled)
+    function onFsChange() { setIsFullscreen(!!document.fullscreenElement) }
+    onFsChange()
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => document.removeEventListener('fullscreenchange', onFsChange)
+  }, [])
 
   // Close drawer on route change
   useEffect(() => { setDrawerOpen(false) }, [pathname])
@@ -224,6 +246,18 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
     await supabase.auth.signOut()
     clearUser()
     window.location.href = '/'
+  }
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {})
+    } else {
+      document.documentElement.requestFullscreen().catch(() => {})
+    }
+  }
+
+  function handleExitLecture() {
+    exitLecture(router, pathname)
   }
 
   function handleLockedClick(e: React.MouseEvent) {
@@ -469,7 +503,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           borderRight: `1px solid ${SIDEBAR_BORDER}`,
           height: '100dvh',
           overflow: 'hidden',
-          transition: 'width 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)', overflow: 'hidden', willChange: 'width',
+          transition: 'width 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)', willChange: 'width',
         }}>
           {sidebarContent}
         </aside>
@@ -553,7 +587,7 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
           </button>
 
           {/* Search bar */}
-          <div style={{ position: 'relative', flex: 1, maxWidth: isDesktop ? '480px' : '100%' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
             <svg style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
@@ -570,8 +604,34 @@ export default function StudentLayout({ children, universities = [], myUniSlug }
             />
           </div>
 
-          {/* Spacer — only on desktop where search has maxWidth */}
-          {isDesktop && <div style={{ flex: 1 }} />}
+          {/* Fullscreen toggle (works like F11) */}
+          {fsSupported && (
+            <button
+              onClick={toggleFullscreen}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#64748B', cursor: 'pointer', flexShrink: 0 }}
+              aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            >
+              {isFullscreen ? (
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+              ) : (
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+              )}
+            </button>
+          )}
+
+          {/* Exit lecture — only inside sheet / summary / flashcards / quiz / previous years */}
+          {onLecturePage && (
+            <button
+              onClick={handleExitLecture}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '40px', padding: isDesktop ? '0 14px 0 10px' : '0', width: isDesktop ? 'auto' : '40px', borderRadius: '10px', background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#334155', fontSize: '13px', fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
+              aria-label="Exit lecture"
+              title="Exit to subject"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 5 12 10 7"/><line x1="5" y1="12" x2="16" y2="12"/></svg>
+              {isDesktop && 'Exit'}
+            </button>
+          )}
 
           {/* Right side actions */}
           {isGuest ? (

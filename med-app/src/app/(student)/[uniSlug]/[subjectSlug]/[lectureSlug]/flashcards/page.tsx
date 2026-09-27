@@ -142,9 +142,9 @@ export default function FlashcardsPage() {
             <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
             <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
           </svg>
-          <Link href={`/${uniSlug}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>Subjects</Link>
+          <Link replace href={`/${uniSlug}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>Subjects</Link>
           <span style={{ color: '#C5CBD6' }}>/</span>
-          <Link href={`/${uniSlug}/${subjectSlug}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>{subject.name}</Link>
+          <Link replace href={`/${uniSlug}/${subjectSlug}`} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>{subject.name}</Link>
           <span style={{ color: '#C5CBD6' }}>/</span>
           <span style={{ color: '#1B2335', fontWeight: 700 }}>{lecture.title}</span>
         </div>

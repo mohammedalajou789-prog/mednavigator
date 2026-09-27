@@ -67,6 +67,7 @@ export default function SheetPage() {
   const saveTimer     = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollApplied = useRef(false)
   const scrollTimer   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastScrollPos = useRef<number>(0)
 
   const { data: sheetData, isLoading: sheetLoading } = useQuery({
     queryKey: ['sheet-full', lecture.id, userId],
@@ -116,7 +117,8 @@ export default function SheetPage() {
     const localVal = localStorage.getItem(getScrollKey(lecture.id))
     const targetScroll = localVal ? parseInt(localVal, 10) : (sheetData.savedPosition ?? 0)
 
-    if (targetScroll <= 0) { scrollApplied.current = true; return }
+    lastScrollPos.current = targetScroll > 0 ? targetScroll : 0
+    if (targetScroll <= 0) { scrollApplied.current = true; document.getElementById('lecture-content-scroll')?.scrollTo({ top: 0 }); return }
     scrollApplied.current = true
 
     let cancelled = false
@@ -168,6 +170,7 @@ export default function SheetPage() {
     const scrollEl  = document.getElementById('lecture-content-scroll')
     const scrollPos = scrollEl?.scrollTop ?? 0
     localStorage.setItem(getScrollKey(lecture.id), String(scrollPos))
+    lastScrollPos.current = scrollPos
 
     if (!user || !userId) return
     if (Math.abs(pct - lastSavedPct.current) < 2) return
@@ -175,8 +178,7 @@ export default function SheetPage() {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
       lastSavedPct.current = pct
-      const el  = document.getElementById('lecture-content-scroll')
-      const pos = el?.scrollTop ?? 0
+      const pos = lastScrollPos.current
       supabase.from('user_progress').upsert({
         user_id:             userId,
         lecture_id:          lecture.id,
@@ -193,9 +195,7 @@ export default function SheetPage() {
   // Save on client-side navigation away from this page
   useEffect(() => {
     return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current)
-      const el  = document.getElementById('lecture-content-scroll')
-      const pos = el?.scrollTop ?? 0
+      const pos = lastScrollPos.current
       localStorage.setItem(getScrollKey(lecture.id), String(pos))
     }
   }, [lecture.id])
@@ -203,9 +203,7 @@ export default function SheetPage() {
   // Save on hard refresh / tab close (this was missing before)
   useEffect(() => {
     function handleUnload() {
-      if (saveTimer.current) clearTimeout(saveTimer.current)
-      const el  = document.getElementById('lecture-content-scroll')
-      const pos = el?.scrollTop ?? 0
+      const pos = lastScrollPos.current
       localStorage.setItem(getScrollKey(lecture.id), String(pos))
     }
     window.addEventListener('beforeunload', handleUnload)
@@ -233,9 +231,9 @@ export default function SheetPage() {
       <div style={{ padding: 'clamp(8px,2vw,14px) clamp(12px,3vw,26px) 0', background: '#F5F6FA' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: '#7A8499', fontWeight: 500, marginBottom: '18px' }}>
           <svg style={{ color: '#9AA3B2' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-          <Link href={`/${uniSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>Subjects</Link>
+          <Link replace href={`/${uniSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>Subjects</Link>
           <span style={{ color: '#C5CBD6' }}>/</span>
-          <Link href={`/${uniSlug}/${subjectSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{subject.name}</Link>
+          <Link replace href={`/${uniSlug}/${subjectSlug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{subject.name}</Link>
           <span style={{ color: '#C5CBD6' }}>/</span>
           <span style={{ color: '#1B2335', fontWeight: 700 }}>{lecture.title}</span>
         </div>

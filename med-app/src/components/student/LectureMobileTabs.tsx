@@ -17,7 +17,7 @@ export default function LectureMobileTabs({ activeTab }: { activeTab: string }) 
       {availableTabs.map((tabId) => {
         const isActive = tabId === activeTab
         return (
-          <Link
+          <Link replace
             key={tabId}
             href={`/${uniSlug}/${subjectSlug}/${lectureSlug}/${tabId}`}
             prefetch={false}

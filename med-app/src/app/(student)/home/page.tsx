@@ -97,7 +97,6 @@ export default async function HomePage() {
     { data: checklistData },
     { data: subscriptions },
     { data: pinnedSubjects },
-    { data: notifications },
     { data: university },
   ] = await Promise.all([
     supabase
@@ -107,21 +106,16 @@ export default async function HomePage() {
       .order('updated_at', { ascending: false })
       .limit(5),
     supabase
-      .from('subscriptions')
+      .from('subject_subscriptions')
       .select(`id, subject_id, status, end_date, subject:subjects(id, name, subject_type, access_mode, university_id, slug)`)
       .eq('user_id', userId)
       .eq('status', 'active')
+      .gt('end_date', new Date().toISOString())
       .order('end_date', { ascending: true }),
     supabase
       .from('pinned_subjects')
       .select(`subject_id, subject:subjects(id, name, subject_type, access_mode, university_id, slug, description, university:universities(id, name, slug))`)
       .eq('user_id', userId),
-    supabase
-      .from('notifications')
-      .select('id, title, message, priority, created_at')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(3),
     supabase
       .from('universities')
       .select('id, name, slug, logo_url')
@@ -132,6 +126,19 @@ export default async function HomePage() {
   const checklist      = (checklistData ?? []) as unknown as ContinueLearning[]
   const subs           = (subscriptions ?? []) as unknown as Subscription[]
   const pinned         = (pinnedSubjects ?? []) as unknown as PinnedSubject[]
+
+  // Notifications: only those targeted at this student (Spec Section 10.5)
+  const subjectIds   = subs.map(s => s.subject_id)
+  const notifTargets = ['target_type.eq.all', `and(target_type.eq.user,user_id.eq.${userId})`]
+  if (profile.default_university_id) notifTargets.push(`and(target_type.eq.university,university_id.eq.${profile.default_university_id})`)
+  if (subjectIds.length > 0) notifTargets.push(`and(target_type.eq.subject,subject_id.in.(${subjectIds.join(',')}))`)
+  const { data: notifications } = await supabase
+    .from('notifications')
+    .select('id, title, message, priority, created_at')
+    .is('archived_at', null)
+    .or(notifTargets.join(','))
+    .order('created_at', { ascending: false })
+    .limit(3)
   const notifs         = (notifications ?? []) as unknown as Notification[]
 
   const continueLearning = checklist[0] ?? null

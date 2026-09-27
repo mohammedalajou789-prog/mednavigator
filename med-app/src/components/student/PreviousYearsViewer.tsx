@@ -110,7 +110,7 @@ export default function PreviousYearsViewer({ questions, userName, initialIndex,
   function handleAnswer(questionId: string, option: string) {
     if (answers[questionId]) return
     setAnswers(prev => ({ ...prev, [questionId]: option }))
-    const isCorrect = questions.find(q => q.id === questionId)?.correct_answer === option ?? false
+    const isCorrect = questions.find(q => q.id === questionId)?.correct_answer === option
     onAnswerSelect?.(questionId, option, isCorrect)
   }
 

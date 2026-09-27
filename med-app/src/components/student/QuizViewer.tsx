@@ -86,7 +86,7 @@ export default function QuizViewer({ questions, userName, lectureId, initialInde
     if (answers[questionId]) return
     setAnswers(prev => ({ ...prev, [questionId]: option }))
     setShowExplanation(prev => ({ ...prev, [questionId]: true }))
-    const isCorrect = questions.find(q => q.id === questionId)?.correct_answer === option ?? false
+    const isCorrect = questions.find(q => q.id === questionId)?.correct_answer === option
     onAnswerSelect?.(questionId, option, isCorrect)
   }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useMemo, useCallback } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -10,6 +10,7 @@ import SheetReader from '@/components/student/SheetReader'
 import LockedContentCard from '@/components/student/LockedContentCard'
 import { useLectureData } from '@/components/student/LectureDataProvider'
 import LectureMobileTabs from '@/components/student/LectureMobileTabs'
+import { useReadingPosition } from '@/hooks/useReadingPosition'
 
 interface TocSection {
   id: string; level: number; label: string; h1Num: number; h2Num: number | null
@@ -50,10 +51,6 @@ function emitSidebar(type: string, data: unknown) {
   window.dispatchEvent(new CustomEvent('lecture-sidebar-update', { detail: { type, data } }))
 }
 
-function getScrollKey(lectureId: string) {
-  return `lecture:${lectureId}:summary_scroll`
-}
-
 export default function SummaryPage() {
   const params      = useParams()
   const uniSlug     = params.uniSlug     as string
@@ -62,12 +59,6 @@ export default function SummaryPage() {
   const { lecture, subject, userId, accessAllowed } = useLectureData()
   const { user } = useUserStore()
   const supabase = useMemo(() => createClient(), [])
-
-  const lastSavedPct  = useRef<number>(-1)
-  const saveTimer     = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const scrollApplied = useRef(false)
-  const scrollTimer   = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastScrollPos = useRef<number>(0)
 
   const { data: summaryData, isLoading: summaryLoading } = useQuery({
     queryKey: ['summary-full', lecture.id, userId],
@@ -117,72 +108,15 @@ export default function SummaryPage() {
     }
   }, [summaryData])
 
-  useEffect(() => {
-    if (scrollApplied.current) return
-    if (!summaryData) return
-
-    const localVal = localStorage.getItem(getScrollKey(lecture.id))
-    const targetScroll = localVal ? parseInt(localVal, 10) : (summaryData.savedPosition ?? 0)
-
-    lastScrollPos.current = targetScroll > 0 ? targetScroll : 0
-    if (targetScroll <= 0) { scrollApplied.current = true; document.getElementById('lecture-content-scroll')?.scrollTo({ top: 0 }); return }
-    scrollApplied.current = true
-
-    let attempts = 0
-    const maxAttempts = 50
-
-    function tryScroll() {
-      const el = document.getElementById('lecture-content-scroll')
-      if (!el) { attempts++; if (attempts < maxAttempts) { scrollTimer.current = setTimeout(tryScroll, 100) }; return }
-      const maxScroll = el.scrollHeight - el.clientHeight
-      if (maxScroll < targetScroll * 0.9 && attempts < maxAttempts) {
-        attempts++
-        scrollTimer.current = setTimeout(tryScroll, 100)
-        return
-      }
-      el.scrollTo({ top: targetScroll, behavior: 'smooth' })
-    }
-
-    scrollTimer.current = setTimeout(tryScroll, 200)
-    return () => { if (scrollTimer.current) clearTimeout(scrollTimer.current) }
-  }, [summaryData, lecture.id])
-
-  const handleProgressUpdate = useCallback((pct: number) => {
-    emitSidebar('progress', { percent: pct, completed: pct >= 100 })
-
-    const scrollEl  = document.getElementById('lecture-content-scroll')
-    const scrollPos = scrollEl?.scrollTop ?? 0
-    localStorage.setItem(getScrollKey(lecture.id), String(scrollPos))
-    lastScrollPos.current = scrollPos
-
-    if (!user || !userId) return
-    if (Math.abs(pct - lastSavedPct.current) < 2) return
-
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      lastSavedPct.current = pct
-      const pos = lastScrollPos.current
-      supabase.from('user_progress').upsert({
-        user_id:             userId,
-        lecture_id:          lecture.id,
-        content_type:        'summary',
-        progress_percentage: pct,
-        completed:           pct >= 100,
-        last_position:       pos,
-        last_accessed_at:    new Date().toISOString(),
-        updated_at:          new Date().toISOString(),
-      }, { onConflict: 'user_id,lecture_id,content_type' })
-    }, 2000)
-  }, [user, userId, lecture.id, supabase])
-
-  useEffect(() => {
-    function handleUnload() {
-      const pos = lastScrollPos.current
-      localStorage.setItem(getScrollKey(lecture.id), String(pos))
-    }
-    window.addEventListener('beforeunload', handleUnload)
-    return () => window.removeEventListener('beforeunload', handleUnload)
-  }, [lecture.id])
+  // Reading position: saved to the database (all devices) + this browser (fallback)
+  const handleProgressUpdate = useReadingPosition({
+    lectureId:      lecture.id,
+    contentType:    'summary',
+    userId,
+    ready:          accessAllowed && !!summaryData?.summary,
+    dbPosition:     summaryData?.savedPosition ?? null,
+    initialPercent: summaryData?.savedPct ?? 0,
+  })
 
   const summary     = summaryData?.summary
   const imageSlots  = summaryData?.imageSlots ?? {}

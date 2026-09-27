@@ -3,6 +3,8 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import BfCacheReloader from '@/components/student/BfCacheReloader'
+import SubjectChaptersClient, { type SubjectGroupItem, type SubjectLectureItem } from '@/components/student/SubjectChaptersClient'
+import StudyToolsCard from '@/components/student/StudyToolsCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,12 +16,22 @@ export default async function SubjectPage({ params }: PageProps) {
   const { uniSlug, subjectSlug } = await params
   const supabase = await createServerClient()
 
-  const [{ data: uniRow }, { data: subRow }, profile] = await Promise.all([
+  // ── Wave 1: university + profile in parallel ─────────────────────────────
+  const [{ data: uniRow }, profile] = await Promise.all([
     supabase.from('universities').select('id, name').eq('slug' as any, uniSlug).single(),
-    supabase.from('subjects').select('id, name, description, access_mode, subject_type').eq('slug' as any, subjectSlug).eq('is_published', true).single(),
     getUserProfile(),
   ])
-  if (!uniRow || !subRow) notFound()
+  if (!uniRow) notFound()
+
+  // ── Wave 2: subject — scoped to THIS university (Spec §3.3 University Independence)
+  const { data: subRow } = await supabase
+    .from('subjects')
+    .select('id, name, description, access_mode, subject_type')
+    .eq('university_id', uniRow.id)
+    .eq('slug' as any, subjectSlug)
+    .eq('is_published', true)
+    .single()
+  if (!subRow) notFound()
 
   const subjectId = subRow.id
   const userId    = profile?.id ?? null
@@ -41,40 +53,41 @@ export default async function SubjectPage({ params }: PageProps) {
   const checklist     = (rpcData.checklist ?? {}) as Record<string, number>
   const lastLectureId = rpcData.last_lecture?.lecture_id ?? null
 
-  const lectureList   = lectures
-  const totalLectures = lectureList.length
+  const totalLectures = lectures.length
 
-  const flashMap: Record<string, number> = {}
-  const quizMap:  Record<string, number> = {}
-  const pyqMap:   Record<string, number> = {}
-  lectureList.forEach((l: any) => {
-    if (l.flash_count) flashMap[l.id] = l.flash_count
-    if (l.quiz_count)  quizMap[l.id]  = l.quiz_count
-    if (l.pyq_count)   pyqMap[l.id]   = l.pyq_count
-  })
+  // Chapters / Sub-Subjects with their lectures, in RPC order (only groups that have lectures)
+  const groupItems: SubjectGroupItem[] = groups
+    .map((group: any) => ({
+      id:    group.id as string,
+      title: group.title as string,
+      lectures: lectures
+        .filter((l: any) => isSystem ? l.sub_subject_id === group.id : l.chapter_id === group.id)
+        .map((l: any): SubjectLectureItem => ({
+          id:         l.id,
+          title:      l.title,
+          slug:       l.slug ?? null,
+          flashCount: l.flash_count ?? 0,
+          quizCount:  l.quiz_count  ?? 0,
+          pyqCount:   l.pyq_count   ?? 0,
+          hasSheet:   !!l.has_sheet,
+        })),
+    }))
+    .filter((g: SubjectGroupItem) => g.lectures.length > 0)
+
+  const totalFlash = lectures.reduce((s: number, l: any) => s + (l.flash_count ?? 0), 0)
+  const totalQuiz  = lectures.reduce((s: number, l: any) => s + (l.quiz_count  ?? 0), 0)
+  const totalPyq   = lectures.reduce((s: number, l: any) => s + (l.pyq_count   ?? 0), 0)
 
   const starsByLecture  = checklist
   const totalStars      = Object.values(starsByLecture).reduce((s: number, n: any) => s + n, 0)
   const progressPercent = totalLectures > 0 ? Math.round((totalStars / (totalLectures * 3)) * 100) : 0
 
   const lastAccessedLecture = lastLectureId
-    ? lectureList.find((l: any) => l.id === lastLectureId) ?? null
+    ? lectures.find((l: any) => l.id === lastLectureId) ?? null
     : null
 
   const lastLecStars = lastLectureId ? (starsByLecture[lastLectureId] ?? 0) : 0
   const lastLecLabel = lastLecStars === 3 ? 'Mastered' : lastLecStars === 2 ? 'Almost there' : lastLecStars === 1 ? 'Need review' : 'Not rated'
-
-  const groupStats = groups.map((group: any) => {
-    const gLectures = lectureList.filter((l: any) => isSystem ? l.sub_subject_id === group.id : l.chapter_id === group.id)
-    const gTotal    = gLectures.length
-    const gStars    = gLectures.reduce((s: number, l: any) => s + (starsByLecture[l.id] ?? 0), 0)
-    const gFlash    = gLectures.reduce((s: number, l: any) => s + (flashMap[l.id] ?? 0), 0)
-    const gQuiz     = gLectures.reduce((s: number, l: any) => s + (quizMap[l.id]  ?? 0), 0)
-    const gPyq      = gLectures.reduce((s: number, l: any) => s + (pyqMap[l.id]   ?? 0), 0)
-    const gPct      = gTotal > 0 ? Math.round((gStars / (gTotal * 3)) * 100) : 0
-    const top3      = gLectures.slice(0, 3)
-    return { group, gTotal, gStars, gFlash, gQuiz, gPyq, gPct, top3 }
-  }).filter((s: any) => s.gTotal > 0)
 
   const typeBadge  = subRow.subject_type === 'system' ? 'System' : subRow.subject_type === 'standard' ? 'Standard' : 'Clinical'
   const accBadge   = subRow.access_mode  === 'free'   ? 'Free'   : subRow.access_mode  === 'mixed'    ? 'Mixed'    : 'Premium'
@@ -82,13 +95,6 @@ export default async function SubjectPage({ params }: PageProps) {
 
   const moduleLabels: Record<string, string> = {
     osce: 'OSCE Stations', mini_osce: 'Mini-OSCE', oral_exam: 'Oral Exam',
-  }
-
-  const STAR_STYLE: Record<number, { bg: string; color: string; label: string }> = {
-    0: { bg:'#F1F5F9', color:'#94A3B8', label:'Not started' },
-    1: { bg:'#FEF2F2', color:'#EF4444', label:'Need review' },
-    2: { bg:'#FFFBEB', color:'#F59E0B', label:'Almost there' },
-    3: { bg:'#E7F7EF', color:'#138A5A', label:'Mastered' },
   }
 
   return (
@@ -103,7 +109,6 @@ export default async function SubjectPage({ params }: PageProps) {
         @keyframes pulseRing { 0%{transform:scale(1);opacity:.5}70%,100%{transform:scale(1.9);opacity:0} }
         @keyframes countUp   { from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)} }
         @keyframes floaty    { 0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)} }
-        @keyframes expand    { from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)} }
 
         .shimmer-blue {
           background:linear-gradient(100deg,#3B79FF 0%,#3B79FF 38%,#A9C4FF 50%,#2456D6 62%,#2456D6 100%);
@@ -117,10 +122,6 @@ export default async function SubjectPage({ params }: PageProps) {
           transform-origin:left;
           animation:barIn 1s cubic-bezier(.4,0,.2,1) .5s backwards, shimmer 3.6s ease-in-out 1.8s infinite;
         }
-        .ch-card { transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease; }
-        .ch-card:hover { transform:translateY(-3px); border-color:#C2D4FF !important; box-shadow:0 22px 40px -26px rgba(40,90,200,.9) !important; }
-        .lec-row { transition:background .2s ease,transform .2s ease; }
-        .lec-row:hover { background:#EBF1FB !important; transform:translateX(3px); }
         .sb-link { transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease; }
         .sb-link:hover { transform:translateX(4px); border-color:#C2D4FF !important; box-shadow:0 16px 30px -22px rgba(40,90,200,.9) !important; }
         .cont-card { transition:transform .22s ease,box-shadow .22s ease; }
@@ -140,7 +141,6 @@ export default async function SubjectPage({ params }: PageProps) {
         .cont-stars { display:none; }
         .cont-resume { width:100%; justify-content:center; }
         .subj-grid  { grid-template-columns:1fr; gap:20px; }
-        .chap-view  { display:none !important; }
         @media(min-width:640px){
           .cont-inner  { flex-wrap:nowrap; padding:18px 20px; }
           .cont-stars  { display:block; }
@@ -151,7 +151,6 @@ export default async function SubjectPage({ params }: PageProps) {
           .hero-ring  { display:flex !important; }
           .hero-pbar  { display:none !important; }
           .subj-grid  { grid-template-columns:1fr 348px; gap:clamp(18px,3vw,34px); }
-          .chap-view  { display:inline-flex !important; }
         }
       `}</style>
 
@@ -209,7 +208,7 @@ export default async function SubjectPage({ params }: PageProps) {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg>
                   </span>
                   <div>
-                    <div style={{ fontSize:17, fontWeight:800, color:'#15203A', lineHeight:1 }}>{groupStats.length}</div>
+                    <div style={{ fontSize:17, fontWeight:800, color:'#15203A', lineHeight:1 }}>{groupItems.length}</div>
                     <div style={{ fontSize:12, fontWeight:600, color:'#8892A8', marginTop:2 }}>{groupLabel}s</div>
                   </div>
                 </div>
@@ -302,92 +301,17 @@ export default async function SubjectPage({ params }: PageProps) {
         {/* ── Grid ── */}
         <div className="subj-grid" style={{ display:'grid', alignItems:'start' }}>
 
-          {/* LEFT — Chapters */}
+          {/* LEFT — Chapters / Sub-Subjects (card → popup, chevron → inline list) */}
           <div style={{ minWidth:0 }}>
-            <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:14, animation:'fadeUp .5s ease .34s backwards' }}>
-              <h2 style={{ margin:0, fontSize:20, fontWeight:800, letterSpacing:'-.02em', color:'#15203A' }}>{groupLabel}s</h2>
-              <span style={{ fontSize:13, fontWeight:700, color:'#2F6BFF' }}>{groupStats.length} {groupLabel.toLowerCase()}{groupStats.length!==1?'s':''}</span>
-              <span style={{ marginLeft:'auto', fontSize:12, fontWeight:600, color:'#8892A8' }}>Tap a chapter to preview</span>
-            </div>
-
-            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-              {groupStats.map(({ group, gTotal, gFlash, gQuiz, gPyq, gPct, top3 }: any, gi: number) => {
-                const isDone   = gPct === 100
-                const inProg   = gPct > 0 && gPct < 100
-                const badgeBg  = isDone ? '#E7F7EF' : inProg ? '#FFF6E0' : '#EEF1F8'
-                const badgeBdr = isDone ? '#C7EBD8' : inProg ? '#F3E1AE' : '#DEE2EE'
-                const badgeClr = isDone ? '#138A5A' : inProg ? '#A1730A' : '#8892A8'
-                const badgeTxt = isDone ? 'Done'    : inProg ? `${gPct}% · in progress` : 'Not started'
-                const iconBg   = isDone ? '#E7F7EF' : inProg ? '#EEF3FF' : '#F1F4FA'
-                const iconClr  = isDone ? '#138A5A' : inProg ? '#2F6BFF' : '#8892A8'
-                const barCls   = isDone ? 'shimmer-green' : inProg ? 'shimmer-blue' : ''
-
-                return (
-                  <div key={group.id} className="ch-card" style={{ borderRadius:18, border:'1px solid #E7ECF6', background:'#fff', boxShadow:'rgba(16,24,40,0.04) 0px 1px 2px,rgba(40,90,200,0.7) 0px 14px 34px -26px', overflow:'hidden', animation:'fadeUp .5s ease backwards', animationDelay:`${0.38+gi*0.06}s` }}>
-                    {/* Header row */}
-                    <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/chapter/${(group as any).slug ?? group.id}`} style={{ textDecoration:'none', color:'inherit', display:'flex', alignItems:'center', gap:16, padding:'20px 22px', cursor:'pointer' }}>
-                      <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:46, height:46, borderRadius:13, background:iconBg, color:iconClr, flexShrink:0 }}>
-                        {isDone ? (
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        ) : (
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                        )}
-                      </span>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                          <h3 style={{ margin:0, fontSize:16, fontWeight:700, color:'#15203A', letterSpacing:'-.01em' }}>{group.title}</h3>
-                          {userId && <span style={{ padding:'2px 9px', borderRadius:999, background:badgeBg, border:`1px solid ${badgeBdr}`, color:badgeClr, fontSize:11, fontWeight:700 }}>{badgeTxt}</span>}
-                        </div>
-                        <div style={{ display:'flex', flexWrap:'wrap', gap:12, marginTop:6, fontSize:12.5, fontWeight:600, color:'#8892A8' }}>
-                          <span>{gTotal} lecture{gTotal!==1?'s':''}</span>
-                          {gFlash>0 && <span>{gFlash} flashcard{gFlash!==1?'s':''}</span>}
-                          {gQuiz>0  && <span>{gQuiz} Q</span>}
-                          {gPyq>0   && <span>{gPyq} PYQ</span>}
-                        </div>
-                        <div style={{ marginTop:12, height:6, borderRadius:999, background:'#EAF0FB', overflow:'hidden' }}>
-                          {barCls ? (
-                            <div className={barCls} style={{ height:'100%', width:`${Math.max(gPct,2)}%`, borderRadius:999 }}/>
-                          ) : (
-                            <div style={{ height:'100%', width:'2%', borderRadius:999, background:'#C7D3EA' }}/>
-                          )}
-                        </div>
-                      </div>
-                      <svg className="chap-view" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}><polyline points="6 9 12 15 18 9"/></svg>
-                    </Link>
-
-                    {/* Lecture preview rows */}
-                    {top3.length > 0 && userId && (
-                      <div style={{ padding:'0 22px 18px', animation:'expand .3s ease' }}>
-                        <div style={{ display:'flex', flexDirection:'column', gap:6, borderTop:'1px solid #EEF2F8', paddingTop:14 }}>
-                          {top3.map((lec: any, li: number) => {
-                            const st = STAR_STYLE[starsByLecture[lec.id] ?? 0]
-                            const isResume = lec.id === lastLectureId
-                            return (
-                              <Link key={lec.id} prefetch={false}
-                                href={`/${uniSlug}/${subjectSlug}/${lec.slug ?? lec.id}`}
-                                style={{ textDecoration:'none' }}>
-                                <div className="lec-row" style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:11, background:isResume?'#EEF3FF':'#F5F8FD', border:isResume?'1px solid #D8E4FF':'none' }}>
-                                  <span style={{ fontSize:11.5, fontWeight:800, color:isResume?'#2F6BFF':'#B4BECE', width:16, flexShrink:0 }}>{String(li+1).padStart(2,'0')}</span>
-                                  <span style={{ flex:1, minWidth:0, fontSize:13.5, fontWeight:isResume?700:600, color:isResume?'#15203A':'#475569', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{lec.title}</span>
-                                  <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:7, background:isResume?'#fff':st.bg, color:isResume?'#2563EB':st.color, flexShrink:0 }}>
-                                    {isResume ? 'Resume' : st.label}
-                                  </span>
-                                </div>
-                              </Link>
-                            )
-                          })}
-                          {gTotal > 3 && (
-                            <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/chapter/${(group as any).slug ?? group.id}`} style={{ alignSelf:'flex-start', fontSize:12.5, fontWeight:800, letterSpacing:'.04em', color:'#2F6BFF', marginTop:6, textDecoration:'none' }}>
-                              VIEW ALL {gTotal} LECTURES →
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+            <SubjectChaptersClient
+              uniSlug={uniSlug}
+              subjectSlug={subjectSlug}
+              groupLabel={groupLabel}
+              groups={groupItems}
+              initialStarsByLecture={starsByLecture}
+              lastLectureId={lastLectureId}
+              userId={userId}
+            />
           </div>
 
           {/* RIGHT — Sidebar */}
@@ -415,47 +339,15 @@ export default async function SubjectPage({ params }: PageProps) {
               </div>
             )}
 
-            {/* Previous Years */}
-            <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/previous-years`} style={{ textDecoration:'none', display:'block', marginBottom:10, animation:'fadeUp .5s ease .48s backwards' }}>
-              <div className="sb-link" style={{ display:'flex', alignItems:'center', gap:12, borderRadius:16, border:'1px solid #E7ECF6', background:'#fff', padding:'14px 16px' }}>
-                <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:11, background:'#EEF3FF', color:'#2F6BFF', flexShrink:0 }}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                </span>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:14, fontWeight:700, color:'#15203A' }}>Previous Years</div>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#8892A8', marginTop:1 }}>Past papers & MCQ bank</div>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </div>
-            </Link>
-
-            {/* Quiz Bank */}
-            <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/quiz-bank`} style={{ textDecoration:'none', display:'block', marginBottom:10, animation:'fadeUp .5s ease .52s backwards' }}>
-              <div className="sb-link" style={{ display:'flex', alignItems:'center', gap:12, borderRadius:16, border:'1px solid #E7ECF6', background:'#fff', padding:'14px 16px' }}>
-                <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:11, background:'#E7F7EF', color:'#17A66B', flexShrink:0 }}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                </span>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:14, fontWeight:700, color:'#15203A' }}>Quiz Bank</div>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#8892A8', marginTop:1 }}>All quiz questions in one place</div>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </div>
-            </Link>
-
-            {/* Flashcards Bank */}
-            <Link prefetch={false} href={`/${uniSlug}/${subjectSlug}/flashcards-bank`} style={{ textDecoration:'none', display:'block', marginBottom:10, animation:'fadeUp .5s ease .56s backwards' }}>
-              <div className="sb-link" style={{ display:'flex', alignItems:'center', gap:12, borderRadius:16, border:'1px solid #E7ECF6', background:'#fff', padding:'14px 16px' }}>
-                <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:11, background:'#FFF6E0', color:'#C99400', flexShrink:0 }}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M6 3h12"/><path d="M4 6h16"/></svg>
-                </span>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:14, fontWeight:700, color:'#15203A' }}>Flashcards Bank</div>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#8892A8', marginTop:1 }}>All flashcards in one place</div>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C2CADB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </div>
-            </Link>
+            {/* Study Tools — Previous Years, Quiz Bank, Flashcards Bank (popup) */}
+            <StudyToolsCard
+              uniSlug={uniSlug}
+              subjectSlug={subjectSlug}
+              subjectName={subRow.name}
+              pyqCount={totalPyq}
+              quizCount={totalQuiz}
+              flashCount={totalFlash}
+            />
 
             {/* Clinical Modules */}
             {clinicalModules && clinicalModules.length > 0 && (
